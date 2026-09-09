@@ -8,46 +8,47 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
+    <!-- ===== NAVBAR ===== -->
     <nav class="navbar">
-    <div class="nav-container">
-        <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
-        <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
-        <ul class="nav-links">
-            <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
-            <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
-            <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
-            <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
-            <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
-            <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
-            <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
-            <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
-            <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
-            <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
-        </ul>
-        <div class="nav-right">
-            <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
-                <option value="en">🇬🇧 English</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="fr">🇫🇷 Français</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="pt">🇧🇷 Português</option>
-                <option value="bn">🇧🇩 বাংলা</option>
-                <option value="ur">🇵🇰 اردو</option>
-                <option value="id">🇮🇩 Indonesia</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-            </select>
-            <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
-            <span class="nav-date" id="navDate"></span>
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
+            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
+                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
+                <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
+                <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
+                <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
+                <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
+                <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
+                <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
+            </ul>
+            <div class="nav-right">
+                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="ar">🇸🇦 العربية</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="ur">🇵🇰 اردو</option>
+                    <option value="id">🇮🇩 Indonesia</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="sw">🇰🇪 Kiswahili</option>
+                    <option value="tr">🇹🇷 Türkçe</option>
+                </select>
+                <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
+                <span class="nav-date" id="navDate"></span>
+            </div>
         </div>
-    </div>
-</nav><!-- NAVBAR (with language selector) – use the snippet above -->
-    <!-- ... -->
+    </nav>
+
     <main class="container">
         <!-- Clock -->
         <section class="clock-section">
