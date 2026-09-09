@@ -1478,3 +1478,125 @@ document.addEventListener('DOMContentLoaded', function() {
     resetDailyIfNeeded(data);
     if (path === 'index.html' || path === '') renderDashboard();
 });
+// ================================================================
+// TRANSLATION ENGINE (top 15 languages)
+// ================================================================
+
+const translations = {
+    en: {
+        // Dashboard
+        'dash_title': 'Dashboard',
+        'dash_subtitle': 'Your study hub at a glance — today\'s progress & all-time history.',
+        'stat_searches': 'Searches Today',
+        'stat_files': 'Files Uploaded',
+        'stat_tasks': 'Tasks Done Today',
+        'stat_streak': 'Longest Streak',
+        'stat_pomodoros': 'Pomodoros Today',
+        'today_activity': 'Today\'s Activity',
+        'all_history': 'All History',
+        'delete_today': 'Delete Today\'s Activity',
+        'delete_all': 'Delete All History',
+        'search_placeholder': 'What are you looking for?',
+        'search_button': 'Search',
+        'search_tip': 'All searches are logged in your history.',
+        'show_keyboard': 'Show Keyboard',
+        'hide_keyboard': 'Hide Keyboard',
+        'task_timer': 'Task Timer',
+        'start': 'Start',
+        'stop': 'Stop',
+        'reset': 'Reset',
+        'completed_today': 'Completed today',
+        'daily_reflection': 'Daily Reflection',
+        'journal_placeholder': 'How did your study session go? What did you learn?',
+        'upcoming_assignments': 'Upcoming Assignments',
+        'no_assignments': 'No pending assignments.',
+        'no_activity': 'No activity recorded today yet.',
+        'no_history': 'No history recorded yet.',
+        'no_files': 'No files uploaded yet.',
+        'no_notes': 'No notes yet.',
+        'no_notices': 'No notices pinned yet.',
+        'no_habits': 'No habits yet. Add one above!',
+        'no_items': 'No items.',
+        'add_habit': 'Add Habit',
+        'add_note': 'Add Note',
+        'add_notice': 'Add Notice',
+        'delete_all': 'Delete All',
+        'complete': 'Complete',
+        'done': 'Done',
+        'ai_tools': 'AI Tools',
+        'ai_subtitle': 'Curated AI assistants + built‑in text summarizer.',
+        'recommend_title': 'Not sure which AI to use?',
+        'recommend_text': 'Tell me what you\'re working on.',
+        'recommend_button': 'Recommend',
+        'summarizer_title': 'AI Summarizer',
+        'summarizer_desc': 'Paste any text and get a concise summary (works offline).',
+        'summarize_button': 'Summarize',
+        'summarize_placeholder': 'Paste your text here...',
+        'social_blocked': 'Social Media Blocked',
+        'social_blocked_desc': 'To keep you focused, all social media platforms (except YouTube) are blocked while using StudyHub.',
+        // ... more strings for all pages
+    },
+    es: { /* Spanish translations */ },
+    zh: { /* Mandarin */ },
+    hi: { /* Hindi */ },
+    ar: { /* Arabic */ },
+    fr: { /* French */ },
+    ru: { /* Russian */ },
+    pt: { /* Portuguese */ },
+    bn: { /* Bengali */ },
+    ur: { /* Urdu */ },
+    id: { /* Indonesian */ },
+    de: { /* German */ },
+    ja: { /* Japanese */ },
+    sw: { /* Swahili */ },
+    tr: { /* Turkish */ },
+};
+
+let currentLang = 'en';
+
+function applyTranslations(lang) {
+    const elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach(el => {
+        const key = el.dataset.i18n;
+        if (translations[lang] && translations[lang][key]) {
+            el.textContent = translations[lang][key];
+        }
+    });
+    // Also handle placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (translations[lang] && translations[lang][key]) {
+            el.placeholder = translations[lang][key];
+        }
+    });
+    // Handle title attributes
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.dataset.i18nTitle;
+        if (translations[lang] && translations[lang][key]) {
+            el.title = translations[lang][key];
+        }
+    });
+    // Update language selector
+    const selector = document.getElementById('langSelector');
+    if (selector) selector.value = lang;
+    currentLang = lang;
+    localStorage.setItem('studyHubLang', lang);
+}
+
+function initTranslations() {
+    const saved = localStorage.getItem('studyHubLang');
+    if (saved && translations[saved]) {
+        currentLang = saved;
+    }
+    applyTranslations(currentLang);
+
+    // Language selector change event
+    const selector = document.getElementById('langSelector');
+    if (selector) {
+        selector.addEventListener('change', function() {
+            applyTranslations(this.value);
+        });
+    }
+}
+
+// Call initTranslations() in DOMContentLoaded
