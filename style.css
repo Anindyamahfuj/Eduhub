@@ -1289,7 +1289,193 @@ body {
         min-width: 100px;
     }
 }
+/* ===== NEW DASHBOARD GRID LAYOUT ===== */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+}
 
+.grid-left {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.grid-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.pomodoro-journal-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+/* Search bar styling */
+.search-section {
+    margin-bottom: 1.5rem;
+}
+.search-section .search-container {
+    max-width: 100%;
+    text-align: left;
+}
+.search-section .search-box {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+}
+.search-section .search-box input {
+    flex: 1;
+    padding: 0.8rem 1.2rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(192,132,252,0.2);
+    border-radius: 30px;
+    font-size: 1rem;
+    color: #e2e8f0;
+}
+.search-section .search-box input:focus {
+    outline: none;
+    border-color: #c084fc;
+    box-shadow: 0 0 30px rgba(192,132,252,0.1);
+}
+.search-section .search-box button {
+    background: rgba(192,132,252,0.2);
+    color: #c084fc;
+    border: 1px solid #c084fc;
+    padding: 0.8rem 2rem;
+    border-radius: 30px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.search-section .search-box button:hover {
+    background: rgba(192,132,252,0.3);
+    box-shadow: 0 0 30px rgba(192,132,252,0.2);
+}
+.search-section .keyboard-toggle {
+    margin: 0.5rem 0;
+    background: rgba(192,132,252,0.1);
+    color: #c084fc;
+    border: 1px solid rgba(192,132,252,0.2);
+    padding: 0.4rem 1.5rem;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.search-section .keyboard-toggle:hover {
+    background: rgba(192,132,252,0.2);
+}
+.search-section .keyboard-container {
+    background: rgba(13,6,24,0.9);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(192,132,252,0.2);
+    border-radius: 16px;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+    display: none;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.search-section .keyboard-container.active {
+    display: flex;
+}
+.search-section .keyboard-row {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: center;
+}
+.search-section .key-btn {
+    background: rgba(255,255,255,0.05);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 0.5rem 0.8rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 2.5rem;
+    text-align: center;
+}
+.search-section .key-btn:hover {
+    background: rgba(192,132,252,0.15);
+    border-color: #c084fc;
+}
+.search-section .key-btn.special {
+    background: rgba(192,132,252,0.1);
+    color: #c084fc;
+}
+.search-section .key-btn.space {
+    min-width: 6rem;
+}
+.search-section .search-tip {
+    margin-top: 0.5rem;
+    color: #64748b;
+}
+.suggestions-container {
+    position: relative;
+    flex: 1;
+}
+.suggestions-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: rgba(13,6,24,0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(192,132,252,0.2);
+    border-radius: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 50;
+    display: none;
+}
+.suggestions-list.active {
+    display: block;
+}
+.suggestion-item {
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.2s;
+}
+.suggestion-item:hover {
+    background: rgba(192,132,252,0.1);
+}
+
+/* Responsive overrides for new grid */
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .grid-right {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    .pomodoro-journal-wrapper {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 600px) {
+    .grid-right {
+        grid-template-columns: 1fr;
+    }
+    .pomodoro-journal-wrapper {
+        grid-template-columns: 1fr;
+    }
+    .search-section .search-box {
+        flex-direction: column;
+    }
+    .search-section .search-box button {
+        width: 100%;
+    }
+}
 /* Mobile phones */
 @media (max-width: 600px) {
     .container {
