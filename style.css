@@ -1550,3 +1550,23 @@ body {
         text-align: center;
     }
 }
+
+.delete-item-btn {
+    background: rgba(252,165,165,0.15);
+    color: #f87171;
+    border: 1px solid rgba(252,165,165,0.3);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.delete-item-btn:hover {
+    background: rgba(252,165,165,0.3);
+    box-shadow: 0 0 12px rgba(252,165,165,0.3);
+}
