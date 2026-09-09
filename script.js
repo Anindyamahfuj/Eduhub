@@ -1052,11 +1052,9 @@ function setupPlanner() {
 }
 
 // ================================================================
-// FLASHCARDS
+// FLASHCARDS (FIXED)
 // ================================================================
 function setupFlashcards() {
-    var form = document.getElementById('flashcardForm');
-    if (!form) return;
     var list = document.getElementById('flashcardList');
 
     function renderFlashcards() {
@@ -1187,6 +1185,7 @@ function setupFlashcards() {
         });
     }
 
+    // ========== FIXED: "New Deck" button ==========
     document.getElementById('addDeckBtn').addEventListener('click', function() {
         var name = prompt('Deck name:');
         if (!name) return;
@@ -1202,7 +1201,6 @@ function setupFlashcards() {
 
     renderFlashcards();
 }
-
 // ================================================================
 // READING LIST
 // ================================================================
