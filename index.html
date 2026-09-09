@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Dashboard</title>
     <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-brand">📘 StudyHub</a>
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <ul class="nav-links">
-                <li><a href="index.html" class="active">Dashboard</a></li>
-                <li><a href="ai-tools.html">AI Tools</a></li>
-                <li><a href="files.html">Files</a></li>
-                <li><a href="habits.html">Habits</a></li>
-                <li><a href="notice.html">Notice</a></li>
-                <li><a href="notes.html">Notes</a></li>
-                <li><a href="search.html">Search</a></li>
+                <li><a href="index.html" class="active"><span class="hl-cyan">◆</span> Dashboard</a></li>
+                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> AI Tools</a></li>
+                <li><a href="files.html"><span class="hl-green">◆</span> Files</a></li>
+                <li><a href="habits.html"><span class="hl-orange">◆</span> Habits</a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> Notice</a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> Notes</a></li>
+                <li><a href="search.html"><span class="hl-blue">◆</span> Search</a></li>
             </ul>
             <div class="nav-right">
                 <span class="nav-date" id="navDate"></span>
@@ -27,13 +27,27 @@
     </nav>
 
     <main class="container">
+        <!-- Clock -->
+        <section class="clock-section">
+            <div class="clock-controls">
+                <button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button>
+            </div>
+            <div class="clock-container">
+                <div id="digitalClock" class="digital-clock active">00:00:00</div>
+                <div id="analogClock" class="analog-clock">
+                    <canvas id="analogCanvas" width="180" height="180"></canvas>
+                </div>
+            </div>
+            <div class="clock-date" id="clockDate"></div>
+        </section>
+
         <header class="dash-header">
             <div>
-                <h1>📊 Dashboard</h1>
-                <p class="subtitle">Your study hub at a glance — today's progress &amp; all-time history.</p>
+                <h1><span class="hl-cyan">◆</span> <span class="neon-text">Dashboard</span></h1>
+                <p class="subtitle">Your <span class="hl-green">study hub</span> at a glance — today's <span class="hl-magenta">progress</span> &amp; all-time <span class="hl-orange">history</span>.</p>
             </div>
             <div class="dash-date-badge">
-                <span id="todayBadge">Today</span>
+                <span id="todayBadge">📅 Today</span>
                 <span id="todayDate"></span>
             </div>
         </header>
@@ -42,56 +56,56 @@
             <div class="stat-card">
                 <div class="stat-icon">🔍</div>
                 <div class="stat-info">
-                    <span class="stat-label">Searches Today</span>
+                    <span class="stat-label">Searches <span class="hl-cyan">Today</span></span>
                     <span class="stat-number" id="statSearches">0</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">📄</div>
                 <div class="stat-info">
-                    <span class="stat-label">Files Uploaded</span>
+                    <span class="stat-label">Files <span class="hl-green">Uploaded</span></span>
                     <span class="stat-number" id="statFiles">0</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">✅</div>
                 <div class="stat-info">
-                    <span class="stat-label">Tasks Done Today</span>
+                    <span class="stat-label">Tasks <span class="hl-magenta">Done Today</span></span>
                     <span class="stat-number" id="statTasks">0</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">🔥</div>
                 <div class="stat-info">
-                    <span class="stat-label">Longest Streak</span>
+                    <span class="stat-label">Longest <span class="hl-orange">Streak</span></span>
                     <span class="stat-number" id="statStreak">0</span>
                 </div>
             </div>
         </section>
 
-        <section class="activity-section">
+        <section class="activity-section glass-card">
             <div class="section-header">
-                <h2>📌 Today's Activity</h2>
+                <h2><span class="hl-cyan">📌</span> Today's <span class="hl-magenta">Activity</span></h2>
                 <span class="section-badge" id="todayCount">0 entries</span>
             </div>
             <div class="activity-list" id="todayActivity">
-                <p class="empty-state">No activity recorded today yet.</p>
+                <p class="empty-state">No activity recorded <span class="hl-cyan">today</span> yet.</p>
             </div>
         </section>
 
-        <section class="activity-section history-section">
+        <section class="activity-section history-section glass-card">
             <div class="section-header">
-                <h2>📜 All History</h2>
+                <h2><span class="hl-purple">📜</span> All <span class="hl-orange">History</span></h2>
                 <span class="section-badge" id="historyCount">0 entries</span>
             </div>
             <div class="activity-list" id="historyActivity">
-                <p class="empty-state">No history recorded yet.</p>
+                <p class="empty-state">No history <span class="hl-purple">recorded</span> yet.</p>
             </div>
         </section>
     </main>
 
     <footer class="footer">
-        <p>© 2026 StudyHub · built for focus &amp; growth</p>
+        <p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p>
     </footer>
 
     <script src="script.js"></script>
