@@ -8,48 +8,49 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-container">
-        <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
-        <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
-        <ul class="nav-links">
-            <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
-            <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
-            <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
-            <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
-            <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
-            <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
-            <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
-            <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
-            <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
-            <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
-        </ul>
-        <div class="nav-right">
-            <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
-                <option value="en">🇬🇧 English</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="fr">🇫🇷 Français</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="pt">🇧🇷 Português</option>
-                <option value="bn">🇧🇩 বাংলা</option>
-                <option value="ur">🇵🇰 اردو</option>
-                <option value="id">🇮🇩 Indonesia</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-            </select>
-            <button id="focusToggle" class="focus-toggle">🔓 Focus Off</button>
-            <span class="nav-date" id="navDate"></span>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
+            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
+                <li><a href="ai-tools.html" class="active"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
+                <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
+                <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
+                <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
+                <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
+                <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
+                <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
+            </ul>
+            <div class="nav-right">
+                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="ar">🇸🇦 العربية</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="ur">🇵🇰 اردو</option>
+                    <option value="id">🇮🇩 Indonesia</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="sw">🇰🇪 Kiswahili</option>
+                    <option value="tr">🇹🇷 Türkçe</option>
+                </select>
+                <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
+                <span class="nav-date" id="navDate"></span>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
+
     <main class="container">
         <section class="clock-section mini-clock">
-            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button></div>
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
             <div class="clock-container">
                 <div id="digitalClock" class="digital-clock active">00:00:00</div>
                 <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
@@ -58,21 +59,21 @@
         </section>
 
         <header class="page-header">
-            <h1><span class="hl-magenta">🤖</span> <span class="neon-text">AI Tools</span></h1>
-            <p>Curated <span class="hl-cyan">AI assistants</span> + built‑in <span class="hl-green">text summarizer</span>.</p>
+            <h1><span class="hl-magenta">🤖</span> <span class="neon-text" data-i18n="ai_tools">AI Tools</span></h1>
+            <p data-i18n="ai_subtitle">Curated AI assistants + built‑in text summarizer.</p>
         </header>
 
         <!-- StudyHub AI Recommender -->
         <section class="ai-recommend-section glass-card">
             <div class="ai-recommend-card">
                 <div class="ai-recommend-header">
-                    <span class="ai-badge">🧠 <span class="hl-cyan">StudyHub AI</span></span>
-                    <h3>Not sure which <span class="hl-magenta">AI</span> to use?</h3>
+                    <span class="ai-badge">🧠 <span class="hl-cyan" data-i18n="studyhub_ai">StudyHub AI</span></span>
+                    <h3 data-i18n="recommend_title">Not sure which AI to use?</h3>
                 </div>
-                <p id="aiRecommendText">Tell me what you're <span class="hl-green">working on</span>.</p>
+                <p id="aiRecommendText" data-i18n="recommend_text">Tell me what you're working on.</p>
                 <div class="ai-recommend-input">
-                    <input type="text" id="aiQueryInput" placeholder="e.g. solve calculus, write code..." />
-                    <button id="aiRecommendBtn">✨ Recommend</button>
+                    <input type="text" id="aiQueryInput" data-i18n-placeholder="recommend_placeholder" placeholder="e.g. solve calculus, write code..." />
+                    <button id="aiRecommendBtn">✨ <span data-i18n="recommend_button">Recommend</span></button>
                 </div>
                 <div id="aiRecommendResult" class="ai-recommend-result"></div>
             </div>
@@ -80,42 +81,40 @@
 
         <!-- Summarizer -->
         <section class="glass-card">
-            <h2><span class="hl-green">📄</span> AI <span class="hl-purple">Summarizer</span></h2>
-            <p>Paste any text and get a <span class="hl-cyan">concise summary</span> (works offline).</p>
+            <h2><span class="hl-green">📄</span> <span data-i18n="summarizer_title">AI Summarizer</span></h2>
+            <p data-i18n="summarizer_desc">Paste any text and get a concise summary (works offline).</p>
             <div style="margin-top:0.8rem;">
-                <textarea id="summarizeInput" class="input-dark" rows="6" placeholder="Paste your text here..."></textarea>
-                <button id="summarizeBtn" class="btn-primary" style="margin-top:0.5rem;">✨ Summarize</button>
+                <textarea id="summarizeInput" class="input-dark" rows="6" data-i18n-placeholder="summarize_placeholder" placeholder="Paste your text here..."></textarea>
+                <button id="summarizeBtn" class="btn-primary" style="margin-top:0.5rem;">✨ <span data-i18n="summarize_button">Summarize</span></button>
                 <div id="summarizeOutput" class="ai-recommend-result" style="margin-top:0.8rem;"></div>
             </div>
         </section>
 
         <!-- Tools Grid -->
         <section class="tools-grid">
-            <a href="https://deepseek.com" target="_blank" class="tool-card"><div class="tool-icon">🧮</div><h3><span class="hl-cyan">DeepSeek</span></h3><p>Advanced <span class="hl-cyan">math</span> solver.</p><span class="tool-tag">Math</span></a>
-            <a href="https://cursor.sh" target="_blank" class="tool-card"><div class="tool-icon">💻</div><h3><span class="hl-green">Cursor</span></h3><p>AI-powered <span class="hl-green">code</span> editor.</p><span class="tool-tag">Coding</span></a>
-            <a href="https://chatgpt.com" target="_blank" class="tool-card"><div class="tool-icon">✍️</div><h3><span class="hl-magenta">ChatGPT</span></h3><p>Versatile <span class="hl-magenta">writing</span> assistant.</p><span class="tool-tag">Writing</span></a>
-            <a href="https://perplexity.ai" target="_blank" class="tool-card"><div class="tool-icon">🔬</div><h3><span class="hl-purple">Perplexity</span></h3><p>AI-powered <span class="hl-purple">research</span>.</p><span class="tool-tag">Research</span></a>
-            <a href="https://claude.ai" target="_blank" class="tool-card"><div class="tool-icon">📊</div><h3><span class="hl-orange">Claude</span></h3><p><span class="hl-orange">Data</span> analysis & reasoning.</p><span class="tool-tag">Data</span></a>
-            <a href="https://www.midjourney.com" target="_blank" class="tool-card"><div class="tool-icon">🎨</div><h3><span class="hl-pink">Midjourney</span></h3><p>AI <span class="hl-pink">image</span> generation.</p><span class="tool-tag">Design</span></a>
-            <a href="https://www.duolingo.com" target="_blank" class="tool-card"><div class="tool-icon">🌍</div><h3><span class="hl-cyan">Duolingo</span></h3><p>AI-driven <span class="hl-cyan">language</span> learning.</p><span class="tool-tag">Language</span></a>
-            <a href="https://www.notion.so" target="_blank" class="tool-card"><div class="tool-icon">📋</div><h3><span class="hl-purple">Notion AI</span></h3><p>AI-powered <span class="hl-purple">productivity</span>.</p><span class="tool-tag">Productivity</span></a>
-            <a href="https://www.wolframalpha.com" target="_blank" class="tool-card"><div class="tool-icon">⚛️</div><h3><span class="hl-orange">Wolfram Alpha</span></h3><p>Computational <span class="hl-orange">STEM</span> engine.</p><span class="tool-tag">STEM</span></a>
-            <!-- YouTube – allowed social media -->
+            <a href="https://deepseek.com" target="_blank" class="tool-card"><div class="tool-icon">🧮</div><h3><span class="hl-cyan">DeepSeek</span></h3><p data-i18n="deepseek_desc">Advanced math solver.</p><span class="tool-tag" data-i18n="math_tag">Math</span></a>
+            <a href="https://cursor.sh" target="_blank" class="tool-card"><div class="tool-icon">💻</div><h3><span class="hl-green">Cursor</span></h3><p data-i18n="cursor_desc">AI-powered code editor.</p><span class="tool-tag" data-i18n="coding_tag">Coding</span></a>
+            <a href="https://chatgpt.com" target="_blank" class="tool-card"><div class="tool-icon">✍️</div><h3><span class="hl-magenta">ChatGPT</span></h3><p data-i18n="chatgpt_desc">Versatile writing assistant.</p><span class="tool-tag" data-i18n="writing_tag">Writing</span></a>
+            <a href="https://perplexity.ai" target="_blank" class="tool-card"><div class="tool-icon">🔬</div><h3><span class="hl-purple">Perplexity</span></h3><p data-i18n="perplexity_desc">AI-powered research.</p><span class="tool-tag" data-i18n="research_tag">Research</span></a>
+            <a href="https://claude.ai" target="_blank" class="tool-card"><div class="tool-icon">📊</div><h3><span class="hl-orange">Claude</span></h3><p data-i18n="claude_desc">Data analysis & reasoning.</p><span class="tool-tag" data-i18n="data_tag">Data</span></a>
+            <a href="https://www.midjourney.com" target="_blank" class="tool-card"><div class="tool-icon">🎨</div><h3><span class="hl-pink">Midjourney</span></h3><p data-i18n="midjourney_desc">AI image generation.</p><span class="tool-tag" data-i18n="design_tag">Design</span></a>
+            <a href="https://www.duolingo.com" target="_blank" class="tool-card"><div class="tool-icon">🌍</div><h3><span class="hl-cyan">Duolingo</span></h3><p data-i18n="duolingo_desc">AI-driven language learning.</p><span class="tool-tag" data-i18n="language_tag">Language</span></a>
+            <a href="https://www.notion.so" target="_blank" class="tool-card"><div class="tool-icon">📋</div><h3><span class="hl-purple">Notion AI</span></h3><p data-i18n="notion_desc">AI-powered productivity.</p><span class="tool-tag" data-i18n="productivity_tag">Productivity</span></a>
+            <a href="https://www.wolframalpha.com" target="_blank" class="tool-card"><div class="tool-icon">⚛️</div><h3><span class="hl-orange">Wolfram Alpha</span></h3><p data-i18n="wolfram_desc">Computational STEM engine.</p><span class="tool-tag" data-i18n="stem_tag">STEM</span></a>
             <a href="https://www.youtube.com" target="_blank" class="tool-card" style="border-color: rgba(255,0,0,0.3);">
                 <div class="tool-icon">📺</div>
                 <h3><span class="hl-red">YouTube</span></h3>
-                <p>Educational videos, tutorials, and lectures.</p>
-                <span class="tool-tag" style="background: rgba(255,0,0,0.15); color: #f87171;">Allowed</span>
+                <p data-i18n="youtube_desc">Educational videos, tutorials, and lectures.</p>
+                <span class="tool-tag" style="background: rgba(255,0,0,0.15); color: #f87171;"><span data-i18n="allowed">Allowed</span></span>
             </a>
         </section>
 
-        <!-- Social Media Block Warning (updated) -->
         <section class="block-warning glass-card non-essential">
             <div class="block-warning-inner">
                 <span>🚫</span>
                 <div>
-                    <strong>Social Media <span class="hl-red">Blocked</span></strong>
-                    <p>To keep you <span class="hl-cyan">focused</span>, all social media platforms <strong>except YouTube</strong> are blocked while using <span class="brand-highlight">Study</span>Hub.</p>
+                    <strong><span data-i18n="social_blocked">Social Media Blocked</span></strong>
+                    <p data-i18n="social_blocked_desc">To keep you focused, all social media platforms (except YouTube) are blocked while using StudyHub.</p>
                 </div>
             </div>
         </section>
