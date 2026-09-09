@@ -58,21 +58,22 @@
             <div class="stat-card"><div class="stat-icon">🍅</div><div class="stat-info"><span class="stat-label">Pomodoros <span class="hl-purple">Today</span></span><span class="stat-number" id="pomoCount">0</span></div></div>
         </section>
 
-        <!-- Pomodoro -->
-        <section class="glass-card">
-            <h2><span class="hl-cyan">🍅</span> Pomodoro <span class="hl-magenta">Timer</span></h2>
-            <div class="pomodoro-widget">
-                <div class="pomodoro-timer" id="pomoDisplay">25:00</div>
-                <div class="pomodoro-controls">
-                    <select id="pomoTaskSelect" class="pomodoro-task-select"></select>
-                    <button id="pomoStart">▶ Start</button>
-                    <button id="pomoStop">⏹ Stop</button>
-                    <button id="pomoReset">⟳ Reset</button>
-                </div>
-                <div class="pomodoro-logs">Completed: <span id="pomoCountStat">0</span> today</div>
-            </div>
-        </section>
-
+       <!-- Pomodoro -->
+<section class="glass-card">
+    <h2><span class="hl-cyan">⏱️</span> <span id="pomoLabel">Task</span> <span class="hl-magenta">Timer</span></h2>
+    <div class="pomodoro-widget">
+        <div class="pomodoro-timer" id="pomoDisplay">25:00</div>
+        <div class="pomodoro-controls">
+            <select id="pomoTaskSelect" class="pomodoro-task-select"></select>
+            <input type="number" id="pomoDuration" value="25" min="1" max="120" style="width:60px; background:rgba(0,0,0,0.3); border:1px solid rgba(192,132,252,0.2); border-radius:8px; color:#e2e8f0; padding:0.3rem 0.5rem; text-align:center;">
+            <span style="color:#94a3b8; font-size:0.8rem;">min</span>
+            <button id="pomoStart">▶ Start</button>
+            <button id="pomoStop">⏹ Stop</button>
+            <button id="pomoReset">⟳ Reset</button>
+        </div>
+        <div class="pomodoro-logs">Completed: <span id="pomoCountStat">0</span> today</div>
+    </div>
+</section>
         <!-- Journal -->
         <section class="glass-card">
             <h2><span class="hl-orange">📓</span> Daily <span class="hl-green">Reflection</span></h2>
