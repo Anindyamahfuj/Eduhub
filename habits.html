@@ -8,77 +8,74 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
-   <nav class="navbar">
-    <div class="nav-container">
-        <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
-        <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
-        <ul class="nav-links">
-            <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
-            <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
-            <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
-            <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
-            <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
-            <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
-            <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
-            <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
-            <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
-            <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
-        </ul>
-        <div class="nav-right">
-            <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
-                <option value="en">🇬🇧 English</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="fr">🇫🇷 Français</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="pt">🇧🇷 Português</option>
-                <option value="bn">🇧🇩 বাংলা</option>
-                <option value="ur">🇵🇰 اردو</option>
-                <option value="id">🇮🇩 Indonesia</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-            </select>
-            <button id="focusToggle" class="focus-toggle">🔓 Focus Off</button>
-            <span class="nav-date" id="navDate"></span>
+    <!-- Navbar with active Habits -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
+            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
+                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
+                <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
+                <li><a href="habits.html" class="active"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
+                <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
+                <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
+                <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
+                <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
+            </ul>
+            <div class="nav-right">
+                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="ar">🇸🇦 العربية</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="ur">🇵🇰 اردو</option>
+                    <option value="id">🇮🇩 Indonesia</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="sw">🇰🇪 Kiswahili</option>
+                    <option value="tr">🇹🇷 Türkçe</option>
+                </select>
+                <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
+                <span class="nav-date" id="navDate"></span>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <main class="container">
         <section class="clock-section mini-clock">
-            <div class="clock-controls">
-                <button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button>
-            </div>
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
             <div class="clock-container">
                 <div id="digitalClock" class="digital-clock active">00:00:00</div>
-                <div id="analogClock" class="analog-clock">
-                    <canvas id="analogCanvas" width="120" height="120"></canvas>
-                </div>
+                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
             </div>
             <div class="clock-date" id="clockDate"></div>
         </section>
 
         <header class="page-header">
-            <h1><span class="hl-orange">✅</span> <span class="neon-text">Habit Tracker</span></h1>
-            <p>Build <span class="hl-orange">daily routines</span>. Complete tasks and watch your <span class="hl-cyan">streak</span> grow!</p>
+            <h1><span class="hl-orange">✅</span> <span class="neon-text" data-i18n="habits">Habit Tracker</span></h1>
+            <p data-i18n="habits_subtitle">Build daily routines. Complete tasks and watch your streak grow!</p>
         </header>
 
         <section class="habit-add-section glass-card">
             <div class="habit-add-form">
-                <input type="text" id="habitInput" placeholder="✍️ New habit (e.g., Read 30 min)" />
-                <button id="addHabitBtn" class="btn-primary">➕ Add <span class="hl-orange">Habit</span></button>
+                <input type="text" id="habitInput" data-i18n-placeholder="habit_placeholder" placeholder="✍️ New habit (e.g., Read 30 min)" />
+                <button id="addHabitBtn" class="btn-primary">➕ <span data-i18n="add_habit">Add Habit</span></button>
             </div>
-            <button id="deleteAllHabitsBtn" class="btn-danger">🗑️ <span class="hl-red">Delete All</span></button>
+            <button id="deleteAllHabitsBtn" class="btn-danger">🗑️ <span data-i18n="delete_all">Delete All</span></button>
         </section>
 
         <section class="habit-list-section glass-card">
-            <h2><span class="hl-orange">📋</span> Your <span class="hl-cyan">Habits</span></h2>
+            <h2><span class="hl-orange">📋</span> <span data-i18n="your_habits">Your Habits</span></h2>
             <div id="habitList" class="habit-list">
-                <p class="empty-state">No habits yet. <span class="hl-orange">Add</span> one above!</p>
+                <p class="empty-state" data-i18n="no_habits">No habits yet. Add one above!</p>
             </div>
         </section>
 
@@ -86,18 +83,15 @@
             <div class="streak-inner">
                 <span class="streak-icon">🔥</span>
                 <div>
-                    <span class="streak-label">Current <span class="hl-orange">Streak</span></span>
+                    <span class="streak-label"><span data-i18n="current_streak">Current Streak</span></span>
                     <span class="streak-number" id="streakDisplay">0</span>
-                    <span class="streak-days">days</span>
+                    <span class="streak-days" data-i18n="days">days</span>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer class="footer">
-        <p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p>
-    </footer>
-
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
     <script src="script.js"></script>
 </body>
 </html>
