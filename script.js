@@ -1,5 +1,5 @@
 /* ==============================================================
-   STUDYHUB – FULL SCRIPT (ALL FEATURES + SEARCH MERGED)
+   STUDYHUB – COMPLETE SCRIPT (ALL FEATURES + FIXES)
    ============================================================== */
 
 const STORAGE_KEY = 'studyHubData';
@@ -121,7 +121,6 @@ function initClock() {
             const hc = canvas.height;
             ctx.clearRect(0, 0, w, hc);
 
-            // Clock face
             ctx.beginPath();
             ctx.arc(w / 2, hc / 2, w / 2 - 4, 0, 2 * Math.PI);
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -130,7 +129,6 @@ function initClock() {
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Hour markers
             for (let i = 0; i < 12; i++) {
                 const angle = (i * 30 - 90) * Math.PI / 180;
                 const len = w / 2 - 14;
@@ -146,7 +144,6 @@ function initClock() {
                 ctx.stroke();
             }
 
-            // Hands
             const secAngle = (now.getSeconds() * 6 - 90) * Math.PI / 180;
             const minAngle = ((now.getMinutes() + now.getSeconds() / 60) * 6 - 90) * Math.PI / 180;
             const hourAngle = ((now.getHours() % 12 + now.getMinutes() / 60) * 30 - 90) * Math.PI / 180;
@@ -164,7 +161,6 @@ function initClock() {
             drawHand(minAngle, w / 2 * 0.7, '#6ee7b7', 3);
             drawHand(secAngle, w / 2 * 0.8, '#fca5a5', 1.5);
 
-            // Center dot
             ctx.beginPath();
             ctx.arc(w / 2, hc / 2, 4, 0, 2 * Math.PI);
             ctx.fillStyle = '#c084fc';
@@ -200,7 +196,7 @@ function initClock() {
 }
 
 // ================================================================
-// DASHBOARD RENDER
+// DASHBOARD RENDER (with individual delete for history)
 // ================================================================
 function renderDashboard() {
     const data = loadData();
@@ -212,7 +208,6 @@ function renderDashboard() {
     const todayFiles = data.files.filter(function(f) { return f.date && f.date.startsWith(today); }).length;
     const todayTasks = data.history.filter(function(h) { return h.date === today && h.type === 'habit_complete'; }).length;
 
-    // Streak
     let streak = 0;
     if (data.habits.length > 0) {
         var allDates = new Set();
@@ -250,7 +245,7 @@ function renderDashboard() {
         tc.innerHTML = '<p class="empty-state">No activity recorded <span class="hl-purple">today</span> yet.</p>';
     } else {
         tc.innerHTML = todayActs.slice().reverse().map(function(h) {
-            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + new Date(h.timestamp).toLocaleTimeString() + '</span></div>';
+            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + new Date(h.timestamp).toLocaleTimeString() + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
         }).join('');
     }
     document.getElementById('todayCount').textContent = todayActs.length;
@@ -262,7 +257,7 @@ function renderDashboard() {
         hc.innerHTML = '<p class="empty-state">No history <span class="hl-purple">recorded</span> yet.</p>';
     } else {
         hc.innerHTML = allHist.slice().reverse().map(function(h) {
-            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + h.date + '</span></div>';
+            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + h.date + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
         }).join('');
     }
     document.getElementById('historyCount').textContent = allHist.length;
@@ -303,11 +298,24 @@ function renderDashboard() {
         pomoCount.textContent = data.pomodoroLogs.filter(function(l) { return l.date === today; }).length;
     }
 
+    // Attach delete listeners for history items
+    document.querySelectorAll('#todayActivity .delete-item-btn, #historyActivity .delete-item-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var ts = parseInt(this.dataset.timestamp);
+            if (confirm('Delete this history entry?')) {
+                var data = loadData();
+                data.history = data.history.filter(function(h) { return h.timestamp !== ts; });
+                saveData(data);
+                renderDashboard();
+            }
+        });
+    });
+
     checkReminders(data);
 }
 
 // ================================================================
-// DELETE HISTORY
+// DELETE HISTORY (bulk)
 // ================================================================
 function deleteTodayHistory() {
     if (!confirm('Delete all activity for today?')) return;
@@ -336,7 +344,6 @@ function checkReminders(data) {
     var today = new Date().toISOString().slice(0, 10);
     var tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
-    // Assignments due tomorrow
     data.assignments.filter(function(a) {
         return !a.completed && a.due === tomorrow;
     }).forEach(function(a) {
@@ -348,7 +355,6 @@ function checkReminders(data) {
         });
     });
 
-    // Flashcards due today
     data.flashcards.decks.forEach(function(deck) {
         deck.cards.filter(function(c) {
             return c.dueDate && c.dueDate <= today && !c._notified;
@@ -363,7 +369,7 @@ function checkReminders(data) {
 }
 
 // ================================================================
-// POMODORO (with custom duration)
+// POMODORO
 // ================================================================
 function initPomodoro() {
     var display = document.getElementById('pomoDisplay');
@@ -386,7 +392,6 @@ function initPomodoro() {
         display.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
     }
 
-    // Update seconds when duration input changes
     if (durationInput) {
         durationInput.addEventListener('change', function() {
             if (!pomoRunning) {
@@ -447,7 +452,6 @@ function initPomodoro() {
         resetBtn.addEventListener('click', resetTimer);
     }
 
-    // Populate task select
     if (taskSelect) {
         var data = loadData();
         var options = '<option value="Study">Study</option>';
@@ -511,7 +515,7 @@ function setupSummarizer() {
 }
 
 // ================================================================
-// FILE UPLOAD
+// FILE UPLOAD + individual delete
 // ================================================================
 function setupFileUpload() {
     var uploadArea = document.getElementById('uploadArea');
@@ -554,6 +558,7 @@ function setupFileUpload() {
                     reader.readAsDataURL(file);
                 });
                 data.files.push({
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
                     name: file.name,
                     size: file.size,
                     data: result,
@@ -593,8 +598,21 @@ function renderFileList() {
         return;
     }
     container.innerHTML = data.files.map(function(f) {
-        return '<div class="file-item"><a href="' + f.data + '" target="_blank" class="file-name">📄 ' + f.name + '</a><span class="file-size">' + (f.size / 1024).toFixed(1) + ' KB</span></div>';
+        return '<div class="file-item"><a href="' + f.data + '" target="_blank" class="file-name">📄 ' + f.name + '</a><span class="file-size">' + (f.size / 1024).toFixed(1) + ' KB</span><button class="delete-item-btn" data-id="' + f.id + '">✕</button></div>';
     }).join('');
+
+    container.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            if (confirm('Delete this file?')) {
+                var data = loadData();
+                data.files = data.files.filter(function(f) { return f.id !== id; });
+                saveData(data);
+                renderFileList();
+                if (document.getElementById('statFiles')) renderDashboard();
+            }
+        });
+    });
 }
 
 // ================================================================
@@ -704,7 +722,7 @@ function setupHabits() {
 }
 
 // ================================================================
-// NOTICE
+// NOTICE (with individual delete)
 // ================================================================
 function setupNotice() {
     var input = document.getElementById('noticeInput');
@@ -719,10 +737,23 @@ function setupNotice() {
             list.innerHTML = '<p class="empty-state">No notices <span class="hl-purple">pinned</span> yet.</p>';
         } else {
             list.innerHTML = data.notices.map(function(n) {
-                return '<div class="notice-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + '</span></div>';
+                return '<div class="notice-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
             }).join('');
         }
         if (countEl) countEl.textContent = data.notices.length + ' notices';
+
+        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                if (confirm('Delete this notice?')) {
+                    var data = loadData();
+                    data.notices = data.notices.filter(function(n) { return n.id !== id; });
+                    saveData(data);
+                    renderNotices();
+                    if (document.getElementById('statTasks')) renderDashboard();
+                }
+            });
+        });
     }
 
     addBtn.addEventListener('click', function() {
@@ -760,7 +791,7 @@ function setupNotice() {
 }
 
 // ================================================================
-// NOTES
+// NOTES (with individual delete)
 // ================================================================
 function setupNotes() {
     var input = document.getElementById('noteInput');
@@ -774,9 +805,22 @@ function setupNotes() {
             list.innerHTML = '<p class="empty-state">No notes yet.</p>';
         } else {
             list.innerHTML = data.notes.map(function(n) {
-                return '<div class="note-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + '</span></div>';
+                return '<div class="note-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
             }).join('');
         }
+
+        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                if (confirm('Delete this note?')) {
+                    var data = loadData();
+                    data.notes = data.notes.filter(function(n) { return n.id !== id; });
+                    saveData(data);
+                    renderNotes();
+                    if (document.getElementById('statTasks')) renderDashboard();
+                }
+            });
+        });
     }
 
     addBtn.addEventListener('click', function() {
@@ -814,7 +858,7 @@ function setupNotes() {
 }
 
 // ================================================================
-// SEARCH (merged into dashboard – no separate page needed)
+// SEARCH (merged into dashboard)
 // ================================================================
 function setupSearch() {
     var input = document.getElementById('searchInput');
@@ -825,7 +869,6 @@ function setupSearch() {
 
     if (!input || !btn) return;
 
-    // Suggestions
     function updateSuggestions(query) {
         var data = loadData();
         var matches = data.searches
@@ -884,7 +927,6 @@ function setupSearch() {
         }
     });
 
-    // On-screen keyboard
     if (keyboardToggle && keyboardContainer) {
         keyboardToggle.addEventListener('click', function() {
             keyboardContainer.classList.toggle('active');
@@ -1017,7 +1059,6 @@ function setupPlanner() {
         var data = loadData();
         grid.innerHTML = '';
 
-        // Header
         grid.innerHTML += '<div class="time-label"></div>';
         days.forEach(function(d) {
             grid.innerHTML += '<div class="time-label" style="font-weight:700;">' + d + '</div>';
@@ -1185,7 +1226,7 @@ function setupFlashcards() {
         });
     }
 
-    // ========== FIXED: "New Deck" button ==========
+    // New Deck button
     document.getElementById('addDeckBtn').addEventListener('click', function() {
         var name = prompt('Deck name:');
         if (!name) return;
@@ -1201,6 +1242,7 @@ function setupFlashcards() {
 
     renderFlashcards();
 }
+
 // ================================================================
 // READING LIST
 // ================================================================
@@ -1366,32 +1408,23 @@ function updateScrollGradient() {
 // INIT
 // ================================================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Burger menu
     initBurger();
-
-    // Nav date
     updateNavDate();
-
-    // Clock
     initClock();
-
-    // Scroll gradient
     updateScrollGradient();
     window.addEventListener('scroll', updateScrollGradient);
     window.addEventListener('resize', updateScrollGradient);
 
-    // Notification permission
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
     }
 
-    // ---- ROUTING ----
     var path = window.location.pathname.split('/').pop() || 'index.html';
 
     if (path === 'index.html' || path === '') {
         renderDashboard();
         initPomodoro();
-        setupSearch(); // <-- SEARCH NOW AVAILABLE ON DASHBOARD
+        setupSearch();
 
         var dToday = document.getElementById('deleteTodayBtn');
         if (dToday) dToday.addEventListener('click', deleteTodayHistory);
@@ -1441,7 +1474,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setupReading();
     }
 
-    // Ensure daily reset & re-render dashboard if needed
     var data = loadData();
     resetDailyIfNeeded(data);
     if (path === 'index.html' || path === '') renderDashboard();
