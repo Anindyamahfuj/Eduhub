@@ -12,132 +12,67 @@
         <div class="nav-container">
             <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <ul class="nav-links">
-                <li><a href="index.html"><span class="hl-cyan">◆</span> Dashboard</a></li>
+                <li><a href="index.html"><span class="hl-purple">◆</span> Dashboard</a></li>
                 <li><a href="ai-tools.html" class="active"><span class="hl-magenta">◆</span> AI Tools</a></li>
                 <li><a href="files.html"><span class="hl-green">◆</span> Files</a></li>
                 <li><a href="habits.html"><span class="hl-orange">◆</span> Habits</a></li>
                 <li><a href="notice.html"><span class="hl-purple">◆</span> Notice</a></li>
                 <li><a href="notes.html"><span class="hl-pink">◆</span> Notes</a></li>
                 <li><a href="search.html"><span class="hl-blue">◆</span> Search</a></li>
+                <li><a href="assignments.html"><span class="hl-red">◆</span> Assignments</a></li>
+                <li><a href="planner.html"><span class="hl-cyan">◆</span> Planner</a></li>
+                <li><a href="flashcards.html"><span class="hl-orange">◆</span> Flashcards</a></li>
+                <li><a href="reading.html"><span class="hl-green">◆</span> Reading</a></li>
             </ul>
-            <div class="nav-right">
-                <span class="nav-date" id="navDate"></span>
-            </div>
+            <div class="nav-right"><button id="focusToggle" class="focus-toggle">🔓 Focus Off</button><span class="nav-date" id="navDate"></span></div>
         </div>
     </nav>
 
     <main class="container">
         <section class="clock-section mini-clock">
-            <div class="clock-controls">
-                <button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button>
-            </div>
-            <div class="clock-container">
-                <div id="digitalClock" class="digital-clock active">00:00:00</div>
-                <div id="analogClock" class="analog-clock">
-                    <canvas id="analogCanvas" width="120" height="120"></canvas>
-                </div>
-            </div>
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button></div>
+            <div class="clock-container"><div id="digitalClock" class="digital-clock active">00:00:00</div><div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div></div>
             <div class="clock-date" id="clockDate"></div>
         </section>
 
-        <header class="page-header">
-            <h1><span class="hl-magenta">🤖</span> <span class="neon-text">AI Tools</span></h1>
-            <p>Curated <span class="hl-cyan">AI assistants</span> for every study need. Click any card to visit the <span class="hl-green">tool</span>.</p>
-        </header>
+        <header class="page-header"><h1><span class="hl-magenta">🤖</span> <span class="neon-text">AI Tools</span></h1><p>Curated <span class="hl-cyan">AI assistants</span> + built‑in <span class="hl-green">text summarizer</span>.</p></header>
 
+        <!-- StudyHub AI Recommender -->
         <section class="ai-recommend-section glass-card">
             <div class="ai-recommend-card">
-                <div class="ai-recommend-header">
-                    <span class="ai-badge">🧠 <span class="hl-cyan">StudyHub AI</span></span>
-                    <h3>Not sure which <span class="hl-magenta">AI</span> to use?</h3>
-                </div>
-                <p id="aiRecommendText">Tell me what you're <span class="hl-green">working on</span>, and I'll recommend the best AI for the <span class="hl-orange">job</span>.</p>
-                <div class="ai-recommend-input">
-                    <input type="text" id="aiQueryInput" placeholder="e.g. solve calculus, write code, summarize text..." />
-                    <button id="aiRecommendBtn">✨ Recommend</button>
-                </div>
+                <div class="ai-recommend-header"><span class="ai-badge">🧠 <span class="hl-cyan">StudyHub AI</span></span><h3>Not sure which <span class="hl-magenta">AI</span> to use?</h3></div>
+                <p id="aiRecommendText">Tell me what you're <span class="hl-green">working on</span>.</p>
+                <div class="ai-recommend-input"><input type="text" id="aiQueryInput" placeholder="e.g. solve calculus, write code..." /><button id="aiRecommendBtn">✨ Recommend</button></div>
                 <div id="aiRecommendResult" class="ai-recommend-result"></div>
             </div>
         </section>
 
-        <section class="tools-grid">
-            <a href="https://deepseek.com" target="_blank" class="tool-card" data-category="math">
-                <div class="tool-icon">🧮</div>
-                <h3><span class="hl-cyan">DeepSeek</span></h3>
-                <p>Advanced <span class="hl-cyan">math</span> solver, step-by-step explanations &amp; problem solving.</p>
-                <span class="tool-tag">Math</span>
-            </a>
-            <a href="https://cursor.sh" target="_blank" class="tool-card" data-category="coding">
-                <div class="tool-icon">💻</div>
-                <h3><span class="hl-green">Cursor</span></h3>
-                <p>AI-powered <span class="hl-green">code</span> editor with intelligent autocomplete &amp; refactoring.</p>
-                <span class="tool-tag">Coding</span>
-            </a>
-            <a href="https://chatgpt.com" target="_blank" class="tool-card" data-category="writing">
-                <div class="tool-icon">✍️</div>
-                <h3><span class="hl-magenta">ChatGPT</span></h3>
-                <p>Versatile <span class="hl-magenta">writing</span> assistant, brainstorming, and general Q&amp;A.</p>
-                <span class="tool-tag">Writing</span>
-            </a>
-            <a href="https://perplexity.ai" target="_blank" class="tool-card" data-category="research">
-                <div class="tool-icon">🔬</div>
-                <h3><span class="hl-purple">Perplexity</span></h3>
-                <p>AI-powered <span class="hl-purple">research</span> with cited sources and real-time info.</p>
-                <span class="tool-tag">Research</span>
-            </a>
-            <a href="https://claude.ai" target="_blank" class="tool-card" data-category="data">
-                <div class="tool-icon">📊</div>
-                <h3><span class="hl-orange">Claude</span></h3>
-                <p><span class="hl-orange">Data</span> analysis, document processing, and complex reasoning.</p>
-                <span class="tool-tag">Data</span>
-            </a>
-            <a href="https://www.midjourney.com" target="_blank" class="tool-card" data-category="design">
-                <div class="tool-icon">🎨</div>
-                <h3><span class="hl-pink">Midjourney</span></h3>
-                <p>AI <span class="hl-pink">image</span> generation for visual projects and presentations.</p>
-                <span class="tool-tag">Design</span>
-            </a>
-            <a href="https://www.duolingo.com" target="_blank" class="tool-card" data-category="language">
-                <div class="tool-icon">🌍</div>
-                <h3><span class="hl-cyan">Duolingo</span></h3>
-                <p>AI-driven <span class="hl-cyan">language</span> learning with gamified lessons.</p>
-                <span class="tool-tag">Language</span>
-            </a>
-            <a href="https://www.notion.so" target="_blank" class="tool-card" data-category="productivity">
-                <div class="tool-icon">📋</div>
-                <h3><span class="hl-purple">Notion AI</span></h3>
-                <p>AI-powered <span class="hl-purple">productivity</span>, project management, and knowledge base.</p>
-                <span class="tool-tag">Productivity</span>
-            </a>
-            <a href="https://www.wolframalpha.com" target="_blank" class="tool-card" data-category="stem">
-                <div class="tool-icon">⚛️</div>
-                <h3><span class="hl-orange">Wolfram Alpha</span></h3>
-                <p>Computational engine for <span class="hl-orange">STEM</span>, physics, engineering, and more.</p>
-                <span class="tool-tag">STEM</span>
-            </a>
-            <a href="https://gamma.app" target="_blank" class="tool-card" data-category="presentation">
-                <div class="tool-icon">📽️</div>
-                <h3><span class="hl-magenta">Gamma</span></h3>
-                <p>AI <span class="hl-magenta">presentation</span> generator for slides, docs, and web pages.</p>
-                <span class="tool-tag">Presentation</span>
-            </a>
-        </section>
-
-        <section class="block-warning glass-card">
-            <div class="block-warning-inner">
-                <span>🚫</span>
-                <div>
-                    <strong>Social Media <span class="hl-red">Blocked</span></strong>
-                    <p>To keep you <span class="hl-cyan">focused</span>, all social media platforms (except <span class="hl-green">YouTube</span>) are blocked while using <span class="brand-highlight">Study</span>Hub.</p>
-                </div>
+        <!-- Summarizer -->
+        <section class="glass-card">
+            <h2><span class="hl-green">📄</span> AI <span class="hl-purple">Summarizer</span></h2>
+            <p>Paste any text and get a <span class="hl-cyan">concise summary</span> (works offline).</p>
+            <div style="margin-top:0.8rem;">
+                <textarea id="summarizeInput" class="input-dark" rows="6" placeholder="Paste your text here..."></textarea>
+                <button id="summarizeBtn" class="btn-primary" style="margin-top:0.5rem;">✨ Summarize</button>
+                <div id="summarizeOutput" class="ai-recommend-result" style="margin-top:0.8rem;"></div>
             </div>
         </section>
+
+        <!-- Tools Grid -->
+        <section class="tools-grid">
+            <a href="https://deepseek.com" target="_blank" class="tool-card"><div class="tool-icon">🧮</div><h3><span class="hl-cyan">DeepSeek</span></h3><p>Advanced <span class="hl-cyan">math</span> solver.</p><span class="tool-tag">Math</span></a>
+            <a href="https://cursor.sh" target="_blank" class="tool-card"><div class="tool-icon">💻</div><h3><span class="hl-green">Cursor</span></h3><p>AI-powered <span class="hl-green">code</span> editor.</p><span class="tool-tag">Coding</span></a>
+            <a href="https://chatgpt.com" target="_blank" class="tool-card"><div class="tool-icon">✍️</div><h3><span class="hl-magenta">ChatGPT</span></h3><p>Versatile <span class="hl-magenta">writing</span> assistant.</p><span class="tool-tag">Writing</span></a>
+            <a href="https://perplexity.ai" target="_blank" class="tool-card"><div class="tool-icon">🔬</div><h3><span class="hl-purple">Perplexity</span></h3><p>AI-powered <span class="hl-purple">research</span>.</p><span class="tool-tag">Research</span></a>
+            <a href="https://claude.ai" target="_blank" class="tool-card"><div class="tool-icon">📊</div><h3><span class="hl-orange">Claude</span></h3><p><span class="hl-orange">Data</span> analysis & reasoning.</p><span class="tool-tag">Data</span></a>
+            <a href="https://www.midjourney.com" target="_blank" class="tool-card"><div class="tool-icon">🎨</div><h3><span class="hl-pink">Midjourney</span></h3><p>AI <span class="hl-pink">image</span> generation.</p><span class="tool-tag">Design</span></a>
+            <a href="https://www.duolingo.com" target="_blank" class="tool-card"><div class="tool-icon">🌍</div><h3><span class="hl-cyan">Duolingo</span></h3><p>AI-driven <span class="hl-cyan">language</span> learning.</p><span class="tool-tag">Language</span></a>
+            <a href="https://www.notion.so" target="_blank" class="tool-card"><div class="tool-icon">📋</div><h3><span class="hl-purple">Notion AI</span></h3><p>AI-powered <span class="hl-purple">productivity</span>.</p><span class="tool-tag">Productivity</span></a>
+            <a href="https://www.wolframalpha.com" target="_blank" class="tool-card"><div class="tool-icon">⚛️</div><h3><span class="hl-orange">Wolfram Alpha</span></h3><p>Computational <span class="hl-orange">STEM</span> engine.</p><span class="tool-tag">STEM</span></a>
+        </section>
+        <section class="block-warning glass-card non-essential"><div class="block-warning-inner"><span>🚫</span><div><strong>Social Media <span class="hl-red">Blocked</span></strong><p>All social media (except YouTube) are blocked for focus.</p></div></div></section>
     </main>
-
-    <footer class="footer">
-        <p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p>
-    </footer>
-
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub</p></footer>
     <script src="script.js"></script>
 </body>
 </html>
