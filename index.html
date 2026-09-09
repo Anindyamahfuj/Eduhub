@@ -8,49 +8,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
-    <nav class="navbar">
-    <div class="nav-container">
-        <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
-        <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
-        <ul class="nav-links">
-            <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
-            <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
-            <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
-            <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
-            <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
-            <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
-            <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
-            <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
-            <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
-            <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
-        </ul>
-        <div class="nav-right">
-            <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
-                <option value="en">🇬🇧 English</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="fr">🇫🇷 Français</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="pt">🇧🇷 Português</option>
-                <option value="bn">🇧🇩 বাংলা</option>
-                <option value="ur">🇵🇰 اردو</option>
-                <option value="id">🇮🇩 Indonesia</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-            </select>
-            <button id="focusToggle" class="focus-toggle">🔓 Focus Off</button>
-            <span class="nav-date" id="navDate"></span>
-        </div>
-    </div>
-</nav>
+    <!-- NAVBAR (with language selector) – use the snippet above -->
+    <!-- ... -->
     <main class="container">
         <!-- Clock -->
         <section class="clock-section">
-            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button></div>
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
             <div class="clock-container">
                 <div id="digitalClock" class="digital-clock active">00:00:00</div>
                 <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="180" height="180"></canvas></div>
@@ -60,113 +23,104 @@
 
         <!-- Dashboard Header -->
         <header class="dash-header">
-            <div><h1><span class="hl-purple">◆</span> <span class="neon-text">Dashboard</span></h1>
-            <p class="subtitle">Your <span class="hl-green">study hub</span> at a glance — today's <span class="hl-magenta">progress</span> &amp; all-time <span class="hl-orange">history</span>.</p></div>
-            <div class="dash-date-badge"><span id="todayBadge">📅 Today</span><span id="todayDate"></span></div>
+            <div><h1><span class="hl-purple">◆</span> <span class="neon-text" data-i18n="dash_title">Dashboard</span></h1>
+            <p class="subtitle" data-i18n="dash_subtitle">Your study hub at a glance — today's progress &amp; all-time history.</p></div>
+            <div class="dash-date-badge"><span id="todayBadge">📅 <span data-i18n="today">Today</span></span><span id="todayDate"></span></div>
         </header>
 
         <!-- Stats Grid -->
         <section class="stats-grid">
-            <div class="stat-card"><div class="stat-icon">🔍</div><div class="stat-info"><span class="stat-label">Searches <span class="hl-cyan">Today</span></span><span class="stat-number" id="statSearches">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">📄</div><div class="stat-info"><span class="stat-label">Files <span class="hl-green">Uploaded</span></span><span class="stat-number" id="statFiles">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-info"><span class="stat-label">Tasks <span class="hl-magenta">Done Today</span></span><span class="stat-number" id="statTasks">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-info"><span class="stat-label">Longest <span class="hl-orange">Streak</span></span><span class="stat-number" id="statStreak">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">🍅</div><div class="stat-info"><span class="stat-label">Tasks <span class="hl-purple">Today</span></span><span class="stat-number" id="pomoCount">0</span></div></div>
+            <div class="stat-card"><div class="stat-icon">🔍</div><div class="stat-info"><span class="stat-label" data-i18n="stat_searches">Searches Today</span><span class="stat-number" id="statSearches">0</span></div></div>
+            <div class="stat-card"><div class="stat-icon">📄</div><div class="stat-info"><span class="stat-label" data-i18n="stat_files">Files Uploaded</span><span class="stat-number" id="statFiles">0</span></div></div>
+            <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-info"><span class="stat-label" data-i18n="stat_tasks">Tasks Done Today</span><span class="stat-number" id="statTasks">0</span></div></div>
+            <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-info"><span class="stat-label" data-i18n="stat_streak">Longest Streak</span><span class="stat-number" id="statStreak">0</span></div></div>
+            <div class="stat-card"><div class="stat-icon">🍅</div><div class="stat-info"><span class="stat-label" data-i18n="stat_pomodoros">Pomodoros Today</span><span class="stat-number" id="pomoCount">0</span></div></div>
         </section>
 
-        <!-- ==== SEARCH BAR (merged from search.html) ==== -->
+        <!-- Search -->
         <section class="search-section glass-card">
             <div class="search-container">
-                <h3 style="margin-bottom:0.5rem;"><span class="hl-blue">🔍</span> Quick <span class="hl-cyan">Search</span></h3>
+                <h3 style="margin-bottom:0.5rem;"><span class="hl-blue">🔍</span> <span data-i18n="quick_search">Quick Search</span></h3>
                 <div class="search-box">
                     <div class="suggestions-container">
-                        <input type="text" id="searchInput" placeholder="What are you looking for?" autocomplete="off" />
+                        <input type="text" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="What are you looking for?" autocomplete="off" />
                         <div id="suggestionsList" class="suggestions-list"></div>
                     </div>
-                    <button id="searchBtn">🔎 Search</button>
+                    <button id="searchBtn"><span data-i18n="search_button">Search</span></button>
                 </div>
-                <button id="keyboardToggle" class="keyboard-toggle">⌨️ Show Keyboard</button>
+                <button id="keyboardToggle" class="keyboard-toggle"><span data-i18n="show_keyboard">Show Keyboard</span></button>
                 <div id="keyboardContainer" class="keyboard-container"></div>
-                <div class="search-tip"><small>All searches are <span class="hl-purple">logged</span> in your history.</small></div>
+                <div class="search-tip"><small data-i18n="search_tip">All searches are logged in your history.</small></div>
             </div>
         </section>
 
-        <!-- ==== MAIN DASHBOARD GRID (new layout) ==== -->
+        <!-- Grid layout -->
         <div class="dashboard-grid">
-
-            <!-- LEFT COLUMN (wider) -->
             <div class="grid-left">
-
-                <!-- Pomodoro + Journal (side by side) -->
+                <!-- Pomodoro & Journal -->
                 <div class="pomodoro-journal-wrapper">
-                    <!-- Pomodoro -->
                     <section class="glass-card pomodoro-section">
-                        <h2><span class="hl-cyan">⏱️</span> <span class="hl-magenta">Task Timer</span></h2>
+                        <h2><span class="hl-cyan">⏱️</span> <span data-i18n="task_timer">Task Timer</span></h2>
                         <div class="pomodoro-widget">
                             <div class="pomodoro-timer" id="pomoDisplay">25:00</div>
                             <div class="pomodoro-controls">
                                 <select id="pomoTaskSelect" class="pomodoro-task-select"></select>
                                 <input type="number" id="pomoDuration" value="25" min="1" max="120" style="width:60px; background:rgba(0,0,0,0.3); border:1px solid rgba(192,132,252,0.2); border-radius:8px; color:#e2e8f0; padding:0.3rem 0.5rem; text-align:center;">
                                 <span style="color:#94a3b8; font-size:0.8rem;">min</span>
-                                <button id="pomoStart">▶ Start</button>
-                                <button id="pomoStop">⏹ Stop</button>
-                                <button id="pomoReset">⟳ Reset</button>
+                                <button id="pomoStart"><span data-i18n="start">Start</span></button>
+                                <button id="pomoStop"><span data-i18n="stop">Stop</span></button>
+                                <button id="pomoReset"><span data-i18n="reset">Reset</span></button>
                             </div>
-                            <div class="pomodoro-logs">Completed: <span id="pomoCountStat">0</span> today</div>
+                            <div class="pomodoro-logs"><span data-i18n="completed_today">Completed</span>: <span id="pomoCountStat">0</span> <span data-i18n="today">today</span></div>
                         </div>
                     </section>
 
-                    <!-- Journal -->
                     <section class="glass-card journal-section">
-                        <h2><span class="hl-orange">📓</span> Daily <span class="hl-green">Reflection</span></h2>
+                        <h2><span class="hl-orange">📓</span> <span data-i18n="daily_reflection">Daily Reflection</span></h2>
                         <div class="journal-area">
-                            <textarea id="journalText" placeholder="How did your study session go? What did you learn?"></textarea>
+                            <textarea id="journalText" data-i18n-placeholder="journal_placeholder" placeholder="How did your study session go? What did you learn?"></textarea>
                             <div id="journalPast" class="journal-past"></div>
                         </div>
                     </section>
                 </div>
 
-                <!-- Today's Activity (wide) -->
+                <!-- Today's Activity -->
                 <section class="glass-card activity-section today-section">
                     <div class="section-header">
-                        <h2><span class="hl-cyan">📌</span> Today's <span class="hl-magenta">Activity</span></h2>
-                        <span class="section-badge" id="todayCount">0 entries</span>
+                        <h2><span class="hl-cyan">📌</span> <span data-i18n="today_activity">Today's Activity</span></h2>
+                        <span class="section-badge" id="todayCount">0 <span data-i18n="entries">entries</span></span>
                     </div>
                     <div class="activity-list" id="todayActivity">
-                        <p class="empty-state">No activity recorded <span class="hl-purple">today</span> yet.</p>
+                        <p class="empty-state" data-i18n="no_activity">No activity recorded today yet.</p>
                     </div>
                     <div class="del-history-buttons">
-                        <button id="deleteTodayBtn" class="btn-danger-sm">🗑️ Delete Today's Activity</button>
+                        <button id="deleteTodayBtn" class="btn-danger-sm">🗑️ <span data-i18n="delete_today">Delete Today's Activity</span></button>
                     </div>
                 </section>
             </div>
 
-            <!-- RIGHT COLUMN (narrower, sidebar) -->
             <div class="grid-right">
-
                 <!-- Upcoming Assignments -->
                 <section class="glass-card assignments-section">
-                    <h2><span class="hl-red">📌</span> Upcoming <span class="hl-cyan">Assignments</span></h2>
-                    <div id="upcomingAssignments"></div>
+                    <h2><span class="hl-red">📌</span> <span data-i18n="upcoming_assignments">Upcoming Assignments</span></h2>
+                    <div id="upcomingAssignments"><p class="empty-state" data-i18n="no_assignments">No pending assignments.</p></div>
                 </section>
 
-                <!-- All History (tall, scrollable) -->
+                <!-- All History -->
                 <section class="glass-card history-section all-history-section">
                     <div class="section-header">
-                        <h2><span class="hl-purple">📜</span> All <span class="hl-orange">History</span></h2>
-                        <span class="section-badge" id="historyCount">0 entries</span>
+                        <h2><span class="hl-purple">📜</span> <span data-i18n="all_history">All History</span></h2>
+                        <span class="section-badge" id="historyCount">0 <span data-i18n="entries">entries</span></span>
                     </div>
                     <div class="activity-list" id="historyActivity">
-                        <p class="empty-state">No history <span class="hl-purple">recorded</span> yet.</p>
+                        <p class="empty-state" data-i18n="no_history">No history recorded yet.</p>
                     </div>
                     <div class="del-history-buttons">
-                        <button id="deleteAllBtn" class="btn-danger-sm">🗑️ Delete All History</button>
+                        <button id="deleteAllBtn" class="btn-danger-sm">🗑️ <span data-i18n="delete_all">Delete All History</span></button>
                     </div>
                 </section>
             </div>
-
-        </div><!-- end dashboard-grid -->
-
+        </div>
     </main>
 
     <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
