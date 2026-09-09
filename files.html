@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StudyHub · AI Tools</title>
+    <title>StudyHub · Files</title>
     <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-brand">📘 StudyHub</a>
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <ul class="nav-links">
-                <li><a href="index.html">Dashboard</a></li>
-                <li><a href="ai-tools.html" class="active">AI Tools</a></li>
-                <li><a href="files.html">Files</a></li>
-                <li><a href="habits.html">Habits</a></li>
-                <li><a href="notice.html">Notice</a></li>
-                <li><a href="notes.html">Notes</a></li>
-                <li><a href="search.html">Search</a></li>
+                <li><a href="index.html"><span class="hl-cyan">◆</span> Dashboard</a></li>
+                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> AI Tools</a></li>
+                <li><a href="files.html" class="active"><span class="hl-green">◆</span> Files</a></li>
+                <li><a href="habits.html"><span class="hl-orange">◆</span> Habits</a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> Notice</a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> Notes</a></li>
+                <li><a href="search.html"><span class="hl-blue">◆</span> Search</a></li>
             </ul>
             <div class="nav-right">
                 <span class="nav-date" id="navDate"></span>
@@ -27,102 +27,45 @@
     </nav>
 
     <main class="container">
+        <section class="clock-section mini-clock">
+            <div class="clock-controls">
+                <button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button>
+            </div>
+            <div class="clock-container">
+                <div id="digitalClock" class="digital-clock active">00:00:00</div>
+                <div id="analogClock" class="analog-clock">
+                    <canvas id="analogCanvas" width="120" height="120"></canvas>
+                </div>
+            </div>
+            <div class="clock-date" id="clockDate"></div>
+        </section>
+
         <header class="page-header">
-            <h1>🤖 AI Tools</h1>
-            <p>Curated AI assistants for every study need. Click any card to visit the tool.</p>
+            <h1><span class="hl-green">📄</span> <span class="neon-text">File Manager</span></h1>
+            <p>Upload, view, and manage your <span class="hl-green">study files</span>. All files are stored locally in your <span class="hl-cyan">browser</span>.</p>
         </header>
 
-        <section class="ai-recommend-section">
-            <div class="ai-recommend-card">
-                <div class="ai-recommend-header">
-                    <span class="ai-badge">🧠 StudyHub AI</span>
-                    <h3>Not sure which AI to use?</h3>
-                </div>
-                <p id="aiRecommendText">Tell me what you're working on, and I'll recommend the best AI for the job.</p>
-                <div class="ai-recommend-input">
-                    <input type="text" id="aiQueryInput" placeholder="e.g. solve calculus, write code, summarize text..." />
-                    <button id="aiRecommendBtn">Recommend</button>
-                </div>
-                <div id="aiRecommendResult" class="ai-recommend-result"></div>
+        <section class="upload-section glass-card">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <p>Drag &amp; drop <span class="hl-cyan">files</span> here, or <span class="hl-magenta">click</span> to browse</p>
+                <input type="file" id="fileInput" multiple style="display:none" />
+            </div>
+            <div class="upload-actions">
+                <button id="deleteAllFilesBtn" class="btn-danger">🗑️ <span class="hl-red">Delete All</span> Files</button>
             </div>
         </section>
 
-        <section class="tools-grid">
-            <a href="https://deepseek.com" target="_blank" class="tool-card" data-category="math">
-                <div class="tool-icon">🧮</div>
-                <h3>DeepSeek</h3>
-                <p>Advanced math solver, step-by-step explanations &amp; problem solving.</p>
-                <span class="tool-tag">Math</span>
-            </a>
-            <a href="https://cursor.sh" target="_blank" class="tool-card" data-category="coding">
-                <div class="tool-icon">💻</div>
-                <h3>Cursor</h3>
-                <p>AI-powered code editor with intelligent autocomplete &amp; refactoring.</p>
-                <span class="tool-tag">Coding</span>
-            </a>
-            <a href="https://chatgpt.com" target="_blank" class="tool-card" data-category="writing">
-                <div class="tool-icon">✍️</div>
-                <h3>ChatGPT</h3>
-                <p>Versatile writing assistant, brainstorming, and general Q&amp;A.</p>
-                <span class="tool-tag">Writing</span>
-            </a>
-            <a href="https://perplexity.ai" target="_blank" class="tool-card" data-category="research">
-                <div class="tool-icon">🔬</div>
-                <h3>Perplexity</h3>
-                <p>AI-powered research with cited sources and real-time info.</p>
-                <span class="tool-tag">Research</span>
-            </a>
-            <a href="https://claude.ai" target="_blank" class="tool-card" data-category="data">
-                <div class="tool-icon">📊</div>
-                <h3>Claude</h3>
-                <p>Data analysis, document processing, and complex reasoning.</p>
-                <span class="tool-tag">Data</span>
-            </a>
-            <a href="https://www.midjourney.com" target="_blank" class="tool-card" data-category="design">
-                <div class="tool-icon">🎨</div>
-                <h3>Midjourney</h3>
-                <p>AI image generation for visual projects and presentations.</p>
-                <span class="tool-tag">Design</span>
-            </a>
-            <a href="https://www.duolingo.com" target="_blank" class="tool-card" data-category="language">
-                <div class="tool-icon">🌍</div>
-                <h3>Duolingo</h3>
-                <p>AI-driven language learning with gamified lessons.</p>
-                <span class="tool-tag">Language</span>
-            </a>
-            <a href="https://www.notion.so" target="_blank" class="tool-card" data-category="productivity">
-                <div class="tool-icon">📋</div>
-                <h3>Notion AI</h3>
-                <p>AI-powered note-taking, project management, and knowledge base.</p>
-                <span class="tool-tag">Productivity</span>
-            </a>
-            <a href="https://www.wolframalpha.com" target="_blank" class="tool-card" data-category="stem">
-                <div class="tool-icon">⚛️</div>
-                <h3>Wolfram Alpha</h3>
-                <p>Computational engine for STEM, physics, engineering, and more.</p>
-                <span class="tool-tag">STEM</span>
-            </a>
-            <a href="https://gamma.app" target="_blank" class="tool-card" data-category="presentation">
-                <div class="tool-icon">📽️</div>
-                <h3>Gamma</h3>
-                <p>AI presentation generator for slides, docs, and web pages.</p>
-                <span class="tool-tag">Presentation</span>
-            </a>
-        </section>
-
-        <section class="block-warning">
-            <div class="block-warning-inner">
-                <span>🚫</span>
-                <div>
-                    <strong>Social Media Blocked</strong>
-                    <p>To keep you focused, all social media platforms (except YouTube) are blocked while using StudyHub.</p>
-                </div>
+        <section class="file-list-section glass-card">
+            <h2><span class="hl-green">📂</span> Uploaded <span class="hl-cyan">Files</span></h2>
+            <div id="fileList" class="file-list">
+                <p class="empty-state">No files <span class="hl-green">uploaded</span> yet.</p>
             </div>
         </section>
     </main>
 
     <footer class="footer">
-        <p>© 2026 StudyHub · built for focus &amp; growth</p>
+        <p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p>
     </footer>
 
     <script src="script.js"></script>
