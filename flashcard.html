@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>StudyHub · Flashcards</title><link rel="stylesheet" href="style.css" /><link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" /></head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a><ul class="nav-links"><li><a href="index.html"><span class="hl-purple">◆</span> Dashboard</a></li><li><a href="ai-tools.html"><span class="hl-magenta">◆</span> AI Tools</a></li><li><a href="files.html"><span class="hl-green">◆</span> Files</a></li><li><a href="habits.html"><span class="hl-orange">◆</span> Habits</a></li><li><a href="notice.html"><span class="hl-purple">◆</span> Notice</a></li><li><a href="notes.html"><span class="hl-pink">◆</span> Notes</a></li><li><a href="search.html"><span class="hl-blue">◆</span> Search</a></li><li><a href="assignments.html"><span class="hl-red">◆</span> Assignments</a></li><li><a href="planner.html"><span class="hl-cyan">◆</span> Planner</a></li><li><a href="flashcards.html" class="active"><span class="hl-orange">◆</span> Flashcards</a></li><li><a href="reading.html"><span class="hl-green">◆</span> Reading</a></li></ul><div class="nav-right"><button id="focusToggle" class="focus-toggle">🔓 Focus Off</button><span class="nav-date" id="navDate"></span></div></div></nav>
+    <main class="container">
+        <section class="clock-section mini-clock"><div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button></div><div class="clock-container"><div id="digitalClock" class="digital-clock active">00:00:00</div><div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div></div><div class="clock-date" id="clockDate"></div></section>
+        <header class="page-header"><h1><span class="hl-orange">🃏</span> <span class="neon-text">Flashcards</span></h1><p>Spaced repetition – review <span class="hl-cyan">due</span> cards regularly.</p></header>
+        <section class="glass-card"><button id="addDeckBtn" class="btn-primary">➕ New Deck</button></section>
+        <section class="glass-card" id="flashcardList"></section>
+        <section class="glass-card" id="flashcardReview" style="display:none;"><div class="flashcard-review"><div class="card-front" id="reviewFront"></div><div class="card-back" id="reviewBack"></div><p style="color:#94a3b8;margin-top:1rem;">Click card to flip. Rate difficulty:</p><div class="flashcard-difficulty"><button data-diff="1">😰 Hard</button><button data-diff="2">😊 Medium</button><button data-diff="3">😎 Easy</button></div></div></section>
+    </main>
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub</p></footer>
+    <script src="script.js"></script>
+</body>
+</html>
