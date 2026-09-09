@@ -158,7 +158,7 @@ function logSearch(data, query) {
 }
 
 // ─── Clock ────────────────────────────────────────────────────────
-let clockMode = 'digital'; // 'digital' or 'analog'
+let clockMode = 'digital';
 let clockInterval = null;
 
 function initClock() {
@@ -169,7 +169,6 @@ function initClock() {
 
     if (!digital || !analog || !toggle) return;
 
-    // Set initial state
     digital.classList.add('active');
     analog.classList.remove('active');
     toggle.textContent = '⏰ Switch to Analog';
@@ -181,23 +180,19 @@ function initClock() {
         const s = String(now.getSeconds()).padStart(2,'0');
         digital.textContent = `${h}:${m}:${s}`;
 
-        // Update analog canvas
         const canvas = document.getElementById('analogCanvas');
         if (canvas) {
             const ctx = canvas.getContext('2d');
             const w = canvas.width, hc = canvas.height;
             ctx.clearRect(0, 0, w, hc);
-
-            // background
             ctx.beginPath();
             ctx.arc(w/2, hc/2, w/2 - 4, 0, 2 * Math.PI);
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.fill();
-            ctx.strokeStyle = '#22d3ee';
+            ctx.strokeStyle = '#c084fc';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // hour markers
             for (let i = 0; i < 12; i++) {
                 const angle = (i * 30 - 90) * Math.PI / 180;
                 const len = w/2 - 14;
@@ -213,7 +208,6 @@ function initClock() {
                 ctx.stroke();
             }
 
-            // hands
             const secAngle = (now.getSeconds() * 6 - 90) * Math.PI / 180;
             const minAngle = ((now.getMinutes() + now.getSeconds()/60) * 6 - 90) * Math.PI / 180;
             const hourAngle = ((now.getHours() % 12 + now.getMinutes()/60) * 30 - 90) * Math.PI / 180;
@@ -226,19 +220,16 @@ function initClock() {
                 ctx.lineWidth = width;
                 ctx.stroke();
             }
-
             drawHand(hourAngle, w/2 * 0.5, '#f472b6', 5);
-            drawHand(minAngle, w/2 * 0.7, '#4ade80', 3);
-            drawHand(secAngle, w/2 * 0.8, '#f87171', 1.5);
+            drawHand(minAngle, w/2 * 0.7, '#6ee7b7', 3);
+            drawHand(secAngle, w/2 * 0.8, '#fca5a5', 1.5);
 
-            // center dot
             ctx.beginPath();
             ctx.arc(w/2, hc/2, 4, 0, 2*Math.PI);
-            ctx.fillStyle = '#22d3ee';
+            ctx.fillStyle = '#c084fc';
             ctx.fill();
         }
 
-        // Date
         dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     }
 
@@ -258,7 +249,7 @@ function initClock() {
             analog.classList.remove('active');
             this.textContent = '⏰ Switch to Analog';
         }
-        updateClock(); // refresh immediately
+        updateClock();
     });
 }
 
@@ -273,7 +264,6 @@ function renderDashboard() {
     const todayFiles = data.files.filter(f => f.date && f.date.startsWith(today)).length;
     const todayTasks = data.history.filter(h => h.date === today && h.type === 'habit_complete').length;
 
-    // Streak
     let streak = 0;
     if (data.habits.length > 0) {
         const allDates = new Set();
@@ -300,7 +290,7 @@ function renderDashboard() {
     const todayActs = data.history.filter(h => h.date === today);
     const todayContainer = document.getElementById('todayActivity');
     if (todayActs.length === 0) {
-        todayContainer.innerHTML = '<p class="empty-state">No activity recorded <span class="hl-cyan">today</span> yet.</p>';
+        todayContainer.innerHTML = '<p class="empty-state">No activity recorded <span class="hl-purple">today</span> yet.</p>';
     } else {
         todayContainer.innerHTML = todayActs.slice().reverse().map(h =>
             `<div class="activity-item"><span>${h.description}</span><span class="time">${new Date(h.timestamp).toLocaleTimeString()}</span></div>`
@@ -319,6 +309,26 @@ function renderDashboard() {
         ).join('');
     }
     document.getElementById('historyCount').textContent = allHist.length;
+
+    // Setup delete buttons (they are in the HTML)
+}
+
+// ─── Delete History Functions ─────────────────────────────────────
+function deleteTodayHistory() {
+    if (!confirm('Delete all activity for today?')) return;
+    const data = loadData();
+    const today = new Date().toISOString().slice(0,10);
+    data.history = data.history.filter(h => h.date !== today);
+    saveData(data);
+    renderDashboard();
+}
+
+function deleteAllHistory() {
+    if (!confirm('Delete ALL history entries? This cannot be undone.')) return;
+    const data = loadData();
+    data.history = [];
+    saveData(data);
+    renderDashboard();
 }
 
 // ─── AI Recommendation ────────────────────────────────────────────
@@ -373,11 +383,11 @@ function setupFileUpload() {
     if (!uploadArea) return;
 
     uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#22d3ee'; });
-    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'rgba(34,211,238,0.2)'; });
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#c084fc'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'rgba(192,132,252,0.2)'; });
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
-        uploadArea.style.borderColor = 'rgba(34,211,238,0.2)';
+        uploadArea.style.borderColor = 'rgba(192,132,252,0.2)';
         handleFiles(e.dataTransfer.files);
     });
     fileInput.addEventListener('change', () => {
@@ -412,12 +422,17 @@ function renderFileList() {
     if (!container) return;
     const data = loadData();
     if (data.files.length === 0) {
-        container.innerHTML = '<p class="empty-state">No files <span class="hl-green">uploaded</span> yet.</p>';
+        container.innerHTML = '<p class="empty-state">No files <span class="hl-purple">uploaded</span> yet.</p>';
         return;
     }
-    container.innerHTML = data.files.map(f =>
-        `<div class="file-item"><span class="file-name">📄 ${f.name}</span><span class="file-size">${(f.size/1024).toFixed(1)} KB</span></div>`
-    ).join('');
+    container.innerHTML = data.files.map((f, idx) => {
+        // Create a data URL for opening
+        const fileData = f.data; // base64
+        return `<div class="file-item">
+            <a href="${fileData}" target="_blank" class="file-name">📄 ${f.name}</a>
+            <span class="file-size">${(f.size/1024).toFixed(1)} KB</span>
+        </div>`;
+    }).join('');
 }
 
 // ─── Habits ──────────────────────────────────────────────────────
@@ -431,7 +446,7 @@ function setupHabits() {
     function renderHabits() {
         const data = loadData();
         if (data.habits.length === 0) {
-            list.innerHTML = '<p class="empty-state">No habits yet. <span class="hl-orange">Add</span> one above!</p>';
+            list.innerHTML = '<p class="empty-state">No habits yet. <span class="hl-purple">Add</span> one above!</p>';
         } else {
             const today = new Date().toISOString().slice(0,10);
             list.innerHTML = data.habits.map(h => {
@@ -580,23 +595,125 @@ function setupNotes() {
     renderNotes();
 }
 
-// ─── Search ──────────────────────────────────────────────────────
+// ─── Search with Suggestions & Keyboard ─────────────────────────
 function setupSearch() {
     const input = document.getElementById('searchInput');
     const btn = document.getElementById('searchBtn');
-    if (!btn) return;
+    const suggestionsList = document.getElementById('suggestionsList');
+    const keyboardToggle = document.getElementById('keyboardToggle');
+    const keyboardContainer = document.getElementById('keyboardContainer');
 
-    function performSearch() {
-        const query = input.value.trim();
+    if (!input || !btn) return;
+
+    // ── Suggestions ──
+    function updateSuggestions(query) {
+        const data = loadData();
+        const matches = data.searches
+            .map(s => s.query)
+            .filter((q, i, self) => self.indexOf(q) === i) // unique
+            .filter(q => q.toLowerCase().includes(query.toLowerCase()))
+            .slice(0, 8);
+
+        if (query.length === 0 || matches.length === 0) {
+            suggestionsList.classList.remove('active');
+            return;
+        }
+        suggestionsList.innerHTML = matches.map(q =>
+            `<div class="suggestion-item" data-query="${q}">${q}</div>`
+        ).join('');
+        suggestionsList.classList.add('active');
+
+        // Click suggestion
+        suggestionsList.querySelectorAll('.suggestion-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const val = this.dataset.query;
+                input.value = val;
+                suggestionsList.classList.remove('active');
+                performSearch(val);
+            });
+        });
+    }
+
+    input.addEventListener('input', function() {
+        updateSuggestions(this.value);
+    });
+
+    // Close suggestions on blur (with delay to allow click)
+    input.addEventListener('blur', function() {
+        setTimeout(() => suggestionsList.classList.remove('active'), 200);
+    });
+
+    // ── Search execution ──
+    function performSearch(query) {
         if (!query) return;
         let data = loadData();
         data = logSearch(data, query);
         window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
         input.value = '';
+        suggestionsList.classList.remove('active');
         if (document.getElementById('statSearches')) renderDashboard();
     }
-    btn.addEventListener('click', performSearch);
-    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+
+    btn.addEventListener('click', function() {
+        performSearch(input.value.trim());
+    });
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch(input.value.trim());
+        }
+    });
+
+    // ── On‑Screen Keyboard ──
+    if (keyboardToggle && keyboardContainer) {
+        keyboardToggle.addEventListener('click', function() {
+            keyboardContainer.classList.toggle('active');
+            this.textContent = keyboardContainer.classList.contains('active') ? '⌨️ Hide Keyboard' : '⌨️ Show Keyboard';
+        });
+
+        // Build keyboard rows
+        const rows = [
+            ['1','2','3','4','5','6','7','8','9','0','Backspace'],
+            ['q','w','e','r','t','y','u','i','o','p'],
+            ['a','s','d','f','g','h','j','k','l'],
+            ['z','x','c','v','b','n','m',',','.','?'],
+            ['Space']
+        ];
+
+        rows.forEach(rowKeys => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'keyboard-row';
+            rowKeys.forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'key-btn';
+                if (key === 'Backspace' || key === 'Space') btn.classList.add('special');
+                if (key === 'Space') btn.classList.add('space');
+                btn.textContent = key === 'Space' ? '␣' : key;
+                btn.dataset.key = key;
+                rowDiv.appendChild(btn);
+            });
+            keyboardContainer.appendChild(rowDiv);
+        });
+
+        // Handle key clicks
+        keyboardContainer.addEventListener('click', function(e) {
+            const target = e.target.closest('.key-btn');
+            if (!target) return;
+            const key = target.dataset.key;
+            const input = document.getElementById('searchInput');
+            if (!input) return;
+
+            if (key === 'Backspace') {
+                input.value = input.value.slice(0, -1);
+            } else if (key === 'Space') {
+                input.value += ' ';
+            } else {
+                input.value += key;
+            }
+            // Trigger input event for suggestions
+            input.dispatchEvent(new Event('input'));
+            input.focus();
+        });
+    }
 }
 
 // ─── Nav Date ──────────────────────────────────────────────────────
@@ -613,8 +730,14 @@ document.addEventListener('DOMContentLoaded', function() {
     initClock();
 
     const path = window.location.pathname.split('/').pop() || 'index.html';
+
     if (path === 'index.html' || path === '') {
         renderDashboard();
+        // Setup delete buttons
+        const delToday = document.getElementById('deleteTodayBtn');
+        const delAll = document.getElementById('deleteAllBtn');
+        if (delToday) delToday.addEventListener('click', deleteTodayHistory);
+        if (delAll) delAll.addEventListener('click', deleteAllHistory);
     } else if (path === 'files.html') {
         setupFileUpload();
         renderFileList();
@@ -629,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (path === 'ai-tools.html') {
         setupAIRecommendation();
     }
-    // ensure daily reset
+
     const data = loadData();
     resetDailyIfNeeded(data);
     if (path === 'index.html' || path === '') renderDashboard();
