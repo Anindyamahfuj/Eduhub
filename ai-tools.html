@@ -24,25 +24,40 @@
                 <li><a href="flashcards.html"><span class="hl-orange">◆</span> Flashcards</a></li>
                 <li><a href="reading.html"><span class="hl-green">◆</span> Reading</a></li>
             </ul>
-            <div class="nav-right"><button id="focusToggle" class="focus-toggle">🔓 Focus Off</button><span class="nav-date" id="navDate"></span></div>
+            <div class="nav-right">
+                <button id="focusToggle" class="focus-toggle">🔓 Focus Off</button>
+                <span class="nav-date" id="navDate"></span>
+            </div>
         </div>
     </nav>
 
     <main class="container">
         <section class="clock-section mini-clock">
             <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button></div>
-            <div class="clock-container"><div id="digitalClock" class="digital-clock active">00:00:00</div><div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div></div>
+            <div class="clock-container">
+                <div id="digitalClock" class="digital-clock active">00:00:00</div>
+                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
+            </div>
             <div class="clock-date" id="clockDate"></div>
         </section>
 
-        <header class="page-header"><h1><span class="hl-magenta">🤖</span> <span class="neon-text">AI Tools</span></h1><p>Curated <span class="hl-cyan">AI assistants</span> + built‑in <span class="hl-green">text summarizer</span>.</p></header>
+        <header class="page-header">
+            <h1><span class="hl-magenta">🤖</span> <span class="neon-text">AI Tools</span></h1>
+            <p>Curated <span class="hl-cyan">AI assistants</span> + built‑in <span class="hl-green">text summarizer</span>.</p>
+        </header>
 
         <!-- StudyHub AI Recommender -->
         <section class="ai-recommend-section glass-card">
             <div class="ai-recommend-card">
-                <div class="ai-recommend-header"><span class="ai-badge">🧠 <span class="hl-cyan">StudyHub AI</span></span><h3>Not sure which <span class="hl-magenta">AI</span> to use?</h3></div>
+                <div class="ai-recommend-header">
+                    <span class="ai-badge">🧠 <span class="hl-cyan">StudyHub AI</span></span>
+                    <h3>Not sure which <span class="hl-magenta">AI</span> to use?</h3>
+                </div>
                 <p id="aiRecommendText">Tell me what you're <span class="hl-green">working on</span>.</p>
-                <div class="ai-recommend-input"><input type="text" id="aiQueryInput" placeholder="e.g. solve calculus, write code..." /><button id="aiRecommendBtn">✨ Recommend</button></div>
+                <div class="ai-recommend-input">
+                    <input type="text" id="aiQueryInput" placeholder="e.g. solve calculus, write code..." />
+                    <button id="aiRecommendBtn">✨ Recommend</button>
+                </div>
                 <div id="aiRecommendResult" class="ai-recommend-result"></div>
             </div>
         </section>
@@ -69,10 +84,28 @@
             <a href="https://www.duolingo.com" target="_blank" class="tool-card"><div class="tool-icon">🌍</div><h3><span class="hl-cyan">Duolingo</span></h3><p>AI-driven <span class="hl-cyan">language</span> learning.</p><span class="tool-tag">Language</span></a>
             <a href="https://www.notion.so" target="_blank" class="tool-card"><div class="tool-icon">📋</div><h3><span class="hl-purple">Notion AI</span></h3><p>AI-powered <span class="hl-purple">productivity</span>.</p><span class="tool-tag">Productivity</span></a>
             <a href="https://www.wolframalpha.com" target="_blank" class="tool-card"><div class="tool-icon">⚛️</div><h3><span class="hl-orange">Wolfram Alpha</span></h3><p>Computational <span class="hl-orange">STEM</span> engine.</p><span class="tool-tag">STEM</span></a>
+            <!-- YouTube – allowed social media -->
+            <a href="https://www.youtube.com" target="_blank" class="tool-card" style="border-color: rgba(255,0,0,0.3);">
+                <div class="tool-icon">📺</div>
+                <h3><span class="hl-red">YouTube</span></h3>
+                <p>Educational videos, tutorials, and lectures.</p>
+                <span class="tool-tag" style="background: rgba(255,0,0,0.15); color: #f87171;">Allowed</span>
+            </a>
         </section>
-        <section class="block-warning glass-card non-essential"><div class="block-warning-inner"><span>🚫</span><div><strong>Social Media <span class="hl-red">Blocked</span></strong><p>All social media (except YouTube) are blocked for focus.</p></div></div></section>
+
+        <!-- Social Media Block Warning (updated) -->
+        <section class="block-warning glass-card non-essential">
+            <div class="block-warning-inner">
+                <span>🚫</span>
+                <div>
+                    <strong>Social Media <span class="hl-red">Blocked</span></strong>
+                    <p>To keep you <span class="hl-cyan">focused</span>, all social media platforms <strong>except YouTube</strong> are blocked while using <span class="brand-highlight">Study</span>Hub.</p>
+                </div>
+            </div>
+        </section>
     </main>
-    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub</p></footer>
+
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
     <script src="script.js"></script>
 </body>
 </html>
