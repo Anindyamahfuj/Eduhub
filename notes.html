@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyHub · Notes</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">📘 StudyHub</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="ai-tools.html">AI Tools</a></li>
+                <li><a href="files.html">Files</a></li>
+                <li><a href="habits.html">Habits</a></li>
+                <li><a href="notice.html">Notice</a></li>
+                <li><a href="notes.html" class="active">Notes</a></li>
+                <li><a href="search.html">Search</a></li>
+            </ul>
+            <div class="nav-right">
+                <span class="nav-date" id="navDate"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="page-header">
+            <h1>📝 Notes</h1>
+            <p>Jot down quick ideas, lecture notes, or to‑dos.</p>
+        </header>
+
+        <section class="note-add-section">
+            <div class="note-add-form">
+                <input type="text" id="noteInput" placeholder="Write a note..." />
+                <button id="addNoteBtn">Add Note</button>
+            </div>
+            <button id="deleteAllNotesBtn" class="btn-danger">🗑️ Delete All</button>
+        </section>
+
+        <section class="note-list-section">
+            <div id="noteList" class="note-list">
+                <p class="empty-state">No notes yet.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 2026 StudyHub · built for focus &amp; growth</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
