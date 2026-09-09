@@ -309,8 +309,6 @@ function renderDashboard() {
         ).join('');
     }
     document.getElementById('historyCount').textContent = allHist.length;
-
-    // Setup delete buttons (they are in the HTML)
 }
 
 // ─── Delete History Functions ─────────────────────────────────────
@@ -426,10 +424,8 @@ function renderFileList() {
         return;
     }
     container.innerHTML = data.files.map((f, idx) => {
-        // Create a data URL for opening
-        const fileData = f.data; // base64
         return `<div class="file-item">
-            <a href="${fileData}" target="_blank" class="file-name">📄 ${f.name}</a>
+            <a href="${f.data}" target="_blank" class="file-name">📄 ${f.name}</a>
             <span class="file-size">${(f.size/1024).toFixed(1)} KB</span>
         </div>`;
     }).join('');
@@ -610,7 +606,7 @@ function setupSearch() {
         const data = loadData();
         const matches = data.searches
             .map(s => s.query)
-            .filter((q, i, self) => self.indexOf(q) === i) // unique
+            .filter((q, i, self) => self.indexOf(q) === i)
             .filter(q => q.toLowerCase().includes(query.toLowerCase()))
             .slice(0, 8);
 
@@ -623,7 +619,6 @@ function setupSearch() {
         ).join('');
         suggestionsList.classList.add('active');
 
-        // Click suggestion
         suggestionsList.querySelectorAll('.suggestion-item').forEach(el => {
             el.addEventListener('click', function() {
                 const val = this.dataset.query;
@@ -638,12 +633,10 @@ function setupSearch() {
         updateSuggestions(this.value);
     });
 
-    // Close suggestions on blur (with delay to allow click)
     input.addEventListener('blur', function() {
         setTimeout(() => suggestionsList.classList.remove('active'), 200);
     });
 
-    // ── Search execution ──
     function performSearch(query) {
         if (!query) return;
         let data = loadData();
@@ -670,7 +663,6 @@ function setupSearch() {
             this.textContent = keyboardContainer.classList.contains('active') ? '⌨️ Hide Keyboard' : '⌨️ Show Keyboard';
         });
 
-        // Build keyboard rows
         const rows = [
             ['1','2','3','4','5','6','7','8','9','0','Backspace'],
             ['q','w','e','r','t','y','u','i','o','p'],
@@ -694,7 +686,6 @@ function setupSearch() {
             keyboardContainer.appendChild(rowDiv);
         });
 
-        // Handle key clicks
         keyboardContainer.addEventListener('click', function(e) {
             const target = e.target.closest('.key-btn');
             if (!target) return;
@@ -709,7 +700,6 @@ function setupSearch() {
             } else {
                 input.value += key;
             }
-            // Trigger input event for suggestions
             input.dispatchEvent(new Event('input'));
             input.focus();
         });
@@ -724,16 +714,47 @@ function updateNavDate() {
     }
 }
 
+// ─── Scroll Gradient ──────────────────────────────────────────────
+function updateScrollGradient() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const scrollPercent = docHeight > 0 ? scrollTop / docHeight : 0; // 0 to 1
+
+    // Blue -> Green -> Purple
+    const blue = [30, 58, 138];   // #1e3a8a
+    const green = [6, 95, 70];    // #065f46
+    const purple = [88, 28, 135]; // #581c87
+
+    let r, g, b;
+    if (scrollPercent < 0.5) {
+        const t = scrollPercent / 0.5; // 0 to 1
+        r = blue[0] + (green[0] - blue[0]) * t;
+        g = blue[1] + (green[1] - blue[1]) * t;
+        b = blue[2] + (green[2] - blue[2]) * t;
+    } else {
+        const t = (scrollPercent - 0.5) / 0.5; // 0 to 1
+        r = green[0] + (purple[0] - green[0]) * t;
+        g = green[1] + (purple[1] - green[1]) * t;
+        b = green[2] + (purple[2] - green[2]) * t;
+    }
+
+    document.body.style.background = `radial-gradient(ellipse at top left, rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}), #0d0618)`;
+}
+
 // ─── Init ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
     updateNavDate();
     initClock();
 
+    // Scroll gradient
+    updateScrollGradient();
+    window.addEventListener('scroll', updateScrollGradient);
+    window.addEventListener('resize', updateScrollGradient);
+
     const path = window.location.pathname.split('/').pop() || 'index.html';
 
     if (path === 'index.html' || path === '') {
         renderDashboard();
-        // Setup delete buttons
         const delToday = document.getElementById('deleteTodayBtn');
         const delAll = document.getElementById('deleteAllBtn');
         if (delToday) delToday.addEventListener('click', deleteTodayHistory);
