@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyHub · Habits</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">📘 StudyHub</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="ai-tools.html">AI Tools</a></li>
+                <li><a href="files.html">Files</a></li>
+                <li><a href="habits.html" class="active">Habits</a></li>
+                <li><a href="notice.html">Notice</a></li>
+                <li><a href="notes.html">Notes</a></li>
+                <li><a href="search.html">Search</a></li>
+            </ul>
+            <div class="nav-right">
+                <span class="nav-date" id="navDate"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="page-header">
+            <h1>✅ Habit Tracker</h1>
+            <p>Build daily routines. Complete tasks and watch your streak grow!</p>
+        </header>
+
+        <section class="habit-add-section">
+            <div class="habit-add-form">
+                <input type="text" id="habitInput" placeholder="New habit (e.g., Read 30 min)" />
+                <button id="addHabitBtn">Add Habit</button>
+            </div>
+            <button id="deleteAllHabitsBtn" class="btn-danger">🗑️ Delete All Habits</button>
+        </section>
+
+        <section class="habit-list-section">
+            <h2>Your Habits</h2>
+            <div id="habitList" class="habit-list">
+                <p class="empty-state">No habits yet. Add one above!</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 2026 StudyHub · built for focus &amp; growth</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
