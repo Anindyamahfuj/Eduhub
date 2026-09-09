@@ -1,53 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>StudyHub · Reading List</title><link rel="stylesheet" href="style.css" /><link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" /></head>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyHub · Reading List</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+</head>
 <body>
-  <nav class="navbar">
-    <div class="nav-container">
-        <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
-        <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
-        <ul class="nav-links">
-            <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
-            <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
-            <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
-            <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
-            <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
-            <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
-            <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
-            <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
-            <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
-            <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
-        </ul>
-        <div class="nav-right">
-            <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
-                <option value="en">🇬🇧 English</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="fr">🇫🇷 Français</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="pt">🇧🇷 Português</option>
-                <option value="bn">🇧🇩 বাংলা</option>
-                <option value="ur">🇵🇰 اردو</option>
-                <option value="id">🇮🇩 Indonesia</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-            </select>
-            <button id="focusToggle" class="focus-toggle">🔓 Focus Off</button>
-            <span class="nav-date" id="navDate"></span>
+    <!-- Navbar with active Reading -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
+            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span></a></li>
+                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span></a></li>
+                <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span></a></li>
+                <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span></a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span></a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span></a></li>
+                <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span></a></li>
+                <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span></a></li>
+                <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span></a></li>
+                <li><a href="reading.html" class="active"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span></a></li>
+            </ul>
+            <div class="nav-right">
+                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="ar">🇸🇦 العربية</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="ur">🇵🇰 اردو</option>
+                    <option value="id">🇮🇩 Indonesia</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="sw">🇰🇪 Kiswahili</option>
+                    <option value="tr">🇹🇷 Türkçe</option>
+                </select>
+                <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
+                <span class="nav-date" id="navDate"></span>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
+
     <main class="container">
-        <section class="clock-section mini-clock"><div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ Switch to Analog</button></div><div class="clock-container"><div id="digitalClock" class="digital-clock active">00:00:00</div><div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div></div><div class="clock-date" id="clockDate"></div></section>
-        <header class="page-header"><h1><span class="hl-green">🔖</span> <span class="neon-text">Reading List</span></h1><p>Save <span class="hl-cyan">articles</span>, <span class="hl-purple">tutorials</span>, and <span class="hl-orange">resources</span>.</p></header>
-        <section class="glass-card"><form id="readingForm" class="flex-wrap"><input id="readTitle" class="input-dark" placeholder="Title" required style="flex:2;"/><input id="readUrl" class="input-dark" placeholder="URL" required style="flex:2;"/><input id="readSubject" class="input-dark" placeholder="Subject" style="flex:1;"/><input id="readTags" class="input-dark" placeholder="Tags (comma)" style="flex:1;"/><button type="submit" class="btn-primary">➕ Add</button></form></section>
-        <section class="glass-card"><h2>My Reading</h2><div id="readingList"></div></section>
+        <section class="clock-section mini-clock">
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
+            <div class="clock-container">
+                <div id="digitalClock" class="digital-clock active">00:00:00</div>
+                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
+            </div>
+            <div class="clock-date" id="clockDate"></div>
+        </section>
+
+        <header class="page-header">
+            <h1><span class="hl-green">🔖</span> <span class="neon-text" data-i18n="reading">Reading List</span></h1>
+            <p data-i18n="reading_subtitle">Save articles, tutorials, and resources.</p>
+        </header>
+
+        <section class="glass-card">
+            <form id="readingForm" class="flex-wrap">
+                <input id="readTitle" class="input-dark" data-i18n-placeholder="read_title" placeholder="Title" required style="flex:2;"/>
+                <input id="readUrl" class="input-dark" data-i18n-placeholder="read_url" placeholder="URL" required style="flex:2;"/>
+                <input id="readSubject" class="input-dark" data-i18n-placeholder="read_subject" placeholder="Subject" style="flex:1;"/>
+                <input id="readTags" class="input-dark" data-i18n-placeholder="read_tags" placeholder="Tags (comma)" style="flex:1;"/>
+                <button type="submit" class="btn-primary">➕ <span data-i18n="add">Add</span></button>
+            </form>
+        </section>
+
+        <section class="glass-card">
+            <h2><span data-i18n="my_reading">My Reading</span></h2>
+            <div id="readingList"></div>
+        </section>
     </main>
-    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub</p></footer>
+
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
     <script src="script.js"></script>
 </body>
 </html>
