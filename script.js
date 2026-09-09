@@ -3,13 +3,13 @@ const STORAGE_KEY = 'studyHubData';
 
 function getDefaultData() {
     return {
-        files: [],          // [{ name, size, data, date }]
-        habits: [],         // [{ id, text, completedDates: [] }]
-        notices: [],        // [{ id, text, date }]
-        notes: [],          // [{ id, text, date }]
-        history: [],        // [{ type, description, date, timestamp }]
-        searches: [],       // [{ query, date }]
-        lastReset: null,    // date string (YYYY-MM-DD)
+        files: [],
+        habits: [],
+        notices: [],
+        notes: [],
+        history: [],
+        searches: [],
+        lastReset: null,
     };
 }
 
@@ -18,7 +18,6 @@ function loadData() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const data = JSON.parse(raw);
-            // ensure all keys exist
             const def = getDefaultData();
             for (let key in def) {
                 if (!(key in data)) data[key] = def[key];
@@ -33,19 +32,14 @@ function saveData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-// ─── Daily Reset ──────────────────────────────────────────────────
 function resetDailyIfNeeded(data) {
     const today = new Date().toISOString().slice(0,10);
     if (data.lastReset !== today) {
-        // Reset any daily counters – we store history, but we clear "today" counts by filtering later.
-        // We just update lastReset.
         data.lastReset = today;
-        // Also we can trim old habit completions? We keep all, but we'll filter for today's tasks in UI.
         saveData(data);
     }
 }
 
-// ─── Activity Logging ─────────────────────────────────────────────
 function addActivity(data, type, description) {
     const now = new Date();
     data.history.push({
@@ -54,7 +48,6 @@ function addActivity(data, type, description) {
         date: now.toISOString().slice(0,10),
         timestamp: now.getTime(),
     });
-    // Keep history manageable (last 500 entries)
     if (data.history.length > 500) data.history.splice(0, data.history.length - 500);
     saveData(data);
     return data;
@@ -65,13 +58,12 @@ function addFile(data, file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function(e) {
-            const fileEntry = {
+            data.files.push({
                 name: file.name,
                 size: file.size,
                 data: e.target.result,
                 date: new Date().toISOString(),
-            };
-            data.files.push(fileEntry);
+            });
             addActivity(data, 'file', `Uploaded "${file.name}"`);
             saveData(data);
             resolve(data);
@@ -90,12 +82,11 @@ function deleteAllFiles(data) {
 
 // ─── Habit Functions ──────────────────────────────────────────────
 function addHabit(data, text) {
-    const habit = {
+    data.habits.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         text: text.trim(),
         completedDates: [],
-    };
-    data.habits.push(habit);
+    });
     addActivity(data, 'habit_add', `Created habit: "${text}"`);
     saveData(data);
     return data;
@@ -122,12 +113,11 @@ function deleteAllHabits(data) {
 
 // ─── Notice Functions ─────────────────────────────────────────────
 function addNotice(data, text) {
-    const notice = {
+    data.notices.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         text: text.trim(),
         date: new Date().toISOString(),
-    };
-    data.notices.push(notice);
+    });
     addActivity(data, 'notice_add', `Added notice: "${text}"`);
     saveData(data);
     return data;
@@ -142,12 +132,11 @@ function deleteAllNotices(data) {
 
 // ─── Note Functions ───────────────────────────────────────────────
 function addNote(data, text) {
-    const note = {
+    data.notes.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         text: text.trim(),
         date: new Date().toISOString(),
-    };
-    data.notes.push(note);
+    });
     addActivity(data, 'note_add', `Added note: "${text}"`);
     saveData(data);
     return data;
@@ -160,93 +149,186 @@ function deleteAllNotes(data) {
     return data;
 }
 
-// ─── Search Function ──────────────────────────────────────────────
+// ─── Search ──────────────────────────────────────────────────────
 function logSearch(data, query) {
-    const entry = {
-        query: query.trim(),
-        date: new Date().toISOString(),
-    };
-    data.searches.push(entry);
+    data.searches.push({ query: query.trim(), date: new Date().toISOString() });
     addActivity(data, 'search', `Searched: "${query}"`);
     saveData(data);
     return data;
 }
 
-// ─── Dashboard Rendering ──────────────────────────────────────────
+// ─── Clock ────────────────────────────────────────────────────────
+let clockMode = 'digital'; // 'digital' or 'analog'
+let clockInterval = null;
+
+function initClock() {
+    const digital = document.getElementById('digitalClock');
+    const analog = document.getElementById('analogClock');
+    const toggle = document.getElementById('clockToggleBtn');
+    const dateEl = document.getElementById('clockDate');
+
+    if (!digital || !analog || !toggle) return;
+
+    // Set initial state
+    digital.classList.add('active');
+    analog.classList.remove('active');
+    toggle.textContent = '⏰ Switch to Analog';
+
+    function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2,'0');
+        const m = String(now.getMinutes()).padStart(2,'0');
+        const s = String(now.getSeconds()).padStart(2,'0');
+        digital.textContent = `${h}:${m}:${s}`;
+
+        // Update analog canvas
+        const canvas = document.getElementById('analogCanvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, hc = canvas.height;
+            ctx.clearRect(0, 0, w, hc);
+
+            // background
+            ctx.beginPath();
+            ctx.arc(w/2, hc/2, w/2 - 4, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fill();
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // hour markers
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * 30 - 90) * Math.PI / 180;
+                const len = w/2 - 14;
+                const x1 = w/2 + len * Math.cos(angle);
+                const y1 = hc/2 + len * Math.sin(angle);
+                const x2 = w/2 + (w/2 - 6) * Math.cos(angle);
+                const y2 = hc/2 + (w/2 - 6) * Math.sin(angle);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = i % 3 === 0 ? 3 : 1.5;
+                ctx.stroke();
+            }
+
+            // hands
+            const secAngle = (now.getSeconds() * 6 - 90) * Math.PI / 180;
+            const minAngle = ((now.getMinutes() + now.getSeconds()/60) * 6 - 90) * Math.PI / 180;
+            const hourAngle = ((now.getHours() % 12 + now.getMinutes()/60) * 30 - 90) * Math.PI / 180;
+
+            function drawHand(angle, length, color, width) {
+                ctx.beginPath();
+                ctx.moveTo(w/2, hc/2);
+                ctx.lineTo(w/2 + length * Math.cos(angle), hc/2 + length * Math.sin(angle));
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                ctx.stroke();
+            }
+
+            drawHand(hourAngle, w/2 * 0.5, '#f472b6', 5);
+            drawHand(minAngle, w/2 * 0.7, '#4ade80', 3);
+            drawHand(secAngle, w/2 * 0.8, '#f87171', 1.5);
+
+            // center dot
+            ctx.beginPath();
+            ctx.arc(w/2, hc/2, 4, 0, 2*Math.PI);
+            ctx.fillStyle = '#22d3ee';
+            ctx.fill();
+        }
+
+        // Date
+        dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    updateClock();
+    if (clockInterval) clearInterval(clockInterval);
+    clockInterval = setInterval(updateClock, 1000);
+
+    toggle.addEventListener('click', function() {
+        if (clockMode === 'digital') {
+            clockMode = 'analog';
+            digital.classList.remove('active');
+            analog.classList.add('active');
+            this.textContent = '⏰ Switch to Digital';
+        } else {
+            clockMode = 'digital';
+            digital.classList.add('active');
+            analog.classList.remove('active');
+            this.textContent = '⏰ Switch to Analog';
+        }
+        updateClock(); // refresh immediately
+    });
+}
+
+// ─── Dashboard Render ─────────────────────────────────────────────
 function renderDashboard() {
     const data = loadData();
     resetDailyIfNeeded(data);
-
-    // Today's date
     const today = new Date().toISOString().slice(0,10);
     document.getElementById('todayDate').textContent = today;
 
-    // Stats
     const todaySearches = data.searches.filter(s => s.date.startsWith(today)).length;
     const todayFiles = data.files.filter(f => f.date && f.date.startsWith(today)).length;
     const todayTasks = data.history.filter(h => h.date === today && h.type === 'habit_complete').length;
-    // Streak: longest consecutive days with at least one habit completion
+
+    // Streak
     let streak = 0;
     if (data.habits.length > 0) {
-        // Get all unique dates with completions
         const allDates = new Set();
         data.habits.forEach(h => h.completedDates.forEach(d => allDates.add(d)));
         const sorted = Array.from(allDates).sort();
         if (sorted.length > 0) {
-            let current = 1;
-            let maxStreak = 1;
+            let current = 1, maxStreak = 1;
             for (let i = 1; i < sorted.length; i++) {
                 const prev = new Date(sorted[i-1]);
                 const curr = new Date(sorted[i]);
                 const diff = (curr - prev) / (1000*60*60*24);
-                if (diff === 1) {
-                    current++;
-                    maxStreak = Math.max(maxStreak, current);
-                } else {
-                    current = 1;
-                }
+                if (diff === 1) { current++; maxStreak = Math.max(maxStreak, current); }
+                else { current = 1; }
             }
             streak = maxStreak;
         }
     }
     document.getElementById('statSearches').textContent = todaySearches;
-    document.getElementById('statFiles').textContent = data.files.length; // total uploaded
+    document.getElementById('statFiles').textContent = data.files.length;
     document.getElementById('statTasks').textContent = todayTasks;
     document.getElementById('statStreak').textContent = streak;
 
-    // Today's activity
-    const todayActivities = data.history.filter(h => h.date === today);
+    // Today Activity
+    const todayActs = data.history.filter(h => h.date === today);
     const todayContainer = document.getElementById('todayActivity');
-    if (todayActivities.length === 0) {
-        todayContainer.innerHTML = '<p class="empty-state">No activity recorded today yet.</p>';
+    if (todayActs.length === 0) {
+        todayContainer.innerHTML = '<p class="empty-state">No activity recorded <span class="hl-cyan">today</span> yet.</p>';
     } else {
-        todayContainer.innerHTML = todayActivities.slice().reverse().map(h =>
+        todayContainer.innerHTML = todayActs.slice().reverse().map(h =>
             `<div class="activity-item"><span>${h.description}</span><span class="time">${new Date(h.timestamp).toLocaleTimeString()}</span></div>`
         ).join('');
     }
-    document.getElementById('todayCount').textContent = todayActivities.length;
+    document.getElementById('todayCount').textContent = todayActs.length;
 
-    // All history
-    const allHistory = data.history;
+    // All History
+    const allHist = data.history;
     const historyContainer = document.getElementById('historyActivity');
-    if (allHistory.length === 0) {
-        historyContainer.innerHTML = '<p class="empty-state">No history recorded yet.</p>';
+    if (allHist.length === 0) {
+        historyContainer.innerHTML = '<p class="empty-state">No history <span class="hl-purple">recorded</span> yet.</p>';
     } else {
-        historyContainer.innerHTML = allHistory.slice().reverse().map(h =>
+        historyContainer.innerHTML = allHist.slice().reverse().map(h =>
             `<div class="activity-item"><span>${h.description}</span><span class="time">${h.date}</span></div>`
         ).join('');
     }
-    document.getElementById('historyCount').textContent = allHistory.length;
+    document.getElementById('historyCount').textContent = allHist.length;
 }
 
-// ─── AI Tools Recommendation ──────────────────────────────────────
+// ─── AI Recommendation ────────────────────────────────────────────
 function setupAIRecommendation() {
     const btn = document.getElementById('aiRecommendBtn');
     if (!btn) return;
     const input = document.getElementById('aiQueryInput');
     const result = document.getElementById('aiRecommendResult');
 
-    const recommendations = {
+    const recMap = {
         math: 'DeepSeek or Wolfram Alpha',
         calculus: 'DeepSeek or Wolfram Alpha',
         algebra: 'DeepSeek',
@@ -271,24 +353,14 @@ function setupAIRecommendation() {
 
     btn.addEventListener('click', function() {
         const query = input.value.trim().toLowerCase();
-        if (!query) {
-            result.textContent = 'Please describe what you need help with.';
-            return;
-        }
-        let recommendation = 'I recommend ';
+        if (!query) { result.textContent = 'Please describe what you need help with.'; return; }
         let found = false;
-        for (let key in recommendations) {
-            if (query.includes(key)) {
-                recommendation += recommendations[key];
-                found = true;
-                break;
-            }
+        let rec = 'I recommend ';
+        for (let key in recMap) {
+            if (query.includes(key)) { rec += recMap[key]; found = true; break; }
         }
-        if (!found) {
-            recommendation += 'ChatGPT – it’s a great all‑rounder for most tasks.';
-        }
-        result.textContent = recommendation;
-        // Log the recommendation query
+        if (!found) rec += 'ChatGPT – it’s a great all‑rounder for most tasks.';
+        result.textContent = rec;
         const data = loadData();
         addActivity(data, 'ai_recommend', `AI recommendation for: "${query}"`);
     });
@@ -301,20 +373,13 @@ function setupFileUpload() {
     if (!uploadArea) return;
 
     uploadArea.addEventListener('click', () => fileInput.click());
-
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.style.borderColor = '#2563eb';
-    });
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.style.borderColor = '#d1d9e6';
-    });
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#22d3ee'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'rgba(34,211,238,0.2)'; });
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
-        uploadArea.style.borderColor = '#d1d9e6';
+        uploadArea.style.borderColor = 'rgba(34,211,238,0.2)';
         handleFiles(e.dataTransfer.files);
     });
-
     fileInput.addEventListener('change', () => {
         handleFiles(fileInput.files);
         fileInput.value = '';
@@ -323,18 +388,12 @@ function setupFileUpload() {
     async function handleFiles(files) {
         let data = loadData();
         for (let file of files) {
-            try {
-                data = await addFile(data, file);
-            } catch (e) {
-                console.error('Upload failed', e);
-            }
+            try { data = await addFile(data, file); } catch (e) { console.error(e); }
         }
         renderFileList();
-        // Update dashboard if on index
         if (document.getElementById('statFiles')) renderDashboard();
     }
 
-    // Delete all files
     const delBtn = document.getElementById('deleteAllFilesBtn');
     if (delBtn) {
         delBtn.addEventListener('click', () => {
@@ -353,14 +412,11 @@ function renderFileList() {
     if (!container) return;
     const data = loadData();
     if (data.files.length === 0) {
-        container.innerHTML = '<p class="empty-state">No files uploaded yet.</p>';
+        container.innerHTML = '<p class="empty-state">No files <span class="hl-green">uploaded</span> yet.</p>';
         return;
     }
     container.innerHTML = data.files.map(f =>
-        `<div class="file-item">
-            <span class="file-name">📄 ${f.name}</span>
-            <span class="file-size">${(f.size/1024).toFixed(1)} KB</span>
-        </div>`
+        `<div class="file-item"><span class="file-name">📄 ${f.name}</span><span class="file-size">${(f.size/1024).toFixed(1)} KB</span></div>`
     ).join('');
 }
 
@@ -370,34 +426,57 @@ function setupHabits() {
     const addBtn = document.getElementById('addHabitBtn');
     const list = document.getElementById('habitList');
     const delBtn = document.getElementById('deleteAllHabitsBtn');
+    const streakDisplay = document.getElementById('streakDisplay');
 
     function renderHabits() {
         const data = loadData();
         if (data.habits.length === 0) {
-            list.innerHTML = '<p class="empty-state">No habits yet. Add one above!</p>';
-            return;
-        }
-        const today = new Date().toISOString().slice(0,10);
-        list.innerHTML = data.habits.map(h => {
-            const done = h.completedDates.includes(today);
-            return `<div class="habit-item">
-                <span class="habit-text">${h.text} ${done ? '✅' : ''}</span>
-                <div class="habit-actions">
-                    <button class="complete-btn ${done ? 'done' : ''}" data-id="${h.id}">${done ? 'Done' : 'Complete'}</button>
-                </div>
-            </div>`;
-        }).join('');
-
-        // Attach complete events
-        list.querySelectorAll('.complete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.dataset.id;
-                let data = loadData();
-                data = completeHabit(data, id);
-                renderHabits();
-                if (document.getElementById('statTasks')) renderDashboard();
+            list.innerHTML = '<p class="empty-state">No habits yet. <span class="hl-orange">Add</span> one above!</p>';
+        } else {
+            const today = new Date().toISOString().slice(0,10);
+            list.innerHTML = data.habits.map(h => {
+                const done = h.completedDates.includes(today);
+                return `<div class="habit-item">
+                    <span class="habit-text">${h.text} ${done ? '✅' : ''}</span>
+                    <div class="habit-actions">
+                        <button class="complete-btn ${done ? 'done' : ''}" data-id="${h.id}">${done ? 'Done' : 'Complete'}</button>
+                    </div>
+                </div>`;
+            }).join('');
+            list.querySelectorAll('.complete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    let data = loadData();
+                    data = completeHabit(data, id);
+                    renderHabits();
+                    updateStreak();
+                    if (document.getElementById('statTasks')) renderDashboard();
+                });
             });
-        });
+        }
+        updateStreak();
+    }
+
+    function updateStreak() {
+        const data = loadData();
+        let streak = 0;
+        if (data.habits.length > 0) {
+            const allDates = new Set();
+            data.habits.forEach(h => h.completedDates.forEach(d => allDates.add(d)));
+            const sorted = Array.from(allDates).sort();
+            if (sorted.length > 0) {
+                let current = 1, maxStreak = 1;
+                for (let i = 1; i < sorted.length; i++) {
+                    const prev = new Date(sorted[i-1]);
+                    const curr = new Date(sorted[i]);
+                    const diff = (curr - prev) / (1000*60*60*24);
+                    if (diff === 1) { current++; maxStreak = Math.max(maxStreak, current); }
+                    else { current = 1; }
+                }
+                streak = maxStreak;
+            }
+        }
+        if (streakDisplay) streakDisplay.textContent = streak;
     }
 
     addBtn.addEventListener('click', function() {
@@ -409,11 +488,7 @@ function setupHabits() {
         renderHabits();
         if (document.getElementById('statTasks')) renderDashboard();
     });
-
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addBtn.click();
-    });
-
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBtn.click(); });
     delBtn.addEventListener('click', function() {
         if (confirm('Delete all habits?')) {
             let data = loadData();
@@ -422,7 +497,6 @@ function setupHabits() {
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
-
     renderHabits();
 }
 
@@ -432,16 +506,18 @@ function setupNotice() {
     const addBtn = document.getElementById('addNoticeBtn');
     const list = document.getElementById('noticeList');
     const delBtn = document.getElementById('deleteAllNoticesBtn');
+    const countEl = document.getElementById('noticeCount');
 
     function renderNotices() {
         const data = loadData();
         if (data.notices.length === 0) {
-            list.innerHTML = '<p class="empty-state">No notices yet.</p>';
-            return;
+            list.innerHTML = '<p class="empty-state">No notices <span class="hl-purple">pinned</span> yet.</p>';
+        } else {
+            list.innerHTML = data.notices.map(n =>
+                `<div class="notice-item"><span>${n.text}</span><span class="time">${new Date(n.date).toLocaleDateString()}</span></div>`
+            ).join('');
         }
-        list.innerHTML = data.notices.map(n =>
-            `<div class="notice-item"><span>${n.text}</span><span class="time">${new Date(n.date).toLocaleDateString()}</span></div>`
-        ).join('');
+        if (countEl) countEl.textContent = data.notices.length + ' notices';
     }
 
     addBtn.addEventListener('click', function() {
@@ -453,11 +529,7 @@ function setupNotice() {
         renderNotices();
         if (document.getElementById('statTasks')) renderDashboard();
     });
-
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addBtn.click();
-    });
-
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBtn.click(); });
     delBtn.addEventListener('click', function() {
         if (confirm('Delete all notices?')) {
             let data = loadData();
@@ -466,7 +538,6 @@ function setupNotice() {
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
-
     renderNotices();
 }
 
@@ -481,11 +552,11 @@ function setupNotes() {
         const data = loadData();
         if (data.notes.length === 0) {
             list.innerHTML = '<p class="empty-state">No notes yet.</p>';
-            return;
+        } else {
+            list.innerHTML = data.notes.map(n =>
+                `<div class="note-item"><span>${n.text}</span><span class="time">${new Date(n.date).toLocaleDateString()}</span></div>`
+            ).join('');
         }
-        list.innerHTML = data.notes.map(n =>
-            `<div class="note-item"><span>${n.text}</span><span class="time">${new Date(n.date).toLocaleDateString()}</span></div>`
-        ).join('');
     }
 
     addBtn.addEventListener('click', function() {
@@ -497,11 +568,7 @@ function setupNotes() {
         renderNotes();
         if (document.getElementById('statTasks')) renderDashboard();
     });
-
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addBtn.click();
-    });
-
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBtn.click(); });
     delBtn.addEventListener('click', function() {
         if (confirm('Delete all notes?')) {
             let data = loadData();
@@ -510,11 +577,10 @@ function setupNotes() {
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
-
     renderNotes();
 }
 
-// ─── Search Page ──────────────────────────────────────────────────
+// ─── Search ──────────────────────────────────────────────────────
 function setupSearch() {
     const input = document.getElementById('searchInput');
     const btn = document.getElementById('searchBtn');
@@ -525,16 +591,12 @@ function setupSearch() {
         if (!query) return;
         let data = loadData();
         data = logSearch(data, query);
-        // Open Google search
         window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
         input.value = '';
         if (document.getElementById('statSearches')) renderDashboard();
     }
-
     btn.addEventListener('click', performSearch);
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performSearch();
-    });
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
 }
 
 // ─── Nav Date ──────────────────────────────────────────────────────
@@ -545,14 +607,14 @@ function updateNavDate() {
     }
 }
 
-// ─── Initialization ──────────────────────────────────────────────
+// ─── Init ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
     updateNavDate();
-    // Determine which page we are on
+    initClock();
+
     const path = window.location.pathname.split('/').pop() || 'index.html';
     if (path === 'index.html' || path === '') {
         renderDashboard();
-        // Also setup file upload if on dashboard? Not needed, but we can.
     } else if (path === 'files.html') {
         setupFileUpload();
         renderFileList();
@@ -566,13 +628,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setupSearch();
     } else if (path === 'ai-tools.html') {
         setupAIRecommendation();
-        // Also setup social block warning (already in HTML)
     }
-    // For any page, we might want to ensure data is loaded and reset daily
+    // ensure daily reset
     const data = loadData();
     resetDailyIfNeeded(data);
-    // Also if we are on dashboard, we already render, but we can re-render after reset
-    if (path === 'index.html' || path === '') {
-        renderDashboard();
-    }
+    if (path === 'index.html' || path === '') renderDashboard();
 });
