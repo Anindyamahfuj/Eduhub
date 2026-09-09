@@ -29,11 +29,19 @@
     <main class="container search-page">
         <div class="search-container">
             <h1><span class="hl-blue">🔍</span> <span class="neon-text">Search</span></h1>
-            <p>Enter your <span class="hl-blue">query</span> below and we'll search <span class="hl-cyan">Google</span> for you.</p>
+            <p>Enter your <span class="hl-blue">query</span> below and we'll search <span class="hl-purple">Google</span> for you.</p>
+
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="What are you looking for?" />
+                <div class="suggestions-container">
+                    <input type="text" id="searchInput" placeholder="What are you looking for?" autocomplete="off" />
+                    <div id="suggestionsList" class="suggestions-list"></div>
+                </div>
                 <button id="searchBtn">🔎 Search</button>
             </div>
+
+            <button id="keyboardToggle" class="keyboard-toggle">⌨️ Show Keyboard</button>
+            <div id="keyboardContainer" class="keyboard-container"></div>
+
             <div class="search-tip">
                 <small>All searches are <span class="hl-purple">logged</span> in your dashboard history.</small>
             </div>
