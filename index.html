@@ -12,7 +12,7 @@
         <div class="nav-container">
             <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <ul class="nav-links">
-                <li><a href="index.html" class="active"><span class="hl-cyan">◆</span> Dashboard</a></li>
+                <li><a href="index.html" class="active"><span class="hl-purple">◆</span> Dashboard</a></li>
                 <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> AI Tools</a></li>
                 <li><a href="files.html"><span class="hl-green">◆</span> Files</a></li>
                 <li><a href="habits.html"><span class="hl-orange">◆</span> Habits</a></li>
@@ -43,7 +43,7 @@
 
         <header class="dash-header">
             <div>
-                <h1><span class="hl-cyan">◆</span> <span class="neon-text">Dashboard</span></h1>
+                <h1><span class="hl-purple">◆</span> <span class="neon-text">Dashboard</span></h1>
                 <p class="subtitle">Your <span class="hl-green">study hub</span> at a glance — today's <span class="hl-magenta">progress</span> &amp; all-time <span class="hl-orange">history</span>.</p>
             </div>
             <div class="dash-date-badge">
@@ -89,7 +89,10 @@
                 <span class="section-badge" id="todayCount">0 entries</span>
             </div>
             <div class="activity-list" id="todayActivity">
-                <p class="empty-state">No activity recorded <span class="hl-cyan">today</span> yet.</p>
+                <p class="empty-state">No activity recorded <span class="hl-purple">today</span> yet.</p>
+            </div>
+            <div class="del-history-buttons">
+                <button id="deleteTodayBtn" class="btn-danger-sm">🗑️ Delete Today's Activity</button>
             </div>
         </section>
 
@@ -100,6 +103,9 @@
             </div>
             <div class="activity-list" id="historyActivity">
                 <p class="empty-state">No history <span class="hl-purple">recorded</span> yet.</p>
+            </div>
+            <div class="del-history-buttons">
+                <button id="deleteAllBtn" class="btn-danger-sm">🗑️ Delete All History</button>
             </div>
         </section>
     </main>
