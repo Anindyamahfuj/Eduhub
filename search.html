@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Search</title>
     <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-brand">📘 StudyHub</a>
+            <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <ul class="nav-links">
-                <li><a href="index.html">Dashboard</a></li>
-                <li><a href="ai-tools.html">AI Tools</a></li>
-                <li><a href="files.html">Files</a></li>
-                <li><a href="habits.html">Habits</a></li>
-                <li><a href="notice.html">Notice</a></li>
-                <li><a href="notes.html">Notes</a></li>
-                <li><a href="search.html" class="active">Search</a></li>
+                <li><a href="index.html"><span class="hl-cyan">◆</span> Dashboard</a></li>
+                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> AI Tools</a></li>
+                <li><a href="files.html"><span class="hl-green">◆</span> Files</a></li>
+                <li><a href="habits.html"><span class="hl-orange">◆</span> Habits</a></li>
+                <li><a href="notice.html"><span class="hl-purple">◆</span> Notice</a></li>
+                <li><a href="notes.html"><span class="hl-pink">◆</span> Notes</a></li>
+                <li><a href="search.html" class="active"><span class="hl-blue">◆</span> Search</a></li>
             </ul>
             <div class="nav-right">
                 <span class="nav-date" id="navDate"></span>
@@ -28,20 +28,20 @@
 
     <main class="container search-page">
         <div class="search-container">
-            <h1>🔍 Search the Web</h1>
-            <p>Enter your query below and we'll search Google for you.</p>
+            <h1><span class="hl-blue">🔍</span> <span class="neon-text">Search</span></h1>
+            <p>Enter your <span class="hl-blue">query</span> below and we'll search <span class="hl-cyan">Google</span> for you.</p>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="What are you looking for?" />
-                <button id="searchBtn">Search</button>
+                <button id="searchBtn">🔎 Search</button>
             </div>
             <div class="search-tip">
-                <small>All searches are logged in your dashboard history.</small>
+                <small>All searches are <span class="hl-purple">logged</span> in your dashboard history.</small>
             </div>
         </div>
     </main>
 
     <footer class="footer">
-        <p>© 2026 StudyHub · built for focus &amp; growth</p>
+        <p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p>
     </footer>
 
     <script src="script.js"></script>
