@@ -1,5 +1,5 @@
 /* ==============================================================
-   STUDYHUB – FULL SCRIPT (ALL FEATURES)
+   STUDYHUB – FULL SCRIPT (ALL FEATURES + SEARCH MERGED)
    ============================================================== */
 
 const STORAGE_KEY = 'studyHubData';
@@ -363,13 +363,8 @@ function checkReminders(data) {
 }
 
 // ================================================================
-// POMODORO
+// POMODORO (with custom duration)
 // ================================================================
-var pomoTimer = null;
-var pomoSeconds = 1500;
-var pomoRunning = false;
-var pomoTask = '';
-
 function initPomodoro() {
     var display = document.getElementById('pomoDisplay');
     if (!display) return;
@@ -378,11 +373,38 @@ function initPomodoro() {
     var stopBtn = document.getElementById('pomoStop');
     var resetBtn = document.getElementById('pomoReset');
     var taskSelect = document.getElementById('pomoTaskSelect');
+    var durationInput = document.getElementById('pomoDuration');
+
+    var pomoSeconds = 1500;
+    var pomoRunning = false;
+    var pomoTimer = null;
+    var pomoTask = '';
 
     function updateDisplay() {
         var m = Math.floor(pomoSeconds / 60);
         var s = pomoSeconds % 60;
         display.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    // Update seconds when duration input changes
+    if (durationInput) {
+        durationInput.addEventListener('change', function() {
+            if (!pomoRunning) {
+                var mins = parseInt(this.value) || 25;
+                if (mins < 1) mins = 1;
+                if (mins > 120) mins = 120;
+                pomoSeconds = mins * 60;
+                updateDisplay();
+            }
+        });
+    }
+
+    function resetTimer() {
+        clearInterval(pomoTimer);
+        pomoRunning = false;
+        var mins = durationInput ? parseInt(durationInput.value) || 25 : 25;
+        pomoSeconds = mins * 60;
+        updateDisplay();
     }
 
     if (startBtn) {
@@ -400,16 +422,15 @@ function initPomodoro() {
                     data.pomodoroLogs.push({
                         date: new Date().toISOString().slice(0, 10),
                         task: pomoTask,
-                        duration: 25
+                        duration: durationInput ? parseInt(durationInput.value) || 25 : 25
                     });
                     addActivity(data, 'pomodoro', 'Completed Pomodoro: ' + pomoTask);
                     saveData(data);
                     renderDashboard();
-                    new Notification('🍅 Pomodoro Complete!', {
+                    new Notification('⏱️ Timer Complete!', {
                         body: 'Great focus on ' + pomoTask + '!'
                     });
-                    pomoSeconds = 1500;
-                    updateDisplay();
+                    resetTimer();
                 }
             }, 1000);
         });
@@ -423,16 +444,10 @@ function initPomodoro() {
     }
 
     if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-            clearInterval(pomoTimer);
-            pomoRunning = false;
-            pomoSeconds = 1500;
-            updateDisplay();
-        });
+        resetBtn.addEventListener('click', resetTimer);
     }
 
-    updateDisplay();
-
+    // Populate task select
     if (taskSelect) {
         var data = loadData();
         var options = '<option value="Study">Study</option>';
@@ -441,6 +456,8 @@ function initPomodoro() {
         });
         taskSelect.innerHTML = options;
     }
+
+    resetTimer();
 }
 
 // ================================================================
@@ -459,7 +476,6 @@ function setupSummarizer() {
             return;
         }
 
-        // Simple extractive summarization
         var sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
         if (sentences.length <= 2) {
             output.textContent = text;
@@ -798,7 +814,7 @@ function setupNotes() {
 }
 
 // ================================================================
-// SEARCH (with suggestions & keyboard)
+// SEARCH (merged into dashboard – no separate page needed)
 // ================================================================
 function setupSearch() {
     var input = document.getElementById('searchInput');
@@ -1371,12 +1387,13 @@ document.addEventListener('DOMContentLoaded', function() {
         Notification.requestPermission();
     }
 
-    // Route
+    // ---- ROUTING ----
     var path = window.location.pathname.split('/').pop() || 'index.html';
 
     if (path === 'index.html' || path === '') {
         renderDashboard();
         initPomodoro();
+        setupSearch(); // <-- SEARCH NOW AVAILABLE ON DASHBOARD
 
         var dToday = document.getElementById('deleteTodayBtn');
         if (dToday) dToday.addEventListener('click', deleteTodayHistory);
@@ -1408,9 +1425,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     } else if (path === 'notes.html') {
         setupNotes();
-
-    } else if (path === 'search.html') {
-        setupSearch();
 
     } else if (path === 'ai-tools.html') {
         setupAIRecommendation();
