@@ -76,6 +76,26 @@ function addActivity(data, type, description) {
 }
 
 // ================================================================
+// AUTO-HIGHLIGHT THE CORRECT NAV LINK (regardless of HTML)
+// ================================================================
+function setActiveNavLink() {
+    var path = window.location.pathname.split('/').pop() || 'index.html';
+    if (path === '') path = 'index.html';
+
+    var links = document.querySelectorAll('.nav-links a');
+    if (!links.length) return;
+
+    links.forEach(function(link) {
+        link.classList.remove('active');
+        var href = link.getAttribute('href');
+        // Match exact file name; support both "notes.html" and "./notes.html"
+        if (href === path || href === './' + path) {
+            link.classList.add('active');
+        }
+    });
+}
+
+// ================================================================
 // BURGER MENU
 // ================================================================
 function initBurger() {
