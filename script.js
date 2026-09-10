@@ -2873,17 +2873,18 @@ function setupNotes() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-    delBtn.addEventListener('click', function() {
-        if (confirm('Delete all notes?')) {
+        delBtn.addEventListener('click', function() {
+        if (confirm('Move all notes to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
+            data.notes.forEach(function(n) { pushToTrash(data, 'note', n); });
             data.notes = [];
-            addActivity(data, 'delete', 'Deleted all notes');
+            addActivity(data, 'delete', 'Moved all notes to trash');
             saveData(data);
             renderNotes();
+            updateTrashCount();
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
-
     renderNotes();
 }
 
