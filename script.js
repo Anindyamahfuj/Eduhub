@@ -2731,7 +2731,7 @@ function setupHabits() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-       delBtn.addEventListener('click', function() {
+          delBtn.addEventListener('click', function() {
         if (confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
             data.habits.forEach(function(h) { pushToTrash(data, 'habit', h); });
@@ -2743,7 +2743,6 @@ function setupHabits() {
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
-
     renderHabits();
 }
 
