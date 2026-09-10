@@ -3841,7 +3841,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        setupFocusMode();
+      
 
     } else if (path === 'files.html') {
         setupFileUpload();
@@ -5315,4 +5315,132 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Expose for other scripts
     window.refreshNewElements = refreshNewElements;
+})();
+
+// ================================================================
+// FOCUS MODE — WORKING FEATURE
+// Auto-engages Blocker · auto-toggles with Pomodoro / Deep Work ·
+// detects tab switching · shows indicator bar · works on every page
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    ready(function () {
+        var btn = document.getElementById('focusToggle');
+        if (!btn) return;
+
+        var autoEnabledByPomo = false;
+        var autoEnabledByDW   = false;
+
+        function isOn() { return document.body.classList.contains('focus-mode'); }
+
+        function ensureBar() {
+            var bar = document.getElementById('focusIndicatorBar');
+            if (bar) return bar;
+            bar = document.createElement('div');
+            bar.id = 'focusIndicatorBar';
+            bar.className = 'focus-indicator-bar';
+            bar.innerHTML =
+                '<span>🔒 FOCUS MODE — distractions blocked</span>' +
+                '<span style="opacity:0.7; font-weight:500;">Press 🔒 again to exit</span>';
+            document.body.insertBefore(bar, document.body.firstChild);
+            return bar;
+        }
+
+        function paint() {
+            var on = isOn();
+            btn.textContent = on ? '🔒 ' + getTranslation('focus_on') : '🔓 ' + getTranslation('focus_off');
+            btn.classList.toggle('active', on);
+            ensureBar();
+
+            // Auto-engage the Blocker while Focus Mode is on
+            if (on) {
+                try {
+                    var d = loadData();
+                    if (!d.blockerOn) {
+                        d.blockerOn = true;
+                        saveData(d);
+                        if (typeof blockerActive !== 'undefined') {
+                            blockerActive = true;
+                        }
+                        if (typeof updateBlockerUI === 'function') {
+                            updateBlockerUI();
+                        }
+                    }
+                } catch (e) { /* silent */ }
+            }
+        }
+
+        // Public API — allows Pomodoro / Deep Work to toggle focus programmatically
+        window.setFocusMode = function (on, source) {
+            if (on === isOn()) {
+                // still record source so stop() knows what to undo
+                if (source === 'pomodoro') autoEnabledByPomo = on;
+                if (source === 'deepwork') autoEnabledByDW   = on;
+                return;
+            }
+            if (on) document.body.classList.add('focus-mode');
+            else    document.body.classList.remove('focus-mode');
+
+            if (source === 'pomodoro') autoEnabledByPomo = on;
+            if (source === 'deepwork') autoEnabledByDW   = on;
+
+            paint();
+        };
+
+        // Manual toggle
+        btn.addEventListener('click', function () {
+            autoEnabledByPomo = false;
+            autoEnabledByDW   = false;
+            document.body.classList.toggle('focus-mode');
+            paint();
+        });
+
+        // Watch for programmatic class changes so the UI stays in sync
+        var obs = new MutationObserver(paint);
+        obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        // Distraction feedback — if the user leaves the tab while focusing
+        document.addEventListener('visibilitychange', function () {
+            if (!isOn()) return;
+            if (document.hidden) {
+                window.__focusLeftAt = Date.now();
+            } else {
+                if (window.__focusLeftAt && (Date.now() - window.__focusLeftAt) > 10000) {
+                    var bar = document.getElementById('focusIndicatorBar');
+                    if (bar) {
+                        var originalBg = bar.style.background;
+                        bar.style.background = 'linear-gradient(90deg, #dc2626, #f97316, #dc2626)';
+                        bar.firstElementChild.textContent = '⚠️ You left focus mode — welcome back. Stay on task!';
+                        setTimeout(function () {
+                            bar.style.background = originalBg;
+                            bar.firstElementChild.textContent = '🔒 FOCUS MODE — distractions blocked';
+                        }, 4000);
+                    }
+                }
+                window.__focusLeftAt = 0;
+            }
+        });
+
+        // Auto-engage with Pomodoro
+        var pomoStart = document.getElementById('pomoStart');
+        var pomoStop  = document.getElementById('pomoStop');
+        var pomoReset = document.getElementById('pomoReset');
+        if (pomoStart) pomoStart.addEventListener('click', function () { window.setFocusMode(true, 'pomodoro'); });
+        if (pomoStop)  pomoStop.addEventListener('click',  function () { if (autoEnabledByPomo) window.setFocusMode(false, 'pomodoro'); });
+        if (pomoReset) pomoReset.addEventListener('click', function () { if (autoEnabledByPomo) window.setFocusMode(false, 'pomodoro'); });
+
+        // Auto-engage with Deep Work Timer
+        var dwStart = document.getElementById('dwStart');
+        var dwStop  = document.getElementById('dwStop');
+        var dwReset = document.getElementById('dwReset');
+        if (dwStart) dwStart.addEventListener('click', function () { window.setFocusMode(true, 'deepwork'); });
+        if (dwStop)  dwStop.addEventListener('click',  function () { if (autoEnabledByDW) window.setFocusMode(false, 'deepwork'); });
+        if (dwReset) dwReset.addEventListener('click', function () { if (autoEnabledByDW) window.setFocusMode(false, 'deepwork'); });
+
+        paint();
+    });
 })();
