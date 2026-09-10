@@ -3464,6 +3464,7 @@ function updateScrollGradient() {
 // ================================================================
 document.addEventListener('DOMContentLoaded', function() {
     initBurger();
+    setActiveNavLink();   // <-- NEW LINE
     updateNavDate();
     initClock();
     updateScrollGradient();
