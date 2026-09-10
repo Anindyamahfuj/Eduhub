@@ -1125,3 +1125,117 @@ body {
     .priority-grid { grid-template-columns: 1fr; }
     .deepwork-timer { font-size: 1.5rem; }
 }
+
+
+/* ===== AI PLANNER ===== */
+.planner-ai-section { border: 1px solid rgba(192,132,252,0.25); }
+.planner-ai-input {
+    display: flex;
+    gap: 0.6rem;
+    margin: 0.6rem 0;
+    flex-wrap: wrap;
+}
+.planner-ai-input textarea {
+    flex: 1;
+    min-width: 240px;
+    min-height: 60px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(192,132,252,0.2);
+    border-radius: 12px;
+    color: #e2e8f0;
+    padding: 0.7rem 1rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+}
+.planner-ai-input textarea:focus {
+    outline: none;
+    border-color: #c084fc;
+    box-shadow: 0 0 20px rgba(192,132,252,0.15);
+}
+.planner-ai-chips {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.planner-chip {
+    background: rgba(192,132,252,0.1);
+    border: 1px solid rgba(192,132,252,0.25);
+    color: #c084fc;
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.planner-chip:hover {
+    background: rgba(192,132,252,0.25);
+    border-color: #c084fc;
+}
+.planner-ai-output { margin-top: 1rem; }
+.planner-ai-summary {
+    background: rgba(192,132,252,0.08);
+    border-left: 3px solid #c084fc;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    line-height: 1.5;
+}
+.planner-ai-summary strong { color: #c084fc; }
+.planner-ai-summary .tag {
+    display: inline-block;
+    background: rgba(192,132,252,0.15);
+    border: 1px solid rgba(192,132,252,0.3);
+    padding: 0.05rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin: 0 0.2rem;
+    color: #c084fc;
+}
+.planner-ai-preview {
+    display: grid;
+    gap: 4px;
+    overflow-x: auto;
+    font-size: 0.7rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+}
+.planner-ai-preview .ai-cell {
+    background: rgba(192,132,252,0.15);
+    border: 1px solid rgba(192,132,252,0.35);
+    border-radius: 6px;
+    padding: 0.25rem;
+    text-align: center;
+    color: #e2e8f0;
+    font-weight: 600;
+    min-height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.planner-ai-preview .ai-cell.empty {
+    background: rgba(255,255,255,0.02);
+    border-color: rgba(255,255,255,0.05);
+}
+.planner-ai-preview .ai-label {
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    padding: 0.25rem;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    min-height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.planner-ai-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
