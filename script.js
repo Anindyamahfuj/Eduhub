@@ -2597,15 +2597,17 @@ function setupFileUpload() {
         if (document.getElementById('statFiles')) renderDashboard();
     }
 
-    var delBtn = document.getElementById('deleteAllFilesBtn');
+       var delBtn = document.getElementById('deleteAllFilesBtn');
     if (delBtn) {
         delBtn.addEventListener('click', function() {
-            if (confirm('Delete all files?')) {
+            if (confirm('Move all files to Trash? They will be recoverable for 24 hours.')) {
                 var data = loadData();
+                data.files.forEach(function(f) { pushToTrash(data, 'file', f); });
                 data.files = [];
-                addActivity(data, 'delete', 'Deleted all files');
+                addActivity(data, 'delete', 'Moved all files to trash');
                 saveData(data);
                 renderFileList();
+                updateTrashCount();
                 if (document.getElementById('statFiles')) renderDashboard();
             }
         });
