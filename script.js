@@ -2832,14 +2832,18 @@ function setupNotes() {
             }).join('');
         }
 
-        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+               list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;
-                if (confirm('Delete this note?')) {
+                if (confirm('Delete this note? It will go to Trash for 24 hours.')) {
                     var data = loadData();
+                    var item = data.notes.find(function(n) { return n.id === id; });
+                    if (item) pushToTrash(data, 'note', item);
                     data.notes = data.notes.filter(function(n) { return n.id !== id; });
+                    addActivity(data, 'delete', 'Moved note to trash');
                     saveData(data);
                     renderNotes();
+                    updateTrashCount();
                     if (document.getElementById('statTasks')) renderDashboard();
                 }
             });
