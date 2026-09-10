@@ -4890,12 +4890,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // ================================================================
 // AI PLANNER (natural-language → schedule)
 // ================================================================
+// AI PLANNER (natural-language → schedule)
 (function () {
-    function ready(fn) {
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
-        else fn();
-    }
-
+    function ready(fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
     ready(function () {
         var inputEl = document.getElementById('plannerAiInput');
         var btn = document.getElementById('plannerAiBtn');
@@ -4906,59 +4903,63 @@ document.addEventListener('DOMContentLoaded', function() {
         var ALL_HOURS = ['8:00','9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
 
         var SUBJECT_MAP = {
-            math:'Math', maths:'Math', mathematics:'Math', algebra:'Math', calculus:'Math', geometry:'Math', stats:'Statistics', statistics:'Statistics',
-            physics:'Physics', phy:'Physics',
-            chemistry:'Chemistry', chem:'Chemistry',
-            biology:'Biology', bio:'Biology',
-            english:'English', eng:'English',
-            literature:'Literature', lit:'Literature',
-            history:'History', hist:'History',
-            geography:'Geography', geo:'Geography',
-            coding:'Coding', code:'Coding', program:'Coding', programming:'Coding', cs:'Coding',
-            'computer science':'Computer Science',
-            economics:'Economics', econ:'Economics',
-            bangla:'Bangla', bengali:'Bangla',
-            spanish:'Spanish', french:'French', german:'German', arabic:'Arabic', hindi:'Hindi', chinese:'Chinese', japanese:'Japanese',
-            art:'Art', drawing:'Art', music:'Music',
+            math:'Math', maths:'Math', mathematics:'Math', algebra:'Math', calculus:'Math', geometry:'Math',
+            stats:'Statistics', statistics:'Statistics', trigonometry:'Math', arithmetic:'Math',
+            physics:'Physics', phy:'Physics', chemistry:'Chemistry', chem:'Chemistry',
+            biology:'Biology', bio:'Biology', english:'English', eng:'English',
+            literature:'Literature', lit:'Literature', history:'History', hist:'History',
+            geography:'Geography', geo:'Geography', coding:'Coding', code:'Coding',
+            program:'Coding', programming:'Coding', cs:'Coding', 'computer science':'Computer Science',
+            economics:'Economics', econ:'Economics', bangla:'Bangla', bengali:'Bangla',
+            spanish:'Spanish', french:'French', german:'German', arabic:'Arabic',
+            hindi:'Hindi', chinese:'Chinese', japanese:'Japanese', korean:'Korean',
+            art:'Art', drawing:'Art', painting:'Art', music:'Music',
             revision:'Revision', revise:'Revision', review:'Revision',
             homework:'Homework', hw:'Homework', assignment:'Homework',
-            reading:'Reading', read:'Reading',
-            notes:'Note Review', 'note review':'Note Review',
+            reading:'Reading', read:'Reading', notes:'Note Review', 'note review':'Note Review',
             practice:'Practice', problems:'Practice', exercise:'Practice',
-            project:'Project', projects:'Project'
+            project:'Project', projects:'Project', presentation:'Presentation',
+            writing:'Writing', essay:'Writing'
+        };
+
+        // Category tags — used by smartOrder to avoid stacking same-category subjects
+        var SUBJECT_CATEGORIES = {
+            'Math':'quant','Statistics':'quant','Physics':'quant','Chemistry':'quant',
+            'Biology':'sci','Computer Science':'tech','Coding':'tech',
+            'English':'lang','Literature':'lang','Bangla':'lang','Spanish':'lang',
+            'French':'lang','German':'lang','Arabic':'lang','Hindi':'lang',
+            'Chinese':'lang','Japanese':'lang','Korean':'lang',
+            'History':'hum','Geography':'hum','Economics':'hum',
+            'Art':'creative','Music':'creative','Writing':'creative','Presentation':'creative',
+            'Revision':'meta','Homework':'meta','Reading':'meta',
+            'Note Review':'meta','Practice':'meta','Project':'meta'
         };
 
         function parseRequest(text) {
             var t = ' ' + text.toLowerCase() + ' ';
-
-            // ---------- MODE ----------
             var mode = 'balanced';
-            if (/\b(easy|light|chill|relaxed|relax|casual|minimal|soft|few|small)\b/.test(t)) mode = 'easy';
-            else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|serious)\b/.test(t)) mode = 'intense';
-            else if (/\b(balanced|normal|moderate|regular|standard|medium)\b/.test(t)) mode = 'balanced';
+            if (/\b(easy|light|chill|relaxed|relax|casual|minimal|soft|few|small|simple)\b/.test(t)) mode = 'easy';
+            else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|serious|burn)\b/.test(t)) mode = 'intense';
+            else if (/\b(balanced|normal|moderate|regular|standard|medium|steady)\b/.test(t)) mode = 'balanced';
             else if (/\b(by yourself|yourself|auto|automatic|surprise|random|choose|pick|whatever|any|make one|decide|invent)\b/.test(t)) mode = 'balanced';
 
-            // ---------- SCOPE ----------
             var scope = 'all';
             if (/\b(weekend|sat|sun|saturday|sunday)\b/.test(t)) scope = 'weekend';
             else if (/\b(weekday|weekdays|mon to fri|monday to friday|work week|school week)\b/.test(t)) scope = 'weekday';
             else if (/\b(today|tonight|now|this evening|this afternoon|this morning)\b/.test(t)) scope = 'today';
             else if (/\b(tomorrow)\b/.test(t)) scope = 'tomorrow';
 
-            // ---------- TIME BIAS ----------
             var bias = 'all';
             if (/\b(morning|am|early)\b/.test(t)) bias = 'morning';
             else if (/\b(afternoon|noon|midday)\b/.test(t)) bias = 'afternoon';
             else if (/\b(evening|night|tonight|pm|late)\b/.test(t)) bias = 'evening';
 
-            // ---------- DURATION ----------
             var hrs = 0;
             var mH = t.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|h)\b/);
             var mM = t.match(/(\d+)\s*(minutes?|mins?|m)\b/);
             if (mH) hrs = parseFloat(mH[1]);
             else if (mM) hrs = parseFloat(mM[1]) / 60;
 
-            // ---------- SUBJECTS ----------
             var subjects = [];
             Object.keys(SUBJECT_MAP).forEach(function (key) {
                 var re = new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
@@ -4968,8 +4969,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // ---------- SUBJECT + TIME-PAIR MATCH ----------
-            // e.g. "math in the morning, physics in the evening"
             var pairs = [];
             var pairRe = /([a-z ]+?)\s+(?:in the|at|during)\s+(morning|afternoon|evening|night)/g;
             var pm;
@@ -4983,8 +4982,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (cleanSubj) pairs.push({ subject: cleanSubj, time: timeof });
             }
 
-            // ---------- FOCUS SUBJECT ----------
-            var focusMatch = t.match(/(?:focus on|concentrate on|mainly|mostly|emphasis on|prioritize)\s+([a-z ]+)/);
+            var focusMatch = t.match(/(?:focus on|concentrate on|mainly|mostly|emphasis on|prioritize|priority on)\s+([a-z ]+)/);
             var focus = null;
             if (focusMatch) {
                 var fw = focusMatch[1];
@@ -4993,24 +4991,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            return {
-                mode: mode,
-                scope: scope,
-                bias: bias,
-                hours: hrs,
-                subjects: subjects,
-                pairs: pairs,
-                focus: focus,
-                raw: text
-            };
+            return { mode: mode, scope: scope, bias: bias, hours: hrs, subjects: subjects, pairs: pairs, focus: focus, raw: text };
         }
 
-        function dayShort(idx) {
-            return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][idx];
+        function dayShort(idx) { return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][idx]; }
+
+        // Deterministic shuffle — same seed always produces same order
+        function shuffle(arr, seed) {
+            var a = arr.slice();
+            var s = seed || 1;
+            for (var i = a.length - 1; i > 0; i--) {
+                s = (s * 9301 + 49297) % 233280;
+                var j = Math.floor((s / 233280) * (i + 1));
+                var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+            }
+            return a;
         }
 
-        function buildPlan(req) {
-            // ---------- pick days ----------
+        // Interleave categories so you don't get 3 maths in a row
+        function smartOrder(pool, focus) {
+            if (pool.length <= 1) return pool.slice();
+            var byCat = {};
+            pool.forEach(function (s) {
+                var cat = SUBJECT_CATEGORIES[s] || 'other';
+                if (!byCat[cat]) byCat[cat] = [];
+                byCat[cat].push(s);
+            });
+            var cats = Object.keys(byCat);
+            var result = [];
+            var safety = 0;
+            while (result.length < pool.length && safety < 200) {
+                safety++;
+                var cat = cats[Math.floor(Math.random() * cats.length)];
+                if (byCat[cat] && byCat[cat].length > 0) {
+                    var subj = byCat[cat].shift();
+                    if (result.length >= 1 && result[result.length - 1] === subj) {
+                        byCat[cat].push(subj);
+                        continue;
+                    }
+                    result.push(subj);
+                }
+            }
+            pool.forEach(function (s) { if (result.indexOf(s) === -1) result.push(s); });
+            return result;
+        }
+
+        function buildPlan(req, variation) {
+            variation = variation || 0;
+            var seed = (variation + 1) * 7919;
+
             var days;
             if (req.scope === 'weekend') days = ['Sat','Sun'];
             else if (req.scope === 'weekday') days = ['Mon','Tue','Wed','Thu','Fri'];
@@ -5018,85 +5047,59 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (req.scope === 'tomorrow') days = [dayShort((new Date().getDay() + 1) % 7)];
             else days = ALL_DAYS.slice();
 
-            // ---------- pick hours ----------
             var hoursPool = ALL_HOURS.slice();
             if (req.bias === 'morning') hoursPool = ['8:00','9:00','10:00','11:00'];
             else if (req.bias === 'afternoon') hoursPool = ['12:00','13:00','14:00','15:00','16:00'];
             else if (req.bias === 'evening') hoursPool = ['17:00','18:00','19:00','20:00'];
 
-            // ---------- density ----------
-            var selectedHours;
-            if (req.mode === 'easy') {
-                selectedHours = hoursPool.filter(function (h, i) { return i % 2 === 0; });
-            } else if (req.mode === 'intense') {
-                selectedHours = hoursPool.slice();
-            } else {
-                selectedHours = hoursPool.filter(function (h, i) { return i % 3 !== 2; });
-            }
-            if (selectedHours.length === 0) selectedHours = [hoursPool[0]];
+            var targetCount;
+            if (req.hours > 0) targetCount = Math.max(1, Math.min(hoursPool.length, Math.round(req.hours)));
+            else if (req.mode === 'easy') targetCount = Math.max(1, Math.floor(hoursPool.length / 2));
+            else if (req.mode === 'intense') targetCount = hoursPool.length;
+            else targetCount = Math.max(2, Math.floor(hoursPool.length * 0.7));
 
-            // If duration given, cap hours per day
-            if (req.hours > 0) {
-                var cap = Math.max(1, Math.round(req.hours));
-                selectedHours = selectedHours.slice(0, cap);
-            }
+            // Shuffle then pick — different variation → different hour set
+            var shuffledHours = shuffle(hoursPool, seed);
+            var selectedHours = shuffledHours.slice(0, targetCount).sort();
 
-            // ---------- subject pool ----------
             var pool = req.subjects.slice();
             if (req.focus && pool.indexOf(req.focus) === -1) pool.unshift(req.focus);
             if (pool.length === 0) {
-                if (req.mode === 'intense') pool = ['Math','Science','Revision','Practice','Reading'];
-                else if (req.mode === 'easy') pool = ['Reading','Revision','Notes','Practice'];
+                if (req.mode === 'intense') pool = ['Math','Physics','Revision','Practice','Reading'];
+                else if (req.mode === 'easy') pool = ['Reading','Revision','Note Review','Practice'];
                 else pool = ['Math','Science','Language','Reading','Revision','Practice'];
             }
+            // Different variation → different ordering of subjects
+            var poolShuffled = shuffle(pool, seed + 13);
+            var orderedPool = smartOrder(poolShuffled, req.focus);
 
-            // ---------- build map ----------
             var plan = {};
             var idx = 0;
-            days.forEach(function (day) {
-                selectedHours.forEach(function (hour) {
-                    // Respect explicit subject/time pairs
+            days.forEach(function (day, dayIdx) {
+                selectedHours.forEach(function (hour, hourIdx) {
                     var forced = null;
                     req.pairs.forEach(function (p) {
-                        if (p.time === req.bias && pool.indexOf(p.subject) !== -1 && !forced) {
-                            forced = p.subject;
-                        }
+                        if (p.time === req.bias && orderedPool.indexOf(p.subject) !== -1 && !forced) forced = p.subject;
                     });
                     var subj;
                     if (forced) subj = forced;
+                    else if (req.focus && (idx + variation) % 3 === 0) subj = req.focus;
                     else {
-                        // Weighted rotation: focus subject appears more often
-                        if (req.focus && idx % 3 === 0) subj = req.focus;
-                        else subj = pool[idx % pool.length];
+                        var offset = (dayIdx * 2 + hourIdx + variation) % orderedPool.length;
+                        subj = orderedPool[offset];
                     }
                     plan[day + '_' + hour] = subj;
                     idx++;
                 });
             });
 
-            return {
-                plan: plan,
-                days: days,
-                hours: selectedHours,
-                pool: pool
-            };
+            return { plan: plan, days: days, hours: selectedHours, pool: orderedPool };
         }
 
         function describeRequest(req, result) {
             var modeLabel = { easy: getTranslation('mode_easy'), balanced: getTranslation('mode_balanced'), intense: getTranslation('mode_intense') }[req.mode];
-            var scopeLabel = {
-                all: getTranslation('scope_full_week'),
-                weekend: getTranslation('scope_weekend_only'),
-                weekday: getTranslation('scope_weekdays_only'),
-                today: getTranslation('scope_today_only'),
-                tomorrow: getTranslation('scope_tomorrow_only')
-            }[req.scope];
-            var biasLabel = {
-                all: getTranslation('time_any'),
-                morning: getTranslation('time_mornings'),
-                afternoon: getTranslation('time_afternoons'),
-                evening: getTranslation('time_evenings')
-            }[req.bias];
+            var scopeLabel = { all: getTranslation('scope_full_week'), weekend: getTranslation('scope_weekend_only'), weekday: getTranslation('scope_weekdays_only'), today: getTranslation('scope_today_only'), tomorrow: getTranslation('scope_tomorrow_only') }[req.scope];
+            var biasLabel = { all: getTranslation('time_any'), morning: getTranslation('time_mornings'), afternoon: getTranslation('time_afternoons'), evening: getTranslation('time_evenings') }[req.bias];
 
             var subjectText = result.pool.slice(0, 6).join(', ');
             if (result.pool.length > 6) subjectText += '…';
@@ -5119,10 +5122,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var hours = result.hours;
             var gridStyle = 'grid-template-columns: 60px repeat(' + days.length + ', minmax(70px, 1fr));';
             var html = '<div class="planner-ai-preview" style="' + gridStyle + '">';
-            // header row
             html += '<div class="ai-label"></div>';
             days.forEach(function (d) { html += '<div class="ai-label">' + d + '</div>'; });
-            // rows
             hours.forEach(function (h) {
                 html += '<div class="ai-label">' + h + '</div>';
                 days.forEach(function (d) {
@@ -5135,19 +5136,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         var lastResult = null;
+        var lastRequest = null;
+        var variation = 0;
 
-        function generate() {
-            var text = inputEl.value.trim();
-            if (!text) {
-                output.innerHTML = '<div class="planner-ai-summary">Please type what you want to plan — or click one of the chips above.</div>';
-                return;
-            }
-            var req = parseRequest(text);
-            var result = buildPlan(req);
-            lastResult = result;
-
-            var html = describeRequest(req, result);
-            html += renderPreview(result);
+        function renderOutput(req, result) {
+            var html = describeRequest(req, result) + renderPreview(result);
             html += '<div class="planner-ai-actions">';
             html += '<button id="aiApplyBtn" class="btn-primary">✅ ' + getTranslation('apply_merge_btn') + '</button>';
             html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 ' + getTranslation('replace_planner_btn') + '</button>';
@@ -5157,28 +5150,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
             document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
+            // RETRY: increments variation → rebuild → different hours, different subject order, different layout
             document.getElementById('aiRetryBtn').addEventListener('click', function () {
-                // Random shake
-                if (lastResult) {
-                    var keys = Object.keys(lastResult.plan);
-                    var vals = keys.map(function (k) { return lastResult.plan[k]; });
-                    for (var i = vals.length - 1; i > 0; i--) {
-                        var j = Math.floor(Math.random() * (i + 1));
-                        var tmp = vals[i]; vals[i] = vals[j]; vals[j] = tmp;
-                    }
-                    keys.forEach(function (k, i) { lastResult.plan[k] = vals[i]; });
-                    var req2 = parseRequest(text);
-                    output.innerHTML = describeRequest(req2, lastResult) + renderPreview(lastResult) +
-                        '<div class="planner-ai-actions">' +
-                        '<button id="aiApplyBtn" class="btn-primary">✅ ' + getTranslation('apply_merge_btn') + '</button>' +
-                        '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 ' + getTranslation('replace_planner_btn') + '</button>' +
-                        '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('retry_variation_btn') + '</button>' +
-                        '</div>';
-                    document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
-                    document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
-                    document.getElementById('aiRetryBtn').addEventListener('click', function () { document.getElementById('aiRetryBtn').click(); });
-                }
+                variation++;
+                var freshReq = parseRequest(lastRequest);
+                lastResult = buildPlan(freshReq, variation);
+                renderOutput(freshReq, lastResult);
             });
+        }
+
+        function generate() {
+            var text = inputEl.value.trim();
+            if (!text) { output.innerHTML = '<div class="planner-ai-summary">' + getTranslation('please_type_plan') + '</div>'; return; }
+            variation = 0;
+            lastRequest = text;
+            var req = parseRequest(text);
+            var result = buildPlan(req, 0);
+            lastResult = result;
+            renderOutput(req, result);
         }
 
         function applyPlan(replace) {
@@ -5186,21 +5175,17 @@ document.addEventListener('DOMContentLoaded', function() {
             var data = loadData();
             if (!data.planner) data.planner = {};
             if (replace) data.planner = {};
-            Object.keys(lastResult.plan).forEach(function (k) {
-                data.planner[k] = lastResult.plan[k];
-            });
+            Object.keys(lastResult.plan).forEach(function (k) { data.planner[k] = lastResult.plan[k]; });
             saveData(data);
             if (typeof addActivity === 'function') {
-                addActivity(data, 'planner_ai', (replace ? 'Replaced planner with AI plan' : 'Merged AI plan into planner'));
+                addActivity(data, 'planner_ai', replace ? getTranslation('planner_replaced_log') : getTranslation('planner_merged_log'));
                 saveData(data);
             }
-            // reload so grid re-renders with new data
             location.reload();
         }
 
         btn.addEventListener('click', generate);
 
-        // Chips autofill + auto-generate
         document.querySelectorAll('.planner-chip').forEach(function (chip) {
             chip.addEventListener('click', function () {
                 inputEl.value = this.dataset.prompt;
@@ -5208,12 +5193,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Ctrl+Enter inside textarea triggers generation
         inputEl.addEventListener('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                generate();
-            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); generate(); }
         });
     });
 })();
