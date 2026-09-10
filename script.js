@@ -21,10 +21,20 @@ function getDefaultData() {
         pomodoroLogs: [],
         planner: {},
         journal: {},
-        subjects: ['General', 'Math', 'Science', 'Language']
+        subjects: ['General', 'Math', 'Science', 'Language'],
+        // ===== NEW FEATURE STORAGE =====
+        priorityMatrix: {
+            'urgent-important': [],
+            'not-urgent-important': [],
+            'urgent-not-important': [],
+            'not-urgent-not-important': []
+        },
+        deepWorkLogs: [],
+        blockerOn: false,
+        trash: [],
+        fileAnnotations: {}
     };
 }
-
 function loadData() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
