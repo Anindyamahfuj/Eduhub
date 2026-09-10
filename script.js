@@ -3773,24 +3773,28 @@ function updateScrollGradient() {
     var docHeight = document.documentElement.scrollHeight - window.innerHeight;
     var p = docHeight > 0 ? scrollTop / docHeight : 0;
 
-    var blue = [30, 58, 138];
-    var green = [6, 95, 70];
-    var purple = [88, 28, 135];
-    var r, g, b;
+    // Bluish neon palette: deep navy → electric blue → neon cyan
+    var deepNavy = [8, 20, 60];     // top   — dark navy
+    var electric = [0, 90, 200];    // mid   — electric blue
+    var neonCyan = [0, 200, 255];   // bottom— neon cyan
 
+    var r, g, b;
     if (p < 0.5) {
         var t = p / 0.5;
-        r = blue[0] + (green[0] - blue[0]) * t;
-        g = blue[1] + (green[1] - blue[1]) * t;
-        b = blue[2] + (green[2] - blue[2]) * t;
+        r = deepNavy[0] + (electric[0] - deepNavy[0]) * t;
+        g = deepNavy[1] + (electric[1] - deepNavy[1]) * t;
+        b = deepNavy[2] + (electric[2] - deepNavy[2]) * t;
     } else {
         var t = (p - 0.5) / 0.5;
-        r = green[0] + (purple[0] - green[0]) * t;
-        g = green[1] + (purple[1] - green[1]) * t;
-        b = green[2] + (purple[2] - green[2]) * t;
+        r = electric[0] + (neonCyan[0] - electric[0]) * t;
+        g = electric[1] + (neonCyan[1] - electric[1]) * t;
+        b = electric[2] + (neonCyan[2] - electric[2]) * t;
     }
 
-    document.body.style.background = 'radial-gradient(ellipse at top left, rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + '), #0d0618)';
+    document.body.style.background =
+        'radial-gradient(ellipse at top left, rgb(' +
+        Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) +
+        '), #050a18)';
 }
 
 // ================================================================
