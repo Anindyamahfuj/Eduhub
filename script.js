@@ -4373,3 +4373,182 @@ document.addEventListener('DOMContentLoaded', function() {
 
     updateTrashCount();
 });
+
+// ================================================================
+// BLOCKER + TRASH — SELF-CONTAINED (works on every page)
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+        } else {
+            fn();
+        }
+    }
+
+    ready(function () {
+
+        // ---------- BLOCKER ----------
+        var blockerBtn = document.getElementById('blockerToggle');
+        if (blockerBtn) {
+            var BLOCKED = ['facebook.com','instagram.com','twitter.com','x.com','tiktok.com','reddit.com','whatsapp.com','snapchat.com','discord.com','twitch.tv','netflix.com','pinterest.com','tumblr.com','linkedin.com'];
+
+            function readState() {
+                try { return JSON.parse(localStorage.getItem('studyHubData') || '{}'); }
+                catch (e) { return {}; }
+            }
+            function writeState(d) {
+                localStorage.setItem('studyHubData', JSON.stringify(d));
+            }
+            function isOn() {
+                return !!readState().blockerOn;
+            }
+            function paint() {
+                var on = isOn();
+                blockerBtn.textContent = on ? '🛡️ Blocker On' : '🛡️ Blocker Off';
+                if (on) blockerBtn.classList.add('active');
+                else blockerBtn.classList.remove('active');
+                var banner = document.getElementById('blockerBanner');
+                if (banner) banner.style.display = on ? 'flex' : 'none';
+                document.body.classList.toggle('blocker-active', on);
+            }
+
+            paint();
+            blockerBtn.addEventListener('click', function () {
+                var d = readState();
+                d.blockerOn = !d.blockerOn;
+                writeState(d);
+                paint();
+            });
+
+            // Intercept clicks on any blocked link
+            document.addEventListener('click', function (e) {
+                if (!isOn()) return;
+                var a = e.target.closest('a');
+                if (!a) return;
+                var href = a.href || '';
+                for (var i = 0; i < BLOCKED.length; i++) {
+                    if (href.indexOf(BLOCKED[i]) !== -1) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert('🛡️ Blocked!  "' + BLOCKED[i] + '" is on your distraction list.\n\nTurn the Blocker off to visit it.');
+                        return;
+                    }
+                }
+            }, true);
+        }
+
+        // ---------- TRASH ----------
+        var trashBtn = document.getElementById('trashBtn');
+        if (trashBtn) {
+            function readState() {
+                try { return JSON.parse(localStorage.getItem('studyHubData') || '{}'); }
+                catch (e) { return {}; }
+            }
+            function writeState(d) {
+                localStorage.setItem('studyHubData', JSON.stringify(d));
+            }
+            function cleanTrash(d) {
+                if (!d.trash) d.trash = [];
+                var now = Date.now();
+                d.trash = d.trash.filter(function (t) {
+                    return (now - t.deletedAt) < 24 * 60 * 60 * 1000;
+                });
+                return d;
+            }
+            function paint() {
+                var d = cleanTrash(readState());
+                writeState(d);
+                trashBtn.textContent = '🗑️ Trash (' + d.trash.length + ')';
+            }
+
+            paint();
+            trashBtn.addEventListener('click', function () {
+                var d = cleanTrash(readState());
+                var items = d.trash;
+
+                var old = document.getElementById('trashModal');
+                if (old) old.remove();
+
+                var modal = document.createElement('div');
+                modal.className = 'trash-modal';
+                modal.id = 'trashModal';
+                modal.innerHTML =
+                    '<div class="trash-modal-content">' +
+                        '<div class="trash-modal-header">' +
+                            '<h2>🗑️ Trash (' + items.length + ')</h2>' +
+                            '<button id="trashCloseBtn" class="btn-danger-sm">Close</button>' +
+                        '</div>' +
+                        (items.length === 0
+                            ? '<p class="empty-state">Trash is empty.</p>'
+                            : items.map(function (t) {
+                                var label = (t.data && (t.data.text || t.data.name || t.data.title)) || t.type;
+                                return '<div class="trash-item">' +
+                                    '<span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
+                                    '<span>' +
+                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
+                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button>' +
+                                    '</span>' +
+                                '</div>';
+                            }).join('')) +
+                        '<div style="margin-top:1rem; text-align:right;">' +
+                            '<button id="emptyTrashBtn" class="btn-danger">Empty Trash</button>' +
+                        '</div>' +
+                    '</div>';
+                document.body.appendChild(modal);
+
+                document.getElementById('trashCloseBtn').addEventListener('click', function () {
+                    modal.remove();
+                });
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) modal.remove();
+                });
+
+                // Restore
+                modal.querySelectorAll('[data-restore]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var id = this.dataset.restore;
+                        var d2 = cleanTrash(readState());
+                        var item = d2.trash.find(function (x) { return x.id === id; });
+                        if (!item) { modal.remove(); return; }
+                        if (item.type === 'note')        d2.notes.push(item.data);
+                        else if (item.type === 'file')   d2.files.push(item.data);
+                        else if (item.type === 'notice') d2.notices.push(item.data);
+                        else if (item.type === 'habit')  d2.habits.push(item.data);
+                        d2.trash = d2.trash.filter(function (x) { return x.id !== id; });
+                        writeState(d2);
+                        modal.remove();
+                        paint();
+                        location.reload();
+                    });
+                });
+
+                // Purge one
+                modal.querySelectorAll('[data-purge]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var id = this.dataset.purge;
+                        var d2 = cleanTrash(readState());
+                        d2.trash = d2.trash.filter(function (x) { return x.id !== id; });
+                        writeState(d2);
+                        modal.remove();
+                        paint();
+                        trashBtn.click();
+                    });
+                });
+
+                // Empty trash
+                var emptyBtn = document.getElementById('emptyTrashBtn');
+                if (emptyBtn) {
+                    emptyBtn.addEventListener('click', function () {
+                        if (!confirm('Empty trash permanently?')) return;
+                        var d2 = cleanTrash(readState());
+                        d2.trash = [];
+                        writeState(d2);
+                        modal.remove();
+                        paint();
+                    });
+                }
+            });
+        }
+    });
+})();
