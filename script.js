@@ -3434,6 +3434,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== 30-MINUTE MELODY TIMER =====
     initMelodyTimer();
 
+    if (document.getElementById('blockerToggle')) setupBlocker();
+    if (document.getElementById('trashBtn')) setupTrash();
+    
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
     }
