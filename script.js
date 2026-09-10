@@ -5337,3 +5337,89 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 })();
+
+// ================================================================
+// APPLY TRANSLATIONS TO NEW UI ELEMENTS
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    function getNewTranslation(key) {
+        try { return getTranslation(key); } catch (e) { return key; }
+    }
+
+    function refreshNewElements() {
+        // Blocker button
+        var blocker = document.getElementById('blockerToggle');
+        if (blocker) {
+            var on = blocker.classList.contains('active');
+            blocker.textContent = on ? '🛡️ ' + getNewTranslation('blocker_on') : '🛡️ ' + getNewTranslation('blocker_off');
+        }
+        // Trash button
+        var trash = document.getElementById('trashBtn');
+        if (trash) {
+            var m = trash.textContent.match(/\((\d+)\)/);
+            var n = m ? m[1] : '0';
+            trash.textContent = '🗑️ ' + getNewTranslation('trash_label') + ' (' + n + ')';
+        }
+        // Clock toggle
+        var clockBtn = document.getElementById('clockToggleBtn');
+        if (clockBtn) {
+            var isAnalog = document.getElementById('analogClock') && document.getElementById('analogClock').classList.contains('active');
+            var label = isAnalog ? getNewTranslation('switch_digital') : getNewTranslation('switch_analog');
+            clockBtn.innerHTML = '⏰ ' + label;
+        }
+        // AI planner title + description + placeholder
+        var aiTitle = document.querySelector('.planner-ai-section h2 span[data-i18n]');
+        if (!aiTitle) {
+            var h2s = document.querySelectorAll('.planner-ai-section h2');
+            if (h2s.length) {
+                h2s[0].innerHTML = '<span class="hl-purple">🧠</span> <span class="neon-text">' + getNewTranslation('ai_planner_title') + '</span>';
+            }
+        }
+        var aiDesc = document.querySelector('.planner-ai-section p');
+        if (aiDesc) aiDesc.textContent = getNewTranslation('ai_planner_desc');
+        var aiInput = document.getElementById('plannerAiInput');
+        if (aiInput) aiInput.placeholder = getNewTranslation('ai_planner_placeholder');
+        var aiBtn = document.getElementById('plannerAiBtn');
+        if (aiBtn) aiBtn.textContent = '✨ ' + getNewTranslation('generate_plan_btn');
+        // Chips
+        var chipKeys = ['chip_auto','chip_easy','chip_exam','chip_weekend','chip_math_physics','chip_surprise','chip_3h'];
+        var chipEmojis = ['🎲','☕','🔥','🏖️','📚','🎁','⏱'];
+        var chips = document.querySelectorAll('.planner-chip');
+        chips.forEach(function (c, i) {
+            if (i < chipKeys.length) {
+                c.textContent = chipEmojis[i] + ' ' + getNewTranslation(chipKeys[i]);
+            }
+        });
+        // Reset planner button
+        var resetBtn = document.getElementById('resetPlannerBtn');
+        if (resetBtn) resetBtn.textContent = '🔄 ' + getNewTranslation('reset_planner_btn');
+        // Quiz button texts (notes page)
+        var genQuiz = document.getElementById('generateQuizBtn');
+        if (genQuiz) genQuiz.textContent = '⚡ ' + getNewTranslation('generate_quiz_btn');
+        var clearQuiz = document.getElementById('clearQuizBtn');
+        if (clearQuiz) clearQuiz.textContent = getNewTranslation('clear_quiz_btn');
+        // Flashcards auto-gen
+        var autoFc = document.getElementById('autoGenFlashcardsBtn');
+        if (autoFc) autoFc.textContent = '⚡ ' + getNewTranslation('auto_flashcards_btn');
+    }
+
+    ready(function () {
+        refreshNewElements();
+        // Re-apply translations whenever the language selector changes
+        var sel = document.getElementById('langSelector');
+        if (sel) {
+            sel.addEventListener('change', function () {
+                // small delay so applyTranslations() runs first
+                setTimeout(refreshNewElements, 30);
+            });
+        }
+    });
+
+    // Expose for other scripts
+    window.refreshNewElements = refreshNewElements;
+})();
