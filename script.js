@@ -5170,33 +5170,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function describeRequest(req, result) {
-            var modeLabel = { easy:'Easy / light', balanced:'Balanced', intense:'Intense' }[req.mode];
-            var scopeLabel = {
-                all: 'Full week',
-                weekend: 'Weekend only',
-                weekday: 'Weekdays only',
-                today: 'Today only',
-                tomorrow: 'Tomorrow only'
-            }[req.scope];
-            var biasLabel = {
-                all: 'any time of day',
-                morning: 'mornings',
-                afternoon: 'afternoons',
-                evening: 'evenings'
-            }[req.bias];
+            var modeLabel = { easy: getTranslation('mode_easy'), balanced: getTranslation('mode_balanced'), intense: getTranslation('mode_intense') }[req.mode];
+var scopeLabel = {
+    all: getTranslation('scope_full_week'),
+    weekend: getTranslation('scope_weekend_only'),
+    weekday: getTranslation('scope_weekdays_only'),
+    today: getTranslation('scope_today_only'),
+    tomorrow: getTranslation('scope_tomorrow_only')
+}[req.scope];
+var biasLabel = {
+    all: getTranslation('time_any'),
+    morning: getTranslation('time_mornings'),
+    afternoon: getTranslation('time_afternoons'),
+    evening: getTranslation('time_evenings')
+}[req.bias];
 
             var subjectText = result.pool.slice(0, 6).join(', ');
             if (result.pool.length > 6) subjectText += '…';
 
             var html = '<div class="planner-ai-summary">';
-            html += '<strong>🧠 Understood:</strong> ';
+          html += '<strong>🧠 ' + getTranslation('understood') + ':</strong> ';
             html += 'A <span class="tag">' + modeLabel + '</span> plan ';
             html += 'for <span class="tag">' + scopeLabel + '</span> ';
             html += 'during <span class="tag">' + biasLabel + '</span>.';
             if (req.hours > 0) html += ' Cap of <span class="tag">' + req.hours + 'h/day</span>.';
-            html += '<br><strong>📚 Subjects:</strong> ' + subjectText + '.';
+          html += '<br><strong>📚 ' + getTranslation('subjects_label') + ':</strong> ' + subjectText + '.';
             if (req.focus) html += ' <em>Focus on ' + req.focus + '.</em>';
-            html += '<br><strong>📊 Total sessions:</strong> ' + Object.keys(result.plan).length + ' across ' + result.days.length + ' day(s).';
+            html += '<br><strong>📊 ' + getTranslation('total_sessions_label') + ':</strong> ' + Object.keys(result.plan).length + ' ' + getTranslation('across_label') + ' ' + result.days.length + ' ' + getTranslation('days_label') + '.';
             html += '</div>';
             return html;
         }
