@@ -29,26 +29,22 @@ body {
     font-family:'Inter',-apple-system,system-ui,sans-serif;
     color:var(--text); line-height:1.6; min-height:100vh;
     display:flex; flex-direction:column;
-    background:var(--bg);
+    background:
+    radial-gradient(900px 600px at 85% -10%, rgba(139,92,246,.13), transparent 60%),
+    radial-gradient(700px 500px at -10% 40%, rgba(34,211,238,.07), transparent 55%),
+    radial-gradient(600px 400px at 50% 110%, rgba(139,92,246,.07), transparent 60%),
+    var(--bg);
+background-attachment:fixed;
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
 }
 
 /* ── ANIMATED AURORA BACKGROUND (fixed, sits behind everything) ── */
-body::before, body::after {
-    content:''; position:fixed; border-radius:50%;
-    filter:blur(100px); pointer-events:none; z-index:-1;
-    animation:drift 28s ease-in-out infinite alternate;
-}
-body::before {
-    width:58vw; height:58vw; top:-18vw; right:-14vw; opacity:.55;
-    background:radial-gradient(circle, rgba(124,58,237,.4), rgba(192,132,252,.12) 55%, transparent 70%);
-}
-body::after {
-    width:48vw; height:48vw; bottom:-16vw; left:-12vw; opacity:.45;
-    background:radial-gradient(circle, rgba(103,232,249,.22), transparent 70%);
-    animation-delay:-12s;
-}
+
+body::before,body::after{content:'';position:fixed;border-radius:50%;filter:blur(110px);pointer-events:none;z-index:-1;animation:drift 30s ease-in-out infinite alternate}
+body::before{width:60vw;height:60vw;top:-20vw;right:-16vw;opacity:.5;background:radial-gradient(circle,rgba(139,92,246,.35),rgba(34,211,238,.1) 55%,transparent 72%)}
+body::after{width:50vw;height:50vw;bottom:-18vw;left:-14vw;opacity:.4;background:radial-gradient(circle,rgba(34,211,238,.2),transparent 70%);animation-delay:-14s}
+@keyframes drift{to{transform:translate(5vw,3vw) scale(1.15)}}
 @keyframes drift {
     from { transform:translate(0,0) scale(1); }
     to   { transform:translate(4vw,3vw) scale(1.18); }
