@@ -5424,8 +5424,3 @@ document.addEventListener('DOMContentLoaded', function() {
         paint();
     });
 })();
-
-
-
-
-
