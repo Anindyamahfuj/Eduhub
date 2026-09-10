@@ -4852,7 +4852,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (href.indexOf(BLOCKED[i]) !== -1) {
                         e.preventDefault();
                         e.stopPropagation();
-                        alert('🛡️ Blocked!  "' + BLOCKED[i] + '" is on your distraction list.\n\nTurn the Blocker off to visit it.');
+                        alert('🛡️ ' + getTranslation('blocked_alert_title') + '  "' + BLOCKED[i] + '" ' + getTranslation('blocked_alert_msg'));
                         return;
                     }
                 }
@@ -4898,22 +4898,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<div class="trash-modal-content">' +
                         '<div class="trash-modal-header">' +
                             '<h2>🗑️ Trash (' + items.length + ')</h2>' +
-                            '<button id="trashCloseBtn" class="btn-danger-sm">Close</button>' +
+                           '<button id="trashCloseBtn" class="btn-danger-sm">' + getTranslation('close_btn') + '</button>'
                         '</div>' +
                         (items.length === 0
-                            ? '<p class="empty-state">Trash is empty.</p>'
+                          '<p class="empty-state">' + getTranslation('trash_empty_msg') + '</p>'
                             : items.map(function (t) {
                                 var label = (t.data && (t.data.text || t.data.name || t.data.title)) || t.type;
                                 return '<div class="trash-item">' +
                                     '<span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
                                     '<span>' +
-                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
-                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button>' +
+                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">' + getTranslation('restore_btn') + '</button> '
+                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">' + getTranslation('delete_btn') + '</button>'
                                     '</span>' +
                                 '</div>';
                             }).join('')) +
                         '<div style="margin-top:1rem; text-align:right;">' +
-                            '<button id="emptyTrashBtn" class="btn-danger">Empty Trash</button>' +
+                           '<button id="emptyTrashBtn" class="btn-danger">' + getTranslation('empty_trash_btn') + '</button>'
                         '</div>' +
                     '</div>';
                 document.body.appendChild(modal);
@@ -5236,9 +5236,9 @@ var biasLabel = {
             var html = describeRequest(req, result);
             html += renderPreview(result);
             html += '<div class="planner-ai-actions">';
-            html += '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner (merge)</button>';
-            html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 Replace Planner</button>';
-            html += '<button id="aiRetryBtn" class="btn-danger">🔄 Retry (new variation)</button>';
+           html += '<button id="aiApplyBtn" class="btn-primary">✅ ' + getTranslation('apply_merge_btn') + '</button>';
+html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 ' + getTranslation('replace_planner_btn') + '</button>';
+html += '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('retry_variation_btn') + '</button>';
             html += '</div>';
             output.innerHTML = html;
 
@@ -5319,8 +5319,7 @@ var biasLabel = {
         if (!btn) return;
 
         btn.addEventListener('click', function () {
-            if (!confirm('Reset the planner? This will clear every cell — this cannot be undone.')) return;
-
+           if (!confirm(getTranslation('reset_confirm'))) return;
             var data = loadData();
             data.planner = {};
             if (typeof addActivity === 'function') {
