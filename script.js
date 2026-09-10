@@ -3038,7 +3038,7 @@ function setupFileUpload() {
         if (document.getElementById('statFiles')) renderDashboard();
     }
 
-       var delBtn = document.getElementById('deleteAllFilesBtn');
+    var delBtn = document.getElementById('deleteAllFilesBtn');
     if (delBtn) {
         delBtn.addEventListener('click', function() {
             if (confirm('Move all files to Trash? They will be recoverable for 24 hours.')) {
@@ -3097,7 +3097,7 @@ function setupHabits() {
             list.innerHTML = '<p class="empty-state">' + getTranslation('no_habits') + '</p>';
         } else {
             var today = new Date().toISOString().slice(0, 10);
-          list.innerHTML = data.habits.map(function(h) {
+            list.innerHTML = data.habits.map(function(h) {
                 var done = h.completedDates.includes(today);
                 return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') + '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') + '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) + '</button><button class="delete-item-btn" data-id="' + h.id + '" data-action="delete-habit">✕</button></div></div>';
             }).join('');
@@ -3172,7 +3172,7 @@ function setupHabits() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-          delBtn.addEventListener('click', function() {
+    delBtn.addEventListener('click', function() {
         if (confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
             data.habits.forEach(function(h) { pushToTrash(data, 'habit', h); });
@@ -3208,7 +3208,7 @@ function setupNotice() {
         }
         if (countEl) countEl.textContent = data.notices.length + ' ' + getTranslation('notices_count');
 
-                list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;
                 if (confirm('Delete this notice? It will go to Trash for 24 hours.')) {
@@ -3246,7 +3246,7 @@ function setupNotice() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-        delBtn.addEventListener('click', function() {
+    delBtn.addEventListener('click', function() {
         if (confirm('Move all notices to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
             data.notices.forEach(function(n) { pushToTrash(data, 'notice', n); });
@@ -3280,7 +3280,7 @@ function setupNotes() {
             }).join('');
         }
 
-               list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;
                 if (confirm('Delete this note? It will go to Trash for 24 hours.')) {
@@ -3318,7 +3318,7 @@ function setupNotes() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-        delBtn.addEventListener('click', function() {
+    delBtn.addEventListener('click', function() {
         if (confirm('Move all notes to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
             data.notes.forEach(function(n) { pushToTrash(data, 'note', n); });
@@ -3885,7 +3885,7 @@ function updateScrollGradient() {
 // ================================================================
 document.addEventListener('DOMContentLoaded', function() {
     initBurger();
-    setActiveNavLink();   // <-- NEW LINE
+    setActiveNavLink();
     updateNavDate();
     initClock();
     updateScrollGradient();
@@ -3900,7 +3900,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (document.getElementById('blockerToggle')) setupBlocker();
     if (document.getElementById('trashBtn')) setupTrash();
-    
+
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
     }
@@ -4852,7 +4852,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (href.indexOf(BLOCKED[i]) !== -1) {
                         e.preventDefault();
                         e.stopPropagation();
-                        alert('🛡️ ' + getTranslation('blocked_alert_title') + '  "' + BLOCKED[i] + '" ' + getTranslation('blocked_alert_msg'));
+                        alert('🛡️ Blocked!  "' + BLOCKED[i] + '" is on your distraction list.\n\nTurn the Blocker off to visit it.');
                         return;
                     }
                 }
@@ -4898,22 +4898,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<div class="trash-modal-content">' +
                         '<div class="trash-modal-header">' +
                             '<h2>🗑️ Trash (' + items.length + ')</h2>' +
-                           '<button id="trashCloseBtn" class="btn-danger-sm">' + getTranslation('close_btn') + '</button>'
+                            '<button id="trashCloseBtn" class="btn-danger-sm">Close</button>' +
                         '</div>' +
                         (items.length === 0
-                          '<p class="empty-state">' + getTranslation('trash_empty_msg') + '</p>'
+                            ? '<p class="empty-state">Trash is empty.</p>'
                             : items.map(function (t) {
                                 var label = (t.data && (t.data.text || t.data.name || t.data.title)) || t.type;
                                 return '<div class="trash-item">' +
                                     '<span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
                                     '<span>' +
-                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">' + getTranslation('restore_btn') + '</button> '
-                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">' + getTranslation('delete_btn') + '</button>'
+                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
+                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button>' +
                                     '</span>' +
                                 '</div>';
                             }).join('')) +
                         '<div style="margin-top:1rem; text-align:right;">' +
-                           '<button id="emptyTrashBtn" class="btn-danger">' + getTranslation('empty_trash_btn') + '</button>'
+                            '<button id="emptyTrashBtn" class="btn-danger">Empty Trash</button>' +
                         '</div>' +
                     '</div>';
                 document.body.appendChild(modal);
@@ -5171,30 +5171,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function describeRequest(req, result) {
             var modeLabel = { easy: getTranslation('mode_easy'), balanced: getTranslation('mode_balanced'), intense: getTranslation('mode_intense') }[req.mode];
-var scopeLabel = {
-    all: getTranslation('scope_full_week'),
-    weekend: getTranslation('scope_weekend_only'),
-    weekday: getTranslation('scope_weekdays_only'),
-    today: getTranslation('scope_today_only'),
-    tomorrow: getTranslation('scope_tomorrow_only')
-}[req.scope];
-var biasLabel = {
-    all: getTranslation('time_any'),
-    morning: getTranslation('time_mornings'),
-    afternoon: getTranslation('time_afternoons'),
-    evening: getTranslation('time_evenings')
-}[req.bias];
+            var scopeLabel = {
+                all: getTranslation('scope_full_week'),
+                weekend: getTranslation('scope_weekend_only'),
+                weekday: getTranslation('scope_weekdays_only'),
+                today: getTranslation('scope_today_only'),
+                tomorrow: getTranslation('scope_tomorrow_only')
+            }[req.scope];
+            var biasLabel = {
+                all: getTranslation('time_any'),
+                morning: getTranslation('time_mornings'),
+                afternoon: getTranslation('time_afternoons'),
+                evening: getTranslation('time_evenings')
+            }[req.bias];
 
             var subjectText = result.pool.slice(0, 6).join(', ');
             if (result.pool.length > 6) subjectText += '…';
 
             var html = '<div class="planner-ai-summary">';
-          html += '<strong>🧠 ' + getTranslation('understood') + ':</strong> ';
+            html += '<strong>🧠 ' + getTranslation('understood') + ':</strong> ';
             html += 'A <span class="tag">' + modeLabel + '</span> plan ';
             html += 'for <span class="tag">' + scopeLabel + '</span> ';
             html += 'during <span class="tag">' + biasLabel + '</span>.';
             if (req.hours > 0) html += ' Cap of <span class="tag">' + req.hours + 'h/day</span>.';
-          html += '<br><strong>📚 ' + getTranslation('subjects_label') + ':</strong> ' + subjectText + '.';
+            html += '<br><strong>📚 ' + getTranslation('subjects_label') + ':</strong> ' + subjectText + '.';
             if (req.focus) html += ' <em>Focus on ' + req.focus + '.</em>';
             html += '<br><strong>📊 ' + getTranslation('total_sessions_label') + ':</strong> ' + Object.keys(result.plan).length + ' ' + getTranslation('across_label') + ' ' + result.days.length + ' ' + getTranslation('days_label') + '.';
             html += '</div>';
@@ -5236,9 +5236,9 @@ var biasLabel = {
             var html = describeRequest(req, result);
             html += renderPreview(result);
             html += '<div class="planner-ai-actions">';
-           html += '<button id="aiApplyBtn" class="btn-primary">✅ ' + getTranslation('apply_merge_btn') + '</button>';
-html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 ' + getTranslation('replace_planner_btn') + '</button>';
-html += '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('retry_variation_btn') + '</button>';
+            html += '<button id="aiApplyBtn" class="btn-primary">✅ ' + getTranslation('apply_merge_btn') + '</button>';
+            html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 ' + getTranslation('replace_planner_btn') + '</button>';
+            html += '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('retry_variation_btn') + '</button>';
             html += '</div>';
             output.innerHTML = html;
 
@@ -5257,9 +5257,9 @@ html += '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('ret
                     var req2 = parseRequest(text);
                     output.innerHTML = describeRequest(req2, lastResult) + renderPreview(lastResult) +
                         '<div class="planner-ai-actions">' +
-                        '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner (merge)</button>' +
-                        '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 Replace Planner</button>' +
-                        '<button id="aiRetryBtn" class="btn-danger">🔄 Retry (new variation)</button>' +
+                        '<button id="aiApplyBtn" class="btn-primary">✅ ' + getTranslation('apply_merge_btn') + '</button>' +
+                        '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 ' + getTranslation('replace_planner_btn') + '</button>' +
+                        '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('retry_variation_btn') + '</button>' +
                         '</div>';
                     document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
                     document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
@@ -5319,7 +5319,7 @@ html += '<button id="aiRetryBtn" class="btn-danger">🔄 ' + getTranslation('ret
         if (!btn) return;
 
         btn.addEventListener('click', function () {
-           if (!confirm(getTranslation('reset_confirm'))) return;
+            if (!confirm(getTranslation('reset_confirm'))) return;
             var data = loadData();
             data.planner = {};
             if (typeof addActivity === 'function') {
