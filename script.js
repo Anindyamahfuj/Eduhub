@@ -3769,32 +3769,8 @@ function updateNavDate() {
 }
 
 function updateScrollGradient() {
-    var scrollTop = window.scrollY;
-    var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    var p = docHeight > 0 ? scrollTop / docHeight : 0;
-
-    // Bluish neon palette: deep navy → electric blue → neon cyan
-    var deepNavy = [8, 20, 60];     // top   — dark navy
-    var electric = [0, 90, 200];    // mid   — electric blue
-    var neonCyan = [0, 200, 255];   // bottom— neon cyan
-
-    var r, g, b;
-    if (p < 0.5) {
-        var t = p / 0.5;
-        r = deepNavy[0] + (electric[0] - deepNavy[0]) * t;
-        g = deepNavy[1] + (electric[1] - deepNavy[1]) * t;
-        b = deepNavy[2] + (electric[2] - deepNavy[2]) * t;
-    } else {
-        var t = (p - 0.5) / 0.5;
-        r = electric[0] + (neonCyan[0] - electric[0]) * t;
-        g = electric[1] + (neonCyan[1] - electric[1]) * t;
-        b = electric[2] + (neonCyan[2] - electric[2]) * t;
-    }
-
     document.body.style.background =
-        'radial-gradient(ellipse at top left, rgb(' +
-        Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) +
-        '), #050a18)';
+        'radial-gradient(ellipse at top left, #0a1a3a, #050a18)';
 }
 
 // ================================================================
