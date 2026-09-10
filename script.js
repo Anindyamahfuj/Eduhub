@@ -2659,24 +2659,22 @@ function setupHabits() {
                 return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') + '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') + '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) + '</button></div></div>';
             }).join('');
 
-            list.querySelectorAll('.complete-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var id = this.dataset.id;
+                    list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                if (confirm('Delete this note? It will go to Trash for 24 hours.')) {
                     var data = loadData();
-                    var habit = data.habits.find(function(h) { return h.id === id; });
-                    if (habit) {
-                        var today = new Date().toISOString().slice(0, 10);
-                        if (!habit.completedDates.includes(today)) {
-                            habit.completedDates.push(today);
-                            addActivity(data, 'habit_complete', 'Completed habit: "' + habit.text + '"');
-                            saveData(data);
-                            renderHabits();
-                            updateStreak();
-                            if (document.getElementById('statTasks')) renderDashboard();
-                        }
-                    }
-                });
+                    var item = data.notes.find(function(n) { return n.id === id; });
+                    if (item) pushToTrash(data, 'note', item);
+                    data.notes = data.notes.filter(function(n) { return n.id !== id; });
+                    addActivity(data, 'delete', 'Moved note to trash');
+                    saveData(data);
+                    renderNotes();
+                    updateTrashCount();
+                    if (document.getElementById('statTasks')) renderDashboard();
+                }
             });
+        });
         }
         updateStreak();
     }
