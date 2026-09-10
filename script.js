@@ -2654,11 +2654,10 @@ function setupHabits() {
             list.innerHTML = '<p class="empty-state">' + getTranslation('no_habits') + '</p>';
         } else {
             var today = new Date().toISOString().slice(0, 10);
-            list.innerHTML = data.habits.map(function(h) {
+          list.innerHTML = data.habits.map(function(h) {
                 var done = h.completedDates.includes(today);
-                return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') + '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') + '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) + '</button></div></div>';
+                return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') + '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') + '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) + '</button><button class="delete-item-btn" data-id="' + h.id + '" data-action="delete-habit">✕</button></div></div>';
             }).join('');
-
             list.querySelectorAll('.complete-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var id = this.dataset.id;
