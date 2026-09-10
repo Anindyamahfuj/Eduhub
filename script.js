@@ -2937,147 +2937,54 @@ function setupSummarizer() {
     var input = document.getElementById('summarizeInput');
     var output = document.getElementById('summarizeOutput');
 
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function () {
         var text = input.value.trim();
-        if (!text) {
-            output.textContent = 'Please paste some text to summarize.';
-            return;
-        }
+        if (!text) { output.textContent = getTranslation('ai_summary_empty'); return; }
 
+        // Split into sentences
         var sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-        if (sentences.length <= 2) {
-            output.textContent = text;
-            return;
-        }
+        sentences = sentences.map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+        if (sentences.length <= 2) { output.textContent = text; return; }
 
-        var words = text.toLowerCase().match(/\b\w+\b/g) || [];
+        // Stop-word list
+        var STOP = { 'the':1,'a':1,'an':1,'and':1,'or':1,'but':1,'is':1,'are':1,'was':1,'were':1,'be':1,'been':1,'being':1,'to':1,'of':1,'in':1,'on':1,'at':1,'by':1,'for':1,'with':1,'as':1,'that':1,'this':1,'these':1,'those':1,'it':1,'its':1,'from':1,'into':1,'about':1,'also':1,'such':1,'than':1,'then':1,'so':1,'if':1,'when':1,'while':1,'which':1,'who':1,'whom':1,'what':1,'where':1,'why':1,'how':1,'have':1,'has':1,'had':1,'do':1,'does':1,'did':1,'will':1,'would':1,'should':1,'could':1,'can':1,'may':1,'might':1,'must':1,'not':1,'no':1,'yes':1,'very':1,'more':1,'most':1,'some':1,'any':1,'each':1,'every':1,'other':1,'another':1,'same':1,'only':1,'just':1,'even':1,'still':1,'over':1,'under':1,'between':1,'through':1,'during':1,'before':1,'after':1,'above':1,'below':1 };
+
+        // Word frequency
+        var words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
         var freq = {};
-        words.forEach(function(w) {
-            if (w.length > 3) freq[w] = (freq[w] || 0) + 1;
+        words.forEach(function (w) { if (!STOP[w]) freq[w] = (freq[w] || 0) + 1; });
+
+        // Score each sentence
+        var scored = sentences.map(function (s, i) {
+            var sw = s.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+            var wordScore = 0;
+            sw.forEach(function (w) { if (freq[w]) wordScore += freq[w]; });
+            var baseScore = wordScore / (sw.length || 1);
+
+            // Position bonus — first & last sentences usually matter most
+            var posBonus = 0;
+            if (i === 0) posBonus = 1.5;
+            else if (i === sentences.length - 1) posBonus = 1.2;
+            else if (i < 3) posBonus = 0.4;
+
+            // Length penalty — very short or very long reduce signal
+            var len = s.length;
+            var lenPenalty = 1.0;
+            if (len < 40) lenPenalty = 0.6;
+            else if (len > 300) lenPenalty = 0.85;
+
+            return { sentence: s, score: (baseScore + posBonus) * lenPenalty, idx: i };
         });
 
-        var scores = sentences.map(function(s) {
-            var sw = s.toLowerCase().match(/\b\w+\b/g) || [];
-            var score = 0;
-            sw.forEach(function(w) {
-                if (freq[w]) score += freq[w];
-            });
-            return { sentence: s.trim(), score: score / (sw.length || 1) };
-        });
+        scored.sort(function (a, b) { return b.score - a.score; });
+        var topCount = Math.max(3, Math.min(5, Math.ceil(sentences.length * 0.35)));
+        var picked = scored.slice(0, topCount).sort(function (a, b) { return a.idx - b.idx; });
+        var summary = picked.map(function (p) { return p.sentence; }).join(' ');
 
-        scores.sort(function(a, b) { return b.score - a.score; });
-        var top = scores.slice(0, Math.max(3, Math.ceil(sentences.length * 0.3)))
-            .sort(function(a, b) {
-                return sentences.indexOf(a.sentence) - sentences.indexOf(b.sentence);
-            });
-
-        output.textContent = top.map(function(s) { return s.sentence; }).join(' ');
+        output.textContent = summary;
         var data = loadData();
-        addActivity(data, 'ai_summary', 'Generated AI summary');
+        addActivity(data, 'ai_summary', getTranslation('ai_summary_log'));
         saveData(data);
-    });
-}
-
-// ================================================================
-// FILE UPLOAD + individual delete
-// ================================================================
-function setupFileUpload() {
-    var uploadArea = document.getElementById('uploadArea');
-    if (!uploadArea) return;
-    var fileInput = document.getElementById('fileInput');
-
-    uploadArea.addEventListener('click', function() {
-        fileInput.click();
-    });
-
-    uploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        uploadArea.style.borderColor = '#c084fc';
-    });
-
-    uploadArea.addEventListener('dragleave', function() {
-        uploadArea.style.borderColor = 'rgba(192,132,252,0.2)';
-    });
-
-    uploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        uploadArea.style.borderColor = 'rgba(192,132,252,0.2)';
-        handleFiles(e.dataTransfer.files);
-    });
-
-    fileInput.addEventListener('change', function() {
-        handleFiles(fileInput.files);
-        fileInput.value = '';
-    });
-
-    async function handleFiles(files) {
-        var data = loadData();
-        for (var i = 0; i < files.length; i++) {
-            var file = files[i];
-            try {
-                var reader = new FileReader();
-                var result = await new Promise(function(resolve, reject) {
-                    reader.onload = function(e) { resolve(e.target.result); };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-                data.files.push({
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                    name: file.name,
-                    size: file.size,
-                    data: result,
-                    date: new Date().toISOString()
-                });
-                addActivity(data, 'file', 'Uploaded "' + file.name + '"');
-                saveData(data);
-            } catch (e) {
-                console.error(e);
-            }
-        }
-        renderFileList();
-        if (document.getElementById('statFiles')) renderDashboard();
-    }
-
-    var delBtn = document.getElementById('deleteAllFilesBtn');
-    if (delBtn) {
-        delBtn.addEventListener('click', function() {
-            if (confirm('Move all files to Trash? They will be recoverable for 24 hours.')) {
-                var data = loadData();
-                data.files.forEach(function(f) { pushToTrash(data, 'file', f); });
-                data.files = [];
-                addActivity(data, 'delete', 'Moved all files to trash');
-                saveData(data);
-                renderFileList();
-                updateTrashCount();
-                if (document.getElementById('statFiles')) renderDashboard();
-            }
-        });
-    }
-}
-
-function renderFileList() {
-    var container = document.getElementById('fileList');
-    if (!container) return;
-    var data = loadData();
-    if (data.files.length === 0) {
-        container.innerHTML = '<p class="empty-state">' + getTranslation('no_files') + '</p>';
-        return;
-    }
-    container.innerHTML = data.files.map(function(f) {
-        return '<div class="file-item"><a href="' + f.data + '" target="_blank" class="file-name">📄 ' + f.name + '</a><span class="file-size">' + (f.size / 1024).toFixed(1) + ' KB</span><button class="delete-item-btn" data-id="' + f.id + '">✕</button></div>';
-    }).join('');
-
-    container.querySelectorAll('.delete-item-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var id = this.dataset.id;
-            if (confirm('Delete this file?')) {
-                var data = loadData();
-                data.files = data.files.filter(function(f) { return f.id !== id; });
-                saveData(data);
-                renderFileList();
-                if (document.getElementById('statFiles')) renderDashboard();
-            }
-        });
     });
 }
 
@@ -3803,40 +3710,46 @@ function setupAIRecommendation() {
     var input = document.getElementById('aiQueryInput');
     var result = document.getElementById('aiRecommendResult');
 
-    var recMap = {
-        math: 'DeepSeek or Wolfram Alpha',
-        calculus: 'DeepSeek or Wolfram Alpha',
-        code: 'Cursor',
-        programming: 'Cursor',
-        write: 'ChatGPT or Claude',
-        research: 'Perplexity or Claude',
-        data: 'Claude',
-        design: 'Midjourney or Canva',
-        language: 'Duolingo',
-        presentation: 'Gamma or Canva',
-        poster: 'Canva',
-        physics: 'Wolfram Alpha'
-    };
+    // Weighted knowledge base — every entry maps keywords → tool + reason
+    var KNOWLEDGE = [
+        { keywords: ['calculus','integral','derivative','limit','algebra','equation','matrix','geometry','trigonometry','logarithm','theorem','solve for','quadratic','polynomial','probability'], tool: 'DeepSeek', why: 'advanced step-by-step math solver' },
+        { keywords: ['physics','kinematics','force','energy','quantum','thermodynamics','relativity','momentum','newton'], tool: 'Wolfram Alpha', why: 'computational STEM engine' },
+        { keywords: ['chemistry','chemical','reaction','molecule','periodic','organic','stoichiometry'], tool: 'Wolfram Alpha', why: 'computational STEM engine' },
+        { keywords: ['code','coding','programming','python','javascript','java','c++','c#','rust','golang','function','debug','algorithm','software','script','api','backend','frontend','react','node'], tool: 'Cursor', why: 'AI code editor with full-project context' },
+        { keywords: ['essay','write','writing','paragraph','email','letter','story','blog','article','rewrite','paraphrase','grammar','proofread','draft'], tool: 'ChatGPT or Claude', why: 'strong writing assistants' },
+        { keywords: ['research','paper','study','source','cite','citation','evidence','literature','academic'], tool: 'Perplexity', why: 'AI search with real citations' },
+        { keywords: ['data','analysis','excel','spreadsheet','statistics','dataset','chart','graph','visualize','trend'], tool: 'Claude', why: 'strong at reasoning over data' },
+        { keywords: ['design','poster','logo','banner','graphic','illustration','art','image','draw'], tool: 'Midjourney or Canva', why: 'AI design tools' },
+        { keywords: ['presentation','slides','pitch','deck','powerpoint','slide'], tool: 'Gamma or Canva', why: 'AI presentation generators' },
+        { keywords: ['language','translate','translation','vocabulary','conversation','learn spanish','learn french','learn german','learn japanese'], tool: 'Duolingo', why: 'AI language learning' },
+        { keywords: ['note','notes','summarize','summary','organize','schedule','plan my'], tool: 'Notion AI', why: 'AI productivity & note-taking' },
+        { keywords: ['video','tutorial','lecture','youtube','watch'], tool: 'YouTube', why: 'free educational videos' }
+    ];
 
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function () {
         var q = input.value.trim().toLowerCase();
-        if (!q) {
-            result.textContent = 'Please describe what you need help with.';
-            return;
+        if (!q) { result.textContent = getTranslation('ai_empty_query'); return; }
+
+        // Score each entry — longer matched keyword = higher weight
+        var best = null, bestScore = 0;
+        KNOWLEDGE.forEach(function (entry) {
+            var score = 0;
+            entry.keywords.forEach(function (kw) {
+                if (q.indexOf(kw) !== -1) score += kw.length;
+            });
+            if (score > bestScore) { bestScore = score; best = entry; }
+        });
+
+        var rec;
+        if (best && bestScore > 0) {
+            rec = '💡 For that, I recommend ' + best.tool + ' — ' + best.why + '.';
+        } else {
+            rec = '💡 ' + getTranslation('ai_fallback');
         }
-        var rec = 'I recommend ';
-        var found = false;
-        for (var key in recMap) {
-            if (q.includes(key)) {
-                rec += recMap[key];
-                found = true;
-                break;
-            }
-        }
-        if (!found) rec += 'ChatGPT – it’s a great all‑rounder for most tasks.';
         result.textContent = rec;
+
         var data = loadData();
-        addActivity(data, 'ai_recommend', 'AI recommendation for: "' + q + '"');
+        addActivity(data, 'ai_recommend', t('act_ai_recommend', { q: q }));
         saveData(data);
     });
 }
