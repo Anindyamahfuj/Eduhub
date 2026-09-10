@@ -50,7 +50,7 @@
         </div>
     </nav>
 
-    <main class="container">
+       <main class="container">
         <section class="clock-section mini-clock">
             <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
             <div class="clock-container">
@@ -113,11 +113,37 @@
             <p data-i18n="planner_subtitle">Click any cell to plan your subject for that day &amp; time.</p>
         </header>
 
+        <!-- ===== AI PLANNER ===== -->
+        <section class="glass-card planner-ai-section">
+            <h2><span class="hl-purple">🧠</span> <span class="neon-text">StudyHub AI Planner</span></h2>
+            <p style="color:#94a3b8; font-size:0.9rem; margin:0.3rem 0 0.8rem 0;">
+                Describe what you want — the AI will plan it for you. Try <em>"make a routine by yourself"</em>,
+                <em>"easy weekend plan"</em>, <em>"intense exam week"</em>, <em>"math morning, physics evening"</em>,
+                <em>"3 hours today"</em>, or <em>"focus on chemistry this week"</em>.
+            </p>
+
+            <div class="planner-ai-input">
+                <textarea id="plannerAiInput" placeholder="Type your request here..."></textarea>
+                <button id="plannerAiBtn" class="btn-primary">✨ Generate Plan</button>
+            </div>
+
+            <div class="planner-ai-chips">
+                <button class="planner-chip" data-prompt="make a routine by yourself">🎲 Auto routine</button>
+                <button class="planner-chip" data-prompt="make an easy routine">☕ Easy</button>
+                <button class="planner-chip" data-prompt="intense exam week plan">🔥 Exam week</button>
+                <button class="planner-chip" data-prompt="weekend study plan">🏖️ Weekend</button>
+                <button class="planner-chip" data-prompt="math in the morning, physics in the evening">📚 Math + Physics</button>
+                <button class="planner-chip" data-prompt="surprise me">🎁 Surprise</button>
+                <button class="planner-chip" data-prompt="I have 3 hours to study today">⏱ 3h today</button>
+            </div>
+
+            <div id="plannerAiOutput" class="planner-ai-output"></div>
+        </section>
+
         <section class="glass-card">
             <div class="planner-grid" id="plannerGrid"></div>
         </section>
     </main>
-
     <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
     <script src="script.js"></script>
 </body>
