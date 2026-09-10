@@ -4883,3 +4883,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 })();
+
+// ================================================================
+// RESET PLANNER
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    ready(function () {
+        var btn = document.getElementById('resetPlannerBtn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            if (!confirm('Reset the planner? This will clear every cell — this cannot be undone.')) return;
+
+            var data = loadData();
+            data.planner = {};
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'planner_reset', 'Reset the planner');
+            }
+            saveData(data);
+
+            // Re-render grid without reloading the page
+            if (typeof setupPlanner === 'function') {
+                setupPlanner();
+            } else {
+                location.reload();
+            }
+        });
+    });
+})();
