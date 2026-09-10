@@ -3757,36 +3757,40 @@ function setupAIRecommendation() {
 // ================================================================
 // NAV DATE & SCROLL GRADIENT
 // ================================================================
+function updateNavDate() {
+    var el = document.getElementById('navDate');
+    if (el) {
+        el.textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+}
+
 function updateScrollGradient() {
     var scrollTop = window.scrollY;
     var docHeight = document.documentElement.scrollHeight - window.innerHeight;
     var p = docHeight > 0 ? scrollTop / docHeight : 0;
 
-    // NEON gradient — magenta → violet → cyan (no blue/green)
-    var neonMagenta = [255, 0, 255];    // #ff00ff
-    var neonViolet  = [157, 0, 255];    // #9d00ff
-    var neonCyan    = [0, 255, 255];    // #00ffff
+    var blue = [30, 58, 138];
+    var green = [6, 95, 70];
+    var purple = [88, 28, 135];
     var r, g, b;
 
     if (p < 0.5) {
         var t = p / 0.5;
-        r = neonMagenta[0] + (neonViolet[0] - neonMagenta[0]) * t;
-        g = neonMagenta[1] + (neonViolet[1] - neonMagenta[1]) * t;
-        b = neonMagenta[2] + (neonViolet[2] - neonMagenta[2]) * t;
+        r = blue[0] + (green[0] - blue[0]) * t;
+        g = blue[1] + (green[1] - blue[1]) * t;
+        b = blue[2] + (green[2] - blue[2]) * t;
     } else {
         var t = (p - 0.5) / 0.5;
-        r = neonViolet[0] + (neonCyan[0] - neonViolet[0]) * t;
-        g = neonViolet[1] + (neonCyan[1] - neonViolet[1]) * t;
-        b = neonViolet[2] + (neonCyan[2] - neonViolet[2]) * t;
+        r = green[0] + (purple[0] - green[0]) * t;
+        g = green[1] + (purple[1] - green[1]) * t;
+        b = green[2] + (purple[2] - green[2]) * t;
     }
 
-    // Blend toward the dark base so text stays readable
-    var softR = Math.round(r * 0.45);
-    var softG = Math.round(g * 0.45);
-    var softB = Math.round(b * 0.45);
-
-    document.body.style.background =
-        'radial-gradient(ellipse at top left, rgb(' + softR + ',' + softG + ',' + softB + '), #0d0618)';
+    document.body.style.background = 'radial-gradient(ellipse at top left, rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + '), #0d0618)';
 }
 
 // ================================================================
@@ -5440,3 +5444,8 @@ document.addEventListener('DOMContentLoaded', function() {
         paint();
     });
 })();
+
+
+
+
+
