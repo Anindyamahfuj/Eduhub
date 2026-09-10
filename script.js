@@ -2765,14 +2765,18 @@ function setupNotice() {
         }
         if (countEl) countEl.textContent = data.notices.length + ' ' + getTranslation('notices_count');
 
-        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+                list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;
-                if (confirm('Delete this notice?')) {
+                if (confirm('Delete this notice? It will go to Trash for 24 hours.')) {
                     var data = loadData();
+                    var item = data.notices.find(function(n) { return n.id === id; });
+                    if (item) pushToTrash(data, 'notice', item);
                     data.notices = data.notices.filter(function(n) { return n.id !== id; });
+                    addActivity(data, 'delete', 'Moved notice to trash');
                     saveData(data);
                     renderNotices();
+                    updateTrashCount();
                     if (document.getElementById('statTasks')) renderDashboard();
                 }
             });
