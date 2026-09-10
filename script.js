@@ -4552,3 +4552,334 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 })();
+
+// ================================================================
+// AI PLANNER (natural-language → schedule)
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    ready(function () {
+        var inputEl = document.getElementById('plannerAiInput');
+        var btn = document.getElementById('plannerAiBtn');
+        var output = document.getElementById('plannerAiOutput');
+        if (!inputEl || !btn || !output) return;
+
+        var ALL_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        var ALL_HOURS = ['8:00','9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+
+        var SUBJECT_MAP = {
+            math:'Math', maths:'Math', mathematics:'Math', algebra:'Math', calculus:'Math', geometry:'Math', stats:'Statistics', statistics:'Statistics',
+            physics:'Physics', phy:'Physics',
+            chemistry:'Chemistry', chem:'Chemistry',
+            biology:'Biology', bio:'Biology',
+            english:'English', eng:'English',
+            literature:'Literature', lit:'Literature',
+            history:'History', hist:'History',
+            geography:'Geography', geo:'Geography',
+            coding:'Coding', code:'Coding', program:'Coding', programming:'Coding', cs:'Coding',
+            'computer science':'Computer Science',
+            economics:'Economics', econ:'Economics',
+            bangla:'Bangla', bengali:'Bangla',
+            spanish:'Spanish', french:'French', german:'German', arabic:'Arabic', hindi:'Hindi', chinese:'Chinese', japanese:'Japanese',
+            art:'Art', drawing:'Art', music:'Music',
+            revision:'Revision', revise:'Revision', review:'Revision',
+            homework:'Homework', hw:'Homework', assignment:'Homework',
+            reading:'Reading', read:'Reading',
+            notes:'Note Review', 'note review':'Note Review',
+            practice:'Practice', problems:'Practice', exercise:'Practice',
+            project:'Project', projects:'Project'
+        };
+
+        function parseRequest(text) {
+            var t = ' ' + text.toLowerCase() + ' ';
+
+            // ---------- MODE ----------
+            var mode = 'balanced';
+            if (/\b(easy|light|chill|relaxed|relax|casual|minimal|soft|few|small)\b/.test(t)) mode = 'easy';
+            else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|serious)\b/.test(t)) mode = 'intense';
+            else if (/\b(balanced|normal|moderate|regular|standard|medium)\b/.test(t)) mode = 'balanced';
+            else if (/\b(by yourself|yourself|auto|automatic|surprise|random|choose|pick|whatever|any|make one|decide|invent)\b/.test(t)) mode = 'balanced';
+
+            // ---------- SCOPE ----------
+            var scope = 'all';
+            if (/\b(weekend|sat|sun|saturday|sunday)\b/.test(t)) scope = 'weekend';
+            else if (/\b(weekday|weekdays|mon to fri|monday to friday|work week|school week)\b/.test(t)) scope = 'weekday';
+            else if (/\b(today|tonight|now|this evening|this afternoon|this morning)\b/.test(t)) scope = 'today';
+            else if (/\b(tomorrow)\b/.test(t)) scope = 'tomorrow';
+
+            // ---------- TIME BIAS ----------
+            var bias = 'all';
+            if (/\b(morning|am|early)\b/.test(t)) bias = 'morning';
+            else if (/\b(afternoon|noon|midday)\b/.test(t)) bias = 'afternoon';
+            else if (/\b(evening|night|tonight|pm|late)\b/.test(t)) bias = 'evening';
+
+            // ---------- DURATION ----------
+            var hrs = 0;
+            var mH = t.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|h)\b/);
+            var mM = t.match(/(\d+)\s*(minutes?|mins?|m)\b/);
+            if (mH) hrs = parseFloat(mH[1]);
+            else if (mM) hrs = parseFloat(mM[1]) / 60;
+
+            // ---------- SUBJECTS ----------
+            var subjects = [];
+            Object.keys(SUBJECT_MAP).forEach(function (key) {
+                var re = new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+                if (re.test(t)) {
+                    var s = SUBJECT_MAP[key];
+                    if (subjects.indexOf(s) === -1) subjects.push(s);
+                }
+            });
+
+            // ---------- SUBJECT + TIME-PAIR MATCH ----------
+            // e.g. "math in the morning, physics in the evening"
+            var pairs = [];
+            var pairRe = /([a-z ]+?)\s+(?:in the|at|during)\s+(morning|afternoon|evening|night)/g;
+            var pm;
+            while ((pm = pairRe.exec(t)) !== null) {
+                var subj = pm[1].trim();
+                var timeof = pm[2];
+                var cleanSubj = null;
+                Object.keys(SUBJECT_MAP).forEach(function (k) {
+                    if (subj.indexOf(k) !== -1 && !cleanSubj) cleanSubj = SUBJECT_MAP[k];
+                });
+                if (cleanSubj) pairs.push({ subject: cleanSubj, time: timeof });
+            }
+
+            // ---------- FOCUS SUBJECT ----------
+            var focusMatch = t.match(/(?:focus on|concentrate on|mainly|mostly|emphasis on|prioritize)\s+([a-z ]+)/);
+            var focus = null;
+            if (focusMatch) {
+                var fw = focusMatch[1];
+                Object.keys(SUBJECT_MAP).forEach(function (k) {
+                    if (!focus && fw.indexOf(k) !== -1) focus = SUBJECT_MAP[k];
+                });
+            }
+
+            return {
+                mode: mode,
+                scope: scope,
+                bias: bias,
+                hours: hrs,
+                subjects: subjects,
+                pairs: pairs,
+                focus: focus,
+                raw: text
+            };
+        }
+
+        function dayShort(idx) {
+            return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][idx];
+        }
+
+        function buildPlan(req) {
+            // ---------- pick days ----------
+            var days;
+            if (req.scope === 'weekend') days = ['Sat','Sun'];
+            else if (req.scope === 'weekday') days = ['Mon','Tue','Wed','Thu','Fri'];
+            else if (req.scope === 'today') days = [dayShort(new Date().getDay())];
+            else if (req.scope === 'tomorrow') days = [dayShort((new Date().getDay() + 1) % 7)];
+            else days = ALL_DAYS.slice();
+
+            // ---------- pick hours ----------
+            var hoursPool = ALL_HOURS.slice();
+            if (req.bias === 'morning') hoursPool = ['8:00','9:00','10:00','11:00'];
+            else if (req.bias === 'afternoon') hoursPool = ['12:00','13:00','14:00','15:00','16:00'];
+            else if (req.bias === 'evening') hoursPool = ['17:00','18:00','19:00','20:00'];
+
+            // ---------- density ----------
+            var selectedHours;
+            if (req.mode === 'easy') {
+                selectedHours = hoursPool.filter(function (h, i) { return i % 2 === 0; });
+            } else if (req.mode === 'intense') {
+                selectedHours = hoursPool.slice();
+            } else {
+                selectedHours = hoursPool.filter(function (h, i) { return i % 3 !== 2; });
+            }
+            if (selectedHours.length === 0) selectedHours = [hoursPool[0]];
+
+            // If duration given, cap hours per day
+            if (req.hours > 0) {
+                var cap = Math.max(1, Math.round(req.hours));
+                selectedHours = selectedHours.slice(0, cap);
+            }
+
+            // ---------- subject pool ----------
+            var pool = req.subjects.slice();
+            if (req.focus && pool.indexOf(req.focus) === -1) pool.unshift(req.focus);
+            if (pool.length === 0) {
+                if (req.mode === 'intense') pool = ['Math','Science','Revision','Practice','Reading'];
+                else if (req.mode === 'easy') pool = ['Reading','Revision','Notes','Practice'];
+                else pool = ['Math','Science','Language','Reading','Revision','Practice'];
+            }
+
+            // ---------- build map ----------
+            var plan = {};
+            var idx = 0;
+            days.forEach(function (day) {
+                selectedHours.forEach(function (hour) {
+                    // Respect explicit subject/time pairs
+                    var forced = null;
+                    req.pairs.forEach(function (p) {
+                        if (p.time === req.bias && pool.indexOf(p.subject) !== -1 && !forced) {
+                            forced = p.subject;
+                        }
+                    });
+                    var subj;
+                    if (forced) subj = forced;
+                    else {
+                        // Weighted rotation: focus subject appears more often
+                        if (req.focus && idx % 3 === 0) subj = req.focus;
+                        else subj = pool[idx % pool.length];
+                    }
+                    plan[day + '_' + hour] = subj;
+                    idx++;
+                });
+            });
+
+            return {
+                plan: plan,
+                days: days,
+                hours: selectedHours,
+                pool: pool
+            };
+        }
+
+        function describeRequest(req, result) {
+            var modeLabel = { easy:'Easy / light', balanced:'Balanced', intense:'Intense' }[req.mode];
+            var scopeLabel = {
+                all: 'Full week',
+                weekend: 'Weekend only',
+                weekday: 'Weekdays only',
+                today: 'Today only',
+                tomorrow: 'Tomorrow only'
+            }[req.scope];
+            var biasLabel = {
+                all: 'any time of day',
+                morning: 'mornings',
+                afternoon: 'afternoons',
+                evening: 'evenings'
+            }[req.bias];
+
+            var subjectText = result.pool.slice(0, 6).join(', ');
+            if (result.pool.length > 6) subjectText += '…';
+
+            var html = '<div class="planner-ai-summary">';
+            html += '<strong>🧠 Understood:</strong> ';
+            html += 'A <span class="tag">' + modeLabel + '</span> plan ';
+            html += 'for <span class="tag">' + scopeLabel + '</span> ';
+            html += 'during <span class="tag">' + biasLabel + '</span>.';
+            if (req.hours > 0) html += ' Cap of <span class="tag">' + req.hours + 'h/day</span>.';
+            html += '<br><strong>📚 Subjects:</strong> ' + subjectText + '.';
+            if (req.focus) html += ' <em>Focus on ' + req.focus + '.</em>';
+            html += '<br><strong>📊 Total sessions:</strong> ' + Object.keys(result.plan).length + ' across ' + result.days.length + ' day(s).';
+            html += '</div>';
+            return html;
+        }
+
+        function renderPreview(result) {
+            var days = result.days;
+            var hours = result.hours;
+            var gridStyle = 'grid-template-columns: 60px repeat(' + days.length + ', minmax(70px, 1fr));';
+            var html = '<div class="planner-ai-preview" style="' + gridStyle + '">';
+            // header row
+            html += '<div class="ai-label"></div>';
+            days.forEach(function (d) { html += '<div class="ai-label">' + d + '</div>'; });
+            // rows
+            hours.forEach(function (h) {
+                html += '<div class="ai-label">' + h + '</div>';
+                days.forEach(function (d) {
+                    var v = result.plan[d + '_' + h] || '';
+                    html += '<div class="ai-cell' + (v ? '' : ' empty') + '">' + v + '</div>';
+                });
+            });
+            html += '</div>';
+            return html;
+        }
+
+        var lastResult = null;
+
+        function generate() {
+            var text = inputEl.value.trim();
+            if (!text) {
+                output.innerHTML = '<div class="planner-ai-summary">Please type what you want to plan — or click one of the chips above.</div>';
+                return;
+            }
+            var req = parseRequest(text);
+            var result = buildPlan(req);
+            lastResult = result;
+
+            var html = describeRequest(req, result);
+            html += renderPreview(result);
+            html += '<div class="planner-ai-actions">';
+            html += '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner (merge)</button>';
+            html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 Replace Planner</button>';
+            html += '<button id="aiRetryBtn" class="btn-danger">🔄 Retry (new variation)</button>';
+            html += '</div>';
+            output.innerHTML = html;
+
+            document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
+            document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
+            document.getElementById('aiRetryBtn').addEventListener('click', function () {
+                // Random shake
+                if (lastResult) {
+                    var keys = Object.keys(lastResult.plan);
+                    var vals = keys.map(function (k) { return lastResult.plan[k]; });
+                    for (var i = vals.length - 1; i > 0; i--) {
+                        var j = Math.floor(Math.random() * (i + 1));
+                        var tmp = vals[i]; vals[i] = vals[j]; vals[j] = tmp;
+                    }
+                    keys.forEach(function (k, i) { lastResult.plan[k] = vals[i]; });
+                    var req2 = parseRequest(text);
+                    output.innerHTML = describeRequest(req2, lastResult) + renderPreview(lastResult) +
+                        '<div class="planner-ai-actions">' +
+                        '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner (merge)</button>' +
+                        '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15); color:#fca5a5; border-color:rgba(252,165,165,0.3);">🔁 Replace Planner</button>' +
+                        '<button id="aiRetryBtn" class="btn-danger">🔄 Retry (new variation)</button>' +
+                        '</div>';
+                    document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
+                    document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
+                    document.getElementById('aiRetryBtn').addEventListener('click', function () { document.getElementById('aiRetryBtn').click(); });
+                }
+            });
+        }
+
+        function applyPlan(replace) {
+            if (!lastResult) return;
+            var data = loadData();
+            if (!data.planner) data.planner = {};
+            if (replace) data.planner = {};
+            Object.keys(lastResult.plan).forEach(function (k) {
+                data.planner[k] = lastResult.plan[k];
+            });
+            saveData(data);
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'planner_ai', (replace ? 'Replaced planner with AI plan' : 'Merged AI plan into planner'));
+                saveData(data);
+            }
+            // reload so grid re-renders with new data
+            location.reload();
+        }
+
+        btn.addEventListener('click', generate);
+
+        // Chips autofill + auto-generate
+        document.querySelectorAll('.planner-chip').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                inputEl.value = this.dataset.prompt;
+                generate();
+            });
+        });
+
+        // Ctrl+Enter inside textarea triggers generation
+        inputEl.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                generate();
+            }
+        });
+    });
+})();
