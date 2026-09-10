@@ -2729,13 +2729,15 @@ function setupHabits() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-    delBtn.addEventListener('click', function() {
-        if (confirm('Delete all habits?')) {
+       delBtn.addEventListener('click', function() {
+        if (confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
+            data.habits.forEach(function(h) { pushToTrash(data, 'habit', h); });
             data.habits = [];
-            addActivity(data, 'delete', 'Deleted all habits');
+            addActivity(data, 'delete', 'Moved all habits to trash');
             saveData(data);
             renderHabits();
+            updateTrashCount();
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
@@ -2802,17 +2804,18 @@ function setupNotice() {
         if (e.key === 'Enter') addBtn.click();
     });
 
-    delBtn.addEventListener('click', function() {
-        if (confirm('Delete all notices?')) {
+        delBtn.addEventListener('click', function() {
+        if (confirm('Move all notices to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
+            data.notices.forEach(function(n) { pushToTrash(data, 'notice', n); });
             data.notices = [];
-            addActivity(data, 'delete', 'Deleted all notices');
+            addActivity(data, 'delete', 'Moved all notices to trash');
             saveData(data);
             renderNotices();
+            updateTrashCount();
             if (document.getElementById('statTasks')) renderDashboard();
         }
     });
-
     renderNotices();
 }
 
