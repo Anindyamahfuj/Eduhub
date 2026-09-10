@@ -1239,3 +1239,86 @@ body {
     gap: 0.6rem;
     flex-wrap: wrap;
 }
+
+/* ============================================================
+   FOCUS MODE — working feature
+   ============================================================ */
+
+.focus-indicator-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: linear-gradient(90deg, #7c3aed, #c084fc, #a78bfa);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    box-shadow: 0 2px 20px rgba(192, 132, 252, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    animation: focusBarPulse 3s ease-in-out infinite;
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+@keyframes focusBarPulse {
+    0%, 100% { box-shadow: 0 2px 20px rgba(192, 132, 252, 0.5); }
+    50%      { box-shadow: 0 2px 38px rgba(192, 132, 252, 0.95); }
+}
+
+body.focus-mode .focus-indicator-bar {
+    display: flex;
+}
+
+/* Make room for the bar at the top of every page */
+body.focus-mode {
+    padding-top: 34px;
+}
+body.focus-mode .navbar {
+    top: 34px;
+}
+
+/* Elements hidden while in focus mode */
+body.focus-mode .non-essential,
+body.focus-mode .all-history-section,
+body.focus-mode .upcoming-assignments-section,
+body.focus-mode .block-warning,
+body.focus-mode .journal-section,
+body.focus-mode .notice-board,
+body.focus-mode .priority-matrix-section {
+    display: none !important;
+}
+
+/* Reduce visual noise from inactive nav links */
+body.focus-mode .nav-links a:not(.active) {
+    opacity: 0.45;
+}
+body.focus-mode .nav-links a:not(.active):hover {
+    opacity: 1;
+}
+
+/* Soft backdrop glow */
+body.focus-mode::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+        radial-gradient(circle at top right,   rgba(192, 132, 252, 0.10), transparent 55%),
+        radial-gradient(circle at bottom left, rgba(124,  58, 237, 0.10), transparent 55%);
+}
+
+/* Make the focus toggle button glow when active */
+.focus-toggle.active {
+    background: rgba(192, 132, 252, 0.25);
+    border-color: #c084fc;
+    color: #c084fc;
+    box-shadow: 0 0 20px rgba(192, 132, 252, 0.4);
+}
+
