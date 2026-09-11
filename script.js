@@ -306,9 +306,11 @@ function initClock() {
         ctx.fill();
     }
 
-    // ---------- HIGH-LEVEL TICK ----------
+        // ---------- HIGH-LEVEL TICK ----------
     function updateClock() {
-               let h = now.getHours() % 12;
+        const now = new Date();
+
+        let h = now.getHours() % 12;
         if (h === 0) h = 12;                                  // 0 → 12 (midnight/noon)
         const ampm = now.getHours() < 12 ? 'AM' : 'PM';
         const m = String(now.getMinutes()).padStart(2, '0');
