@@ -3817,13 +3817,14 @@ function setupSearch() {
         }
     });
 
-    if (keyboardToggle && keyboardContainer) {
+        if (keyboardToggle && keyboardContainer) {
         keyboardToggle.addEventListener('click', function() {
             keyboardContainer.classList.toggle('active');
             this.textContent = keyboardContainer.classList.contains('active') ? getTranslation('hide_keyboard') : getTranslation('show_keyboard');
         });
 
-        var rows = [
+        // ============ KEYBOARD LAYOUTS ============
+        var LETTER_ROWS = [
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Backspace'],
             ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
             ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
@@ -3831,24 +3832,65 @@ function setupSearch() {
             ['Space']
         ];
 
-        rows.forEach(function(rowKeys) {
-            var rowDiv = document.createElement('div');
-            rowDiv.className = 'keyboard-row';
-            rowKeys.forEach(function(key) {
-                var btn = document.createElement('button');
-                btn.className = 'key-btn';
-                if (key === 'Backspace' || key === 'Space') btn.classList.add('special');
-                if (key === 'Space') btn.classList.add('space');
-                btn.textContent = key === 'Space' ? '␣' : key;
-                btn.dataset.key = key;
-                rowDiv.appendChild(btn);
+        var SYMBOL_ROWS = [
+            ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', 'Backspace'],
+            ['-', '_', '=', '+', '[', ']', '{', '}', '\\', '|'],
+            [';', ':', "'", '"', '<', '>', '/', '~', '`'],
+            ['€', '£', '¥', '©', '®', '™', '°', '·', '•', '…'],
+            ['Space']
+        ];
+
+        var layoutMode = 'letters';   // 'letters' | 'symbols'
+
+        function renderKeyboard() {
+            keyboardContainer.innerHTML = '';
+            var rows = (layoutMode === 'letters') ? LETTER_ROWS : SYMBOL_ROWS;
+
+            rows.forEach(function(rowKeys) {
+                var rowDiv = document.createElement('div');
+                rowDiv.className = 'keyboard-row';
+                rowKeys.forEach(function(key) {
+                    var btn = document.createElement('button');
+                    btn.className = 'key-btn';
+                    if (key === 'Backspace' || key === 'Space') btn.classList.add('special');
+                    if (key === 'Space') btn.classList.add('space');
+                    btn.textContent = key === 'Space' ? '␣' : key;
+                    btn.dataset.key = key;
+                    rowDiv.appendChild(btn);
+                });
+                keyboardContainer.appendChild(rowDiv);
             });
-            keyboardContainer.appendChild(rowDiv);
-        });
+
+            // Bottom row: layout toggle (like Android's "?123 / ABC" key)
+            var toggleRow = document.createElement('div');
+            toggleRow.className = 'keyboard-row';
+
+            var layoutBtn = document.createElement('button');
+            layoutBtn.className = 'key-btn special keyboard-layout-toggle';
+            layoutBtn.type = 'button';
+            layoutBtn.dataset.action = 'toggle-layout';
+            layoutBtn.textContent = (layoutMode === 'letters') ? '?123' : 'ABC';
+            layoutBtn.title = (layoutMode === 'letters') ? 'Switch to symbols' : 'Switch to letters';
+            layoutBtn.style.cssText = 'background:rgba(192,132,252,0.15);border-color:rgba(192,132,252,0.45);color:#c084fc;font-weight:700;min-width:4rem;';
+
+            toggleRow.appendChild(layoutBtn);
+            keyboardContainer.appendChild(toggleRow);
+        }
+
+        renderKeyboard();
 
         keyboardContainer.addEventListener('click', function(e) {
             var target = e.target.closest('.key-btn');
             if (!target) return;
+
+            // Layout toggle handled first
+            if (target.dataset.action === 'toggle-layout') {
+                layoutMode = (layoutMode === 'letters') ? 'symbols' : 'letters';
+                renderKeyboard();
+                return;
+            }
+
+            // Normal key press
             var key = target.dataset.key;
             var inp = document.getElementById('searchInput');
             if (!inp) return;
