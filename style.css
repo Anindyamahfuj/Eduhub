@@ -308,10 +308,12 @@ h1, h2, h3 {
     height: auto;
 }
 .clock-date {
-    color: var(--muted);
-    font-size: 0.8rem;
+    display: none;      /* hidden — the calendar pill already shows the date */
+}
+
+/* Push the calendar widget to the far right now that the date text is gone */
+.calendar-widget {
     margin-left: auto;
-    font-weight: 500;
 }
 .mini-clock .digital-clock { font-size: 1.55rem; }
 .mini-clock canvas { max-width: 100px; }
