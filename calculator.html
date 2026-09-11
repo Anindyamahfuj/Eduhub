@@ -715,8 +715,21 @@
     return stack[0];
   }
 
+    function autoCloseParens(tokens) {
+    let depth = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type === 'op' && t.value === '(') depth++;
+      else if (t.type === 'op' && t.value === ')') depth--;
+    }
+    const out = tokens.slice();
+    while (depth-- > 0) out.push({ type: 'op', value: ')' });
+    return out;
+  }
+
   function evaluate(expression) {
-    const tokens = tokenize(expression);
+    let tokens = tokenize(expression);
+    tokens = autoCloseParens(tokens);
     const rpn = shuntingYard(tokens);
     return evalRPN(rpn);
   }
