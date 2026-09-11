@@ -124,6 +124,7 @@ function initBurger() {
 // ================================================================
 let clockMode = 'digital';
 let clockInterval = null;
+let analogRafId = null;
 
 function initClock() {
     const digital = document.getElementById('digitalClock');
@@ -133,10 +134,179 @@ function initClock() {
 
     if (!digital || !analog || !toggle) return;
 
+    // --- DPI-aware canvas setup (runs once) ---
+    const canvas = document.getElementById('analogCanvas');
+    let ctx = null;
+    let logicalSize = 120;
+    if (canvas) {
+        logicalSize = parseInt(canvas.getAttribute('width'), 10) || 120;
+        const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3 for perf
+        canvas.width = logicalSize * dpr;
+        canvas.height = logicalSize * dpr;
+        canvas.style.width = logicalSize + 'px';
+        canvas.style.height = logicalSize + 'px';
+        ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
     digital.classList.add('active');
     analog.classList.remove('active');
     toggle.textContent = '⏰ Switch to Analog';
 
+    // ---------- ANALOG DRAW ----------
+    function drawAnalog(now) {
+        if (!ctx) return;
+        const w = logicalSize;
+        const hc = logicalSize;
+        const cx = w / 2;
+        const cy = hc / 2;
+        const radius = w / 2 - 6;
+
+        ctx.clearRect(0, 0, w, hc);
+
+        // -- Face background (radial gradient) --
+        const faceGrad = ctx.createRadialGradient(cx, cy - radius * 0.3, radius * 0.1, cx, cy, radius);
+        faceGrad.addColorStop(0, 'rgba(15, 35, 55, 0.95)');
+        faceGrad.addColorStop(0.7, 'rgba(6, 18, 30, 0.95)');
+        faceGrad.addColorStop(1, 'rgba(2, 8, 14, 0.98)');
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = faceGrad;
+        ctx.fill();
+
+        // -- Outer bezel ring --
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(94, 234, 212, 0.55)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius - 2, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(125, 211, 252, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // -- Inner rim glow --
+        const glowGrad = ctx.createRadialGradient(cx, cy, radius * 0.75, cx, cy, radius);
+        glowGrad.addColorStop(0, 'rgba(94, 234, 212, 0)');
+        glowGrad.addColorStop(1, 'rgba(94, 234, 212, 0.15)');
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = glowGrad;
+        ctx.fill();
+
+        // -- 60 minute ticks (thin, muted) --
+        for (let i = 0; i < 60; i++) {
+            if (i % 5 === 0) continue;
+            const angle = (i * 6 - 90) * Math.PI / 180;
+            const outer = radius - 4;
+            const inner = radius - 8;
+            ctx.beginPath();
+            ctx.moveTo(cx + outer * Math.cos(angle), cy + outer * Math.sin(angle));
+            ctx.lineTo(cx + inner * Math.cos(angle), cy + inner * Math.sin(angle));
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // -- 12 hour markers (bold, gradient) --
+        for (let i = 0; i < 12; i++) {
+            const angle = (i * 30 - 90) * Math.PI / 180;
+            const outer = radius - 4;
+            const inner = radius - 12;
+            const x1 = cx + outer * Math.cos(angle);
+            const y1 = cy + outer * Math.sin(angle);
+            const x2 = cx + inner * Math.cos(angle);
+            const y2 = cy + inner * Math.sin(angle);
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+            grad.addColorStop(0, '#5eead4');
+            grad.addColorStop(1, '#7dd3fc');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // -- Hour numerals (12 / 3 / 6 / 9) --
+        ctx.font = 'bold ' + Math.round(radius * 0.22) + 'px Inter, sans-serif';
+        ctx.fillStyle = 'rgba(238, 244, 251, 0.85)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        [12, 3, 6, 9].forEach(function (num) {
+            const angle = (num * 30 - 90) * Math.PI / 180;
+            const r = radius - 22;
+            ctx.fillText(String(num), cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+        });
+
+        // -- Compute angles (second hand uses ms for smooth sweep) --
+        const sec = now.getSeconds();
+        const ms  = now.getMilliseconds();
+        const min = now.getMinutes() + sec / 60;
+        const hr  = (now.getHours() % 12) + min / 60;
+
+        const secAngle  = ((sec + ms / 1000) * 6 - 90) * Math.PI / 180;
+        const minAngle  = (min * 6 - 90) * Math.PI / 180;
+        const hourAngle = (hr * 30 - 90) * Math.PI / 180;
+
+        // -- Hand drawing helper --
+        function drawHand(angle, length, tailLength, color, width, glowColor) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(cx - tailLength * Math.cos(angle), cy - tailLength * Math.sin(angle));
+            ctx.lineTo(cx + length * Math.cos(angle), cy + length * Math.sin(angle));
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            if (glowColor) {
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 8;
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Hour hand — pink→purple gradient, thick
+        const hourGrad = ctx.createLinearGradient(
+            cx, cy,
+            cx + radius * 0.5 * Math.cos(hourAngle),
+            cy + radius * 0.5 * Math.sin(hourAngle)
+        );
+        hourGrad.addColorStop(0, '#f472b6');
+        hourGrad.addColorStop(1, '#c084fc');
+        drawHand(hourAngle, radius * 0.5, radius * 0.12, hourGrad, Math.max(3, radius * 0.07), 'rgba(244, 114, 182, 0.6)');
+
+        // Minute hand — mint
+        drawHand(minAngle, radius * 0.72, radius * 0.14, '#6ee7b7', Math.max(2, radius * 0.05), 'rgba(110, 231, 183, 0.5)');
+
+        // Second hand — cyan, thin, extra glow
+        drawHand(secAngle, radius * 0.85, radius * 0.2, '#5eead4', Math.max(1, radius * 0.018), 'rgba(94, 234, 212, 0.9)');
+
+        // -- Center cap (three layers) --
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.07, 0, Math.PI * 2);
+        ctx.fillStyle = '#c084fc';
+        ctx.shadowColor = 'rgba(192, 132, 252, 0.8)';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.035, 0, Math.PI * 2);
+        ctx.fillStyle = '#0a1824';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.02, 0, Math.PI * 2);
+        ctx.fillStyle = '#5eead4';
+        ctx.fill();
+    }
+
+    // ---------- HIGH-LEVEL TICK ----------
     function updateClock() {
         const now = new Date();
         const h = String(now.getHours()).padStart(2, '0');
@@ -144,87 +314,65 @@ function initClock() {
         const s = String(now.getSeconds()).padStart(2, '0');
         digital.textContent = h + ':' + m + ':' + s;
 
-        const canvas = document.getElementById('analogCanvas');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;
-            const hc = canvas.height;
-            ctx.clearRect(0, 0, w, hc);
+        // Only redraw analog when it's visible — avoids wasted work in digital mode
+        if (analog.classList.contains('active')) drawAnalog(now);
 
-            ctx.beginPath();
-            ctx.arc(w / 2, hc / 2, w / 2 - 4, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fill();
-            ctx.strokeStyle = '#c084fc';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            for (let i = 0; i < 12; i++) {
-                const angle = (i * 30 - 90) * Math.PI / 180;
-                const len = w / 2 - 14;
-                const x1 = w / 2 + len * Math.cos(angle);
-                const y1 = hc / 2 + len * Math.sin(angle);
-                const x2 = w / 2 + (w / 2 - 6) * Math.cos(angle);
-                const y2 = hc / 2 + (w / 2 - 6) * Math.sin(angle);
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.strokeStyle = '#94a3b8';
-                ctx.lineWidth = i % 3 === 0 ? 3 : 1.5;
-                ctx.stroke();
-            }
-
-            const secAngle = (now.getSeconds() * 6 - 90) * Math.PI / 180;
-            const minAngle = ((now.getMinutes() + now.getSeconds() / 60) * 6 - 90) * Math.PI / 180;
-            const hourAngle = ((now.getHours() % 12 + now.getMinutes() / 60) * 30 - 90) * Math.PI / 180;
-
-            function drawHand(angle, length, color, width) {
-                ctx.beginPath();
-                ctx.moveTo(w / 2, hc / 2);
-                ctx.lineTo(w / 2 + length * Math.cos(angle), hc / 2 + length * Math.sin(angle));
-                ctx.strokeStyle = color;
-                ctx.lineWidth = width;
-                ctx.stroke();
-            }
-
-            drawHand(hourAngle, w / 2 * 0.5, '#f472b6', 5);
-            drawHand(minAngle, w / 2 * 0.7, '#6ee7b7', 3);
-            drawHand(secAngle, w / 2 * 0.8, '#fca5a5', 1.5);
-
-            ctx.beginPath();
-            ctx.arc(w / 2, hc / 2, 4, 0, 2 * Math.PI);
-            ctx.fillStyle = '#c084fc';
-            ctx.fill();
+        if (dateEl) {
+            dateEl.textContent = now.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
         }
-
-        dateEl.textContent = now.toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
     }
 
+    // ---------- SMOOTH SECOND HAND LOOP ----------
+    function analogLoop() {
+        if (!analog.classList.contains('active')) {
+            analogRafId = null;
+            return;
+        }
+        drawAnalog(new Date());
+        analogRafId = requestAnimationFrame(analogLoop);
+    }
+
+    function startAnalogLoop() {
+        if (analogRafId === null) {
+            analogRafId = requestAnimationFrame(analogLoop);
+        }
+    }
+
+    function stopAnalogLoop() {
+        if (analogRafId !== null) {
+            cancelAnimationFrame(analogRafId);
+            analogRafId = null;
+        }
+    }
+
+    // First paint
     updateClock();
     if (clockInterval) clearInterval(clockInterval);
     clockInterval = setInterval(updateClock, 1000);
 
-    toggle.addEventListener('click', function() {
+    // ---------- TOGGLE ----------
+    toggle.addEventListener('click', function () {
         if (clockMode === 'digital') {
             clockMode = 'analog';
             digital.classList.remove('active');
             analog.classList.add('active');
             this.textContent = '⏰ Switch to Digital';
+            startAnalogLoop();
         } else {
             clockMode = 'digital';
             digital.classList.add('active');
             analog.classList.remove('active');
             this.textContent = '⏰ Switch to Analog';
+            stopAnalogLoop();
+            updateClock();
         }
-        updateClock();
     });
 }
-
 // ================================================================
 // 30-MINUTE SOFT MELODY REMINDER
 // ================================================================
