@@ -157,7 +157,6 @@
       <button class="calc-tab" data-tab="number">🔎 Number Theory</button>
     </div>
 
-    <!-- ================= SCIENTIFIC ================= -->
     <div class="calc-panel active" id="panel-scientific">
       <div class="sci-display">
         <div class="sci-display-top">
@@ -211,7 +210,7 @@
         <button class="sci-btn fn" data-insert="(">(</button>
         <button class="sci-btn fn" data-insert=")">)</button>
         <button class="sci-btn fn" data-insert=",">,</button>
-        <button class="sci-btn fn" data-insert="%">%</button>
+        <button class="sci-btn fn" data-act="percent" title="Percentage (divide by 100)">%</button>
         <button class="sci-btn fn" data-act="ans">ANS</button>
         <button class="sci-btn danger" data-act="clear">C</button>
 
@@ -227,7 +226,7 @@
         <button class="sci-btn" data-insert="6">6</button>
         <button class="sci-btn op" data-insert="+">+</button>
         <button class="sci-btn fn" data-insert="E">E</button>
-        <button class="sci-btn op" data-insert="%">%</button>
+        <button class="sci-btn op" data-insert="%">mod</button>
 
         <button class="sci-btn" data-insert="1">1</button>
         <button class="sci-btn" data-insert="2">2</button>
@@ -259,7 +258,6 @@
       </div>
     </div>
 
-    <!-- ================= EQUATIONS ================= -->
     <div class="calc-panel tool-panel" id="panel-equations">
       <div class="row">
         <label>Type:</label>
@@ -276,7 +274,6 @@
       <div class="tool-result" id="eq-result"></div>
     </div>
 
-    <!-- ================= STATS ================= -->
     <div class="calc-panel tool-panel" id="panel-stats">
       <div class="row">
         <label>Data:</label>
@@ -303,7 +300,6 @@
       <div class="tool-result" id="stats-result"></div>
     </div>
 
-    <!-- ================= BASE ================= -->
     <div class="calc-panel tool-panel" id="panel-base">
       <div class="row">
         <label>Enter number (as <span id="base-input-hint" style="color:var(--accent);font-weight:700;">DEC</span>):</label>
@@ -320,7 +316,6 @@
       <div class="tool-result" id="base-result"></div>
     </div>
 
-    <!-- ================= PROGRAMMER ================= -->
     <div class="calc-panel tool-panel" id="panel-programmer">
       <div class="row">
         <label>Base:</label>
@@ -353,7 +348,6 @@
       <div class="tool-result" id="prog-result"></div>
     </div>
 
-    <!-- ================= MATRIX ================= -->
     <div class="calc-panel tool-panel" id="panel-matrix">
       <div class="row">
         <label>Size:</label>
@@ -390,7 +384,6 @@
       <div class="tool-result" id="mat-result"></div>
     </div>
 
-    <!-- ================= CONVERT ================= -->
     <div class="calc-panel tool-panel" id="panel-convert">
       <h3 style="font-size:.95rem;color:var(--accent);margin-bottom:.8rem">🔹 DMS ↔ Decimal Degrees</h3>
       <div class="row">
@@ -429,7 +422,6 @@
       <div class="tool-result" id="coord-result"></div>
     </div>
 
-    <!-- ================= NUMBER THEORY ================= -->
     <div class="calc-panel tool-panel" id="panel-number">
       <div class="row">
         <label>Number:</label>
@@ -457,14 +449,13 @@
 (function () {
   'use strict';
 
-  // ---------- STATE ----------
   let angleMode = 'DEG';
   let ans = 0;
   let mem = 0;
   const vars = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
   const history = [];
   let expr = '';
-  let justEvaluated = false;   // true right after "=" — next keypress wipes the big result
+  let justEvaluated = false;
 
   const $ = (id) => document.getElementById(id);
   const exprEl = $('sci-expr');
@@ -474,7 +465,6 @@
   const indM = $('ind-m');
   const indAns = $('ind-ans');
 
-  // ---------- MATH PRIMITIVES ----------
   function toRad(x) {
     if (angleMode === 'DEG') return x * Math.PI / 180;
     if (angleMode === 'GRAD') return x * Math.PI / 200;
@@ -561,7 +551,6 @@
     }
   }
 
-  // ---------- TOKENIZER ----------
   function tokenize(input) {
     const s = String(input).replace(/π/g, 'pi').replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
     const tokens = [];
@@ -616,7 +605,6 @@
     return out;
   }
 
-  // ---------- SHUNTING YARD ----------
   const PREC = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2, '^': 4, 'u-': 5, 'u+': 5 };
   const RIGHT_ASSOC = { '^': true, 'u-': true, 'u+': true };
 
@@ -671,7 +659,6 @@
     return output;
   }
 
-  // ---------- RPN EVALUATOR ----------
   function evalRPN(rpn) {
     const stack = [];
     for (const t of rpn) {
@@ -717,7 +704,6 @@
     return stack[0];
   }
 
-  // Auto-close any unclosed parentheses so users don't have to type all ")"
   function autoCloseParens(tokens) {
     let depth = 0;
     for (let i = 0; i < tokens.length; i++) {
@@ -737,7 +723,6 @@
     return evalRPN(rpn);
   }
 
-  // ---------- DISPLAY HELPERS ----------
   function fmt(n) {
     if (typeof n !== 'number' || !isFinite(n)) return String(n);
     if (Number.isInteger(n) && Math.abs(n) < 1e15) return String(n);
@@ -746,7 +731,7 @@
   }
 
   function updateDisplay() {
-    exprEl.textContent = expr;   // empty string when nothing is typed — never a stray "0"
+    exprEl.textContent = expr;
     indAngle.textContent = angleMode;
     indM.classList.toggle('on', mem !== 0);
     indAns.textContent = 'ANS=' + fmt(ans);
@@ -757,8 +742,6 @@
     resEl.classList.toggle('err', !!isErr);
   }
 
-  // Wipes the big result line the moment the user starts a new sum.
-  // Memory, history, and the ANS indicator are all preserved.
   function beginNewInput() {
     if (justEvaluated) {
       setResult('');
@@ -784,7 +767,6 @@
     });
   }
 
-  // ---------- BUTTON HANDLERS ----------
   document.querySelectorAll('[data-insert]').forEach(b => {
     b.addEventListener('click', () => {
       beginNewInput();
@@ -809,6 +791,19 @@
       else if (act === 'back') { expr = expr.slice(0, -1); }
       else if (act === 'equals') doEquals();
       else if (act === 'ans') { expr += 'ans'; }
+      else if (act === 'percent') {
+        // Divide the current expression by 100 (true percentage).
+        // If the expression is empty, do nothing.
+        if (expr.trim()) {
+          try {
+            const val = evaluate(expr) / 100;
+            expr = fmt(val);
+            updateDisplay();
+          } catch (e) {
+            setResult('Error: ' + e.message, true);
+          }
+        }
+      }
       else if (act === 'deg' || act === 'rad' || act === 'grad') {
         angleMode = act.toUpperCase();
         document.querySelectorAll('.sci-btn.mode').forEach(m => m.classList.remove('on'));
@@ -856,23 +851,17 @@
       const result = evaluate(expr);
       if (typeof result !== 'number' || isNaN(result)) throw new Error('Invalid result');
 
-      // 1. Remember the answer so ANS button still works
       ans = result;
-
-      // 2. Show the result in the big line
       setResult(fmt(result));
 
-      // 3. Keep the history record (as requested)
       history.push({ expr: originalExpr, res: fmt(result) });
       if (history.length > 100) history.shift();
       refreshHistory();
 
-      // 4. Clear the small expression line
       expr = '';
       updateDisplay();
       exprEl.textContent = '';
 
-      // 5. Arm the flag — the next key press will wipe the big line
       justEvaluated = true;
     } catch (e) {
       setResult('Error: ' + e.message, true);
@@ -880,7 +869,6 @@
     }
   }
 
-  // Keyboard support
   document.addEventListener('keydown', (e) => {
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'Enter') { e.preventDefault(); doEquals(); }
@@ -891,7 +879,6 @@
     else if (e.key === 'e') { beginNewInput(); expr += 'e'; updateDisplay(); }
   });
 
-  // ---------- TAB SWITCHING ----------
   document.querySelectorAll('.calc-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.calc-tab').forEach(t => t.classList.remove('active'));
@@ -1158,7 +1145,6 @@
   // ====================================================
   // BASE CONVERSION
   // ====================================================
-  // Keep the "Enter number (as XXX)" label in sync with the dropdown
   const BASE_LABELS = { '2': 'BIN', '8': 'OCT', '10': 'DEC', '16': 'HEX' };
   const baseHint = $('base-input-hint');
   const baseDropdown = $('base-from');
@@ -1474,12 +1460,8 @@
     });
   });
 
-  // ====================================================
-  // INIT
-  // ====================================================
   updateDisplay();
   refreshHistory();
-  // No initial "0" in the big result box — it stays completely empty until you press "="
 })();
 </script>
 </body>
