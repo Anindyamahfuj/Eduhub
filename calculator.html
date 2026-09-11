@@ -306,9 +306,9 @@
     <!-- ================= BASE ================= -->
     <div class="calc-panel tool-panel" id="panel-base">
       <div class="row">
-        <label>Number:</label>
+        <label>Enter number (as <span id="base-input-hint" style="color:var(--accent);font-weight:700;">DEC</span>):</label>
         <input type="text" class="wide" id="base-input" placeholder="e.g. 255 or FF or 11111111" value="255">
-        <label>Base:</label>
+        <label>Read as:</label>
         <select id="base-from">
           <option value="10" selected>DEC (10)</option>
           <option value="2">BIN (2)</option>
@@ -1158,6 +1158,20 @@
   // ====================================================
   // BASE CONVERSION
   // ====================================================
+  // Keep the "Enter number (as XXX)" label in sync with the dropdown
+  const BASE_LABELS = { '2': 'BIN', '8': 'OCT', '10': 'DEC', '16': 'HEX' };
+  const baseHint = $('base-input-hint');
+  const baseDropdown = $('base-from');
+  function updateBaseHint() {
+    if (baseHint && baseDropdown) {
+      baseHint.textContent = BASE_LABELS[baseDropdown.value] || 'DEC';
+    }
+  }
+  if (baseDropdown) {
+    baseDropdown.addEventListener('change', updateBaseHint);
+    updateBaseHint();
+  }
+
   $('base-convert').addEventListener('click', () => {
     try {
       const input = $('base-input').value.trim();
