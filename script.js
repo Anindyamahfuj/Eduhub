@@ -96,30 +96,6 @@ function setActiveNavLink() {
 }
 
 // ================================================================
-// BURGER MENU
-// ================================================================
-function initBurger() {
-    const btn = document.getElementById('burgerBtn');
-    const links = document.querySelector('.nav-links');
-    if (btn && links) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            links.classList.toggle('open');
-        });
-        links.querySelectorAll('a').forEach(function(link) {
-            link.addEventListener('click', function() {
-                links.classList.remove('open');
-            });
-        });
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.nav-container')) {
-                links.classList.remove('open');
-            }
-        });
-    }
-}
-
-// ================================================================
 // CLOCK
 // ================================================================
 let clockMode = 'digital';
@@ -134,17 +110,36 @@ function initClock() {
 
     if (!digital || !analog || !toggle) return;
 
-    // --- DPI-aware canvas setup (runs once) ---
+    // --- DPI-aware, SQUARE-LOCKED canvas setup (runs once) ---
     const canvas = document.getElementById('analogCanvas');
     let ctx = null;
     let logicalSize = 120;
     if (canvas) {
-        logicalSize = parseInt(canvas.getAttribute('width'), 10) || 120;
-        const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3 for perf
-        canvas.width = logicalSize * dpr;
-        canvas.height = logicalSize * dpr;
-        canvas.style.width = logicalSize + 'px';
-        canvas.style.height = logicalSize + 'px';
+        // Start from the HTML attribute (180 on index.html, 120 elsewhere)
+        const initialAttr = parseInt(canvas.getAttribute('width'), 10) || 120;
+
+        // Ask the browser what CSS would allow (handles .mini-clock max-width:100px etc.)
+        const cs = getComputedStyle(canvas);
+        let maxW = parseFloat(cs.maxWidth);
+        let maxH = parseFloat(cs.maxHeight);
+        if (isNaN(maxW)) maxW = Infinity;
+        if (isNaN(maxH)) maxH = Infinity;
+
+        // Final display size — always a single square value
+        const displaySize = Math.max(60, Math.round(Math.min(initialAttr, maxW, maxH)));
+        logicalSize = displaySize;
+
+        // DPR-aware backing store
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        canvas.width = displaySize * dpr;
+        canvas.height = displaySize * dpr;
+
+        // Lock BOTH axes (and max-width / max-height) inline so nothing can stretch it
+        canvas.style.width = displaySize + 'px';
+        canvas.style.height = displaySize + 'px';
+        canvas.style.maxWidth = displaySize + 'px';
+        canvas.style.maxHeight = displaySize + 'px';
+
         ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
