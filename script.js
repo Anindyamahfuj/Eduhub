@@ -3754,6 +3754,94 @@ function setupAIRecommendation() {
     });
 }
 
+
+// ================================================================
+// FILE UPLOAD (missing function — required by files.html)
+// ================================================================
+function setupFileUpload() {
+    var uploadArea = document.getElementById('uploadArea');
+    if (!uploadArea) return;
+    var fileInput = document.getElementById('fileInput');
+    if (!fileInput) return;
+
+    uploadArea.addEventListener('click', function () { fileInput.click(); });
+
+    uploadArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#c084fc';
+    });
+    uploadArea.addEventListener('dragleave', function () {
+        uploadArea.style.borderColor = 'rgba(192,132,252,0.2)';
+    });
+    uploadArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'rgba(192,132,252,0.2)';
+        handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', function () {
+        handleFiles(fileInput.files);
+        fileInput.value = '';
+    });
+
+    async function handleFiles(files) {
+        var data = loadData();
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            try {
+                var reader = new FileReader();
+                var result = await new Promise(function (resolve, reject) {
+                    reader.onload = function (e) { resolve(e.target.result); };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                data.files.push({
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                    name: file.name,
+                    size: file.size,
+                    data: result,
+                    date: new Date().toISOString()
+                });
+                addActivity(data, 'file', 'Uploaded "' + file.name + '"');
+                saveData(data);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        if (typeof renderFileList === 'function') renderFileList();
+        if (document.getElementById('statFiles') && typeof renderDashboard === 'function') renderDashboard();
+    }
+
+    var delBtn = document.getElementById('deleteAllFilesBtn');
+    if (delBtn) {
+        delBtn.addEventListener('click', function () {
+            if (confirm('Move all files to Trash? They will be recoverable for 24 hours.')) {
+                var data = loadData();
+                data.files.forEach(function (f) { pushToTrash(data, 'file', f); });
+                data.files = [];
+                addActivity(data, 'delete', 'Moved all files to trash');
+                saveData(data);
+                renderFileList();
+                updateTrashCount();
+                if (document.getElementById('statFiles') && typeof renderDashboard === 'function') renderDashboard();
+            }
+        });
+    }
+}
+
+// ================================================================
+// HELPER t() — used by AI Recommend
+// ================================================================
+function t(key, params) {
+    var s = getTranslation(key);
+    if (params) {
+        for (var k in params) {
+            s = s.split('{' + k + '}').join(params[k]);
+        }
+    }
+    return s;
+}
+
+
 // ================================================================
 // NAV DATE & SCROLL GRADIENT
 // ================================================================
@@ -4450,32 +4538,51 @@ function renderFileList() {
     if (!container) return;
     var data = loadData();
     if (!data.fileAnnotations) data.fileAnnotations = {};
+
     if (data.files.length === 0) {
-        container.innerHTML = '<p class="empty-state">' + (typeof getTranslation === 'function' ? getTranslation('no_files') : 'No files uploaded yet.') + '</p>';
+        container.innerHTML = '<p class="empty-state">' + getTranslation('no_files') + '</p>';
         return;
     }
-    container.innerHTML = data.files.map(function(f) {
+
+    container.innerHTML = data.files.map(function (f) {
         var note = data.fileAnnotations[f.id] || '';
         return '<div class="file-item" style="flex-direction:column; align-items:stretch; gap:0.4rem;">' +
             '<div class="file-item-row">' +
-                '<a href="' + f.data + '" target="_blank" class="file-name">📄 ' + f.name + '</a>' +
+                '<a href="#" class="file-name" data-fileid="' + f.id + '">📄 ' + f.name + '</a>' +
                 '<span class="file-size">' + (f.size / 1024).toFixed(1) + ' KB</span>' +
+                '<button class="btn-primary-sm" data-action="download" data-fileid="' + f.id + '">⬇ Download</button>' +
                 '<button class="delete-item-btn" data-id="' + f.id + '">✕</button>' +
             '</div>' +
             '<input type="text" class="file-note-input" placeholder="📝 Add note about this file..." data-fileid="' + f.id + '" value="' + note.replace(/"/g, '&quot;') + '" />' +
-            '</div>';
+        '</div>';
     }).join('');
 
-    container.querySelectorAll('.delete-item-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    // Open link (Blob URL — reliable for every file type)
+    container.querySelectorAll('.file-name').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            openFile(this.dataset.fileid, 'open');
+        });
+    });
+
+    // Download button (Blob URL + download attribute)
+    container.querySelectorAll('[data-action="download"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            openFile(this.dataset.fileid, 'download');
+        });
+    });
+
+    // Delete single file (soft delete → Trash)
+    container.querySelectorAll('.delete-item-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
             var id = this.dataset.id;
             if (confirm('Delete this file? It will be moved to Trash for 24 hours.')) {
-                var data = loadData();
-                var item = data.files.find(function(f) { return f.id === id; });
-                if (item) pushToTrash(data, 'file', item);
-                data.files = data.files.filter(function(f) { return f.id !== id; });
-                addActivity(data, 'delete', 'Moved file to trash');
-                saveData(data);
+                var d = loadData();
+                var item = d.files.find(function (x) { return x.id === id; });
+                if (item) pushToTrash(d, 'file', item);
+                d.files = d.files.filter(function (x) { return x.id !== id; });
+                addActivity(d, 'delete', 'Moved file to trash');
+                saveData(d);
                 renderFileList();
                 updateTrashCount();
                 if (document.getElementById('statFiles') && typeof renderDashboard === 'function') renderDashboard();
@@ -4483,18 +4590,54 @@ function renderFileList() {
         });
     });
 
-    container.querySelectorAll('.file-note-input').forEach(function(inp) {
-        inp.addEventListener('change', function() {
+    // Per-file annotation
+    container.querySelectorAll('.file-note-input').forEach(function (inp) {
+        inp.addEventListener('change', function () {
             var fileId = this.dataset.fileid;
-            var data = loadData();
-            if (!data.fileAnnotations) data.fileAnnotations = {};
-            data.fileAnnotations[fileId] = this.value;
-            saveData(data);
+            var d = loadData();
+            if (!d.fileAnnotations) d.fileAnnotations = {};
+            d.fileAnnotations[fileId] = this.value;
+            saveData(d);
         });
-        inp.addEventListener('keypress', function(e) {
+        inp.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') this.blur();
         });
     });
+}
+
+// Convert base64 data URL → Blob → blob: URL, then open or download
+function openFile(fileId, mode) {
+    var data = loadData();
+    var file = data.files.find(function (f) { return f.id === fileId; });
+    if (!file) return;
+
+    try {
+        // Parse base64 data URL: "data:<mime>;base64,<payload>"
+        var parts = file.data.split(',');
+        var mimeMatch = parts[0].match(/data:(.*?);base64/);
+        var mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        var b64 = parts[1];
+        var binary = atob(b64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        var blob = new Blob([bytes], { type: mime });
+        var blobUrl = URL.createObjectURL(blob);
+
+        if (mode === 'download') {
+            var a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 5000);
+        } else {
+            window.open(blobUrl, '_blank');
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+        }
+    } catch (e) {
+        alert('Could not open file: ' + e.message);
+    }
 }
 
 // ================================================================
