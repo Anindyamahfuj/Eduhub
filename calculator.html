@@ -169,7 +169,7 @@
           <div id="sci-mode-label">Standard</div>
         </div>
         <div class="sci-expr" id="sci-expr"></div>
-        <div class="sci-result" id="sci-result">0</div>
+        <div class="sci-result" id="sci-result"></div>
       </div>
 
       <div class="sci-grid">
@@ -464,6 +464,7 @@
   const vars = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
   const history = [];
   let expr = '';
+  let justEvaluated = false;   // true right after "=" — next keypress wipes the big result
 
   const $ = (id) => document.getElementById(id);
   const exprEl = $('sci-expr');
@@ -594,7 +595,6 @@
       i++;
     }
 
-    // Implicit multiplication
     const out = [];
     for (let j = 0; j < tokens.length; j++) {
       const t = tokens[j];
@@ -696,7 +696,9 @@
         else if (op === '!') {
           const n = stack.pop();
           stack.push(factorial(n));
-        } else {
+        }
+        else if (op === '(' || op === ')') { /* ignore stray parens */ }
+        else {
           const b = stack.pop();
           const a = stack.pop();
           switch (op) {
@@ -715,7 +717,8 @@
     return stack[0];
   }
 
-    function autoCloseParens(tokens) {
+  // Auto-close any unclosed parentheses so users don't have to type all ")"
+  function autoCloseParens(tokens) {
     let depth = 0;
     for (let i = 0; i < tokens.length; i++) {
       const t = tokens[i];
@@ -743,7 +746,7 @@
   }
 
   function updateDisplay() {
-    exprEl.textContent = expr || '0';
+    exprEl.textContent = expr;   // empty string when nothing is typed — never a stray "0"
     indAngle.textContent = angleMode;
     indM.classList.toggle('on', mem !== 0);
     indAns.textContent = 'ANS=' + fmt(ans);
@@ -752,6 +755,16 @@
   function setResult(text, isErr) {
     resEl.textContent = text;
     resEl.classList.toggle('err', !!isErr);
+  }
+
+  // Wipes the big result line the moment the user starts a new sum.
+  // Memory, history, and the ANS indicator are all preserved.
+  function beginNewInput() {
+    if (justEvaluated) {
+      setResult('');
+      resEl.classList.remove('err');
+      justEvaluated = false;
+    }
   }
 
   function refreshHistory() {
@@ -774,6 +787,7 @@
   // ---------- BUTTON HANDLERS ----------
   document.querySelectorAll('[data-insert]').forEach(b => {
     b.addEventListener('click', () => {
+      beginNewInput();
       expr += b.dataset.insert;
       updateDisplay();
     });
@@ -781,6 +795,7 @@
 
   document.querySelectorAll('[data-wrap]').forEach(b => {
     b.addEventListener('click', () => {
+      beginNewInput();
       expr += b.dataset.wrap;
       updateDisplay();
     });
@@ -789,7 +804,8 @@
   document.querySelectorAll('.sci-btn[data-act]').forEach(b => {
     b.addEventListener('click', () => {
       const act = b.dataset.act;
-      if (act === 'clear') { expr = ''; setResult('0'); }
+      if (act !== 'equals') beginNewInput();
+      if (act === 'clear') { expr = ''; setResult(''); justEvaluated = false; }
       else if (act === 'back') { expr = expr.slice(0, -1); }
       else if (act === 'equals') doEquals();
       else if (act === 'ans') { expr += 'ans'; }
@@ -827,6 +843,7 @@
 
   document.querySelectorAll('.mem-row [data-var]').forEach(b => {
     b.addEventListener('click', () => {
+      beginNewInput();
       expr += b.dataset.var;
       updateDisplay();
     });
@@ -835,17 +852,31 @@
   function doEquals() {
     if (!expr.trim()) return;
     try {
+      const originalExpr = expr;
       const result = evaluate(expr);
       if (typeof result !== 'number' || isNaN(result)) throw new Error('Invalid result');
+
+      // 1. Remember the answer so ANS button still works
       ans = result;
+
+      // 2. Show the result in the big line
       setResult(fmt(result));
-      history.push({ expr: expr, res: fmt(result) });
+
+      // 3. Keep the history record (as requested)
+      history.push({ expr: originalExpr, res: fmt(result) });
       if (history.length > 100) history.shift();
       refreshHistory();
-      expr = String(result);
+
+      // 4. Clear the small expression line
+      expr = '';
       updateDisplay();
+      exprEl.textContent = '';
+
+      // 5. Arm the flag — the next key press will wipe the big line
+      justEvaluated = true;
     } catch (e) {
       setResult('Error: ' + e.message, true);
+      justEvaluated = false;
     }
   }
 
@@ -853,11 +884,11 @@
   document.addEventListener('keydown', (e) => {
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'Enter') { e.preventDefault(); doEquals(); }
-    else if (e.key === 'Backspace') { e.preventDefault(); expr = expr.slice(0, -1); updateDisplay(); }
-    else if (e.key === 'Escape') { expr = ''; setResult('0'); updateDisplay(); }
-    else if ('0123456789.+-*/^%()!,'.includes(e.key)) { expr += e.key; updateDisplay(); }
-    else if (e.key === 'p') { expr += 'pi'; updateDisplay(); }
-    else if (e.key === 'e') { expr += 'e'; updateDisplay(); }
+    else if (e.key === 'Backspace') { e.preventDefault(); beginNewInput(); expr = expr.slice(0, -1); updateDisplay(); }
+    else if (e.key === 'Escape') { expr = ''; setResult(''); justEvaluated = false; updateDisplay(); }
+    else if ('0123456789.+-*/^%()!,'.includes(e.key)) { beginNewInput(); expr += e.key; updateDisplay(); }
+    else if (e.key === 'p') { beginNewInput(); expr += 'pi'; updateDisplay(); }
+    else if (e.key === 'e') { beginNewInput(); expr += 'e'; updateDisplay(); }
   });
 
   // ---------- TAB SWITCHING ----------
@@ -1434,7 +1465,7 @@
   // ====================================================
   updateDisplay();
   refreshHistory();
-  setResult('0');
+  // No initial "0" in the big result box — it stays completely empty until you press "="
 })();
 </script>
 </body>
