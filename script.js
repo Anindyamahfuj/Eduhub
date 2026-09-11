@@ -308,11 +308,12 @@ function initClock() {
 
     // ---------- HIGH-LEVEL TICK ----------
     function updateClock() {
-        const now = new Date();
-        const h = String(now.getHours()).padStart(2, '0');
+               let h = now.getHours() % 12;
+        if (h === 0) h = 12;                                  // 0 → 12 (midnight/noon)
+        const ampm = now.getHours() < 12 ? 'AM' : 'PM';
         const m = String(now.getMinutes()).padStart(2, '0');
         const s = String(now.getSeconds()).padStart(2, '0');
-        digital.textContent = h + ':' + m + ':' + s;
+        digital.textContent = h + ':' + m + ':' + s + ' ' + ampm;
 
         // Only redraw analog when it's visible — avoids wasted work in digital mode
         if (analog.classList.contains('active')) drawAnalog(now);
