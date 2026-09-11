@@ -1,1 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StudyHub · Scientific Calculator</title>
+<link rel="stylesheet" href="style.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/x-icon" href="logo.png">
+<style>
+  .calc-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.2rem;border-bottom:1px solid var(--line);padding-bottom:.8rem}
+  .calc-tab{background:var(--surface-2);border:1px solid var(--line);color:var(--muted);padding:.5rem 1rem;border-radius:999px;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .2s}
+  .calc-tab:hover{border-color:var(--accent);color:var(--accent)}
+  .calc-tab.active{background:linear-gradient(180deg,rgba(94,234,212,.22),rgba(94,234,212,.1));border-color:var(--accent);color:var(--accent);box-shadow:0 0 18px rgba(94,234,212,.15)}
+  .calc-panel{display:none;animation:calcFade .3s ease}
+  .calc-panel.active{display:block}
+  @keyframes calcFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .sci-display{background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.3));border:1px solid var(--line-strong);border-radius:18px;padding:1rem 1.2rem;margin-bottom:1rem;box-shadow:inset 0 2px 12px rgba(0,0,0,.4)}
+  .sci-display-top{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);letter-spacing:.05em;margin-bottom:.5rem;font-family:'JetBrains Mono',monospace}
+  .sci-display-top .ind{display:flex;gap:.5rem;align-items:center}
+  .sci-display-top .ind span{padding:.1rem .5rem;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+  .sci-display-top .ind span.on{background:rgba(94,234,212,.2);color:var(--accent);border-color:rgba(94,234,212,.4);box-shadow:0 0 12px rgba(94,234,212,.3)}
+  .sci-expr{font-family:'JetBrains Mono',monospace;font-size:1.15rem;color:var(--muted);min-height:1.6rem;text-align:right;word-break:break-all;letter-spacing:.03em}
+  .sci-result{font-family:'JetBrains Mono',monospace;font-size:2.1rem;font-weight:700;color:var(--accent);text-align:right;word-break:break-all;text-shadow:0 0 22px rgba(94,234,212,.25);min-height:2.6rem;margin-top:.3rem}
+  .sci-result.err{color:var(--danger);font-size:1.4rem}
+  .sci-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.4rem;margin-bottom:1rem}
+  .sci-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--ink);padding:.75rem .2rem;border-radius:12px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:'Inter',inherit;transition:all .12s;text-align:center;min-height:46px;display:flex;align-items:center;justify-content:center}
+  .sci-btn:hover{background:rgba(94,234,212,.14);border-color:var(--accent);transform:translateY(-1px)}
+  .sci-btn:active{transform:translateY(0) scale(.97)}
+  .sci-btn.fn{background:rgba(196,181,253,.08);color:var(--brand);border-color:rgba(196,181,253,.2)}
+  .sci-btn.fn:hover{background:rgba(196,181,253,.2);border-color:var(--brand)}
+  .sci-btn.op{background:rgba(253,186,116,.08);color:var(--warn);border-color:rgba(253,186,116,.22);font-size:1.05rem}
+  .sci-btn.op:hover{background:rgba(253,186,116,.2);border-color:var(--warn)}
+  .sci-btn.eq{background:linear-gradient(180deg,rgba(94,234,212,.25),rgba(94,234,212,.1));color:var(--accent);border-color:var(--accent);font-size:1.15rem}
+  .sci-btn.eq:hover{background:rgba(94,234,212,.32);box-shadow:0 0 18px rgba(94,234,212,.25)}
+  .sci-btn.danger{background:rgba(252,165,165,.1);color:var(--danger);border-color:rgba(252,165,165,.25)}
+  .sci-btn.danger:hover{background:rgba(252,165,165,.22)}
+  .sci-btn.mode{background:rgba(110,231,183,.08);color:var(--ok);border-color:rgba(110,231,183,.2);font-size:.72rem}
+  .sci-btn.mode:hover{background:rgba(110,231,183,.2)}
+  .sci-btn.mode.on{background:rgba(94,234,212,.25);color:var(--accent);border-color:var(--accent)}
+  .mem-row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:.6rem;padding-top:.8rem;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}
+  .mem-row button{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--ink);padding:.35rem .7rem;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit}
+  .mem-row button:hover{background:rgba(94,234,212,.15);border-color:var(--accent)}
+  .hist-box{margin-top:1rem;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:.6rem}
+  .hist-box h4{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem}
+  .hist-item{padding:.4rem .6rem;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.82rem;cursor:pointer;color:var(--muted);transition:background .15s}
+  .hist-item:hover{background:rgba(94,234,212,.1);color:var(--accent)}
+  .hist-item .res{color:var(--accent);font-weight:700;margin-left:.4rem}
+  .tool-panel .row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:.7rem}
+  .tool-panel label{font-size:.8rem;color:var(--muted);min-width:70px}
+  .tool-panel input,.tool-panel select,.tool-panel textarea{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:.5rem .8rem;font-family:inherit;font-size:.9rem;transition:border .2s}
+  .tool-panel input:focus,.tool-panel select:focus,.tool-panel textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(94,234,212,.1)}
+  .tool-panel input.num{width:90px;text-align:center}
+  .tool-panel input.wide{flex:1;min-width:160px}
+  .tool-panel textarea{width:100%;min-height:80px;font-family:'JetBrains Mono',monospace;font-size:.85rem;resize:vertical}
+  .tool-result{margin-top:1rem;background:rgba(94,234,212,.06);border-left:3px solid var(--accent);border-radius:0 12px 12px 0;padding:.85rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.92rem;color:var(--ink);white-space:pre-wrap;word-break:break-word;min-height:2.5rem}
+  .tool-result.err{border-left-color:var(--danger);background:rgba(252,165,165,.06);color:var(--danger)}
+  .matrix-grid{display:grid;gap:.4rem;margin-bottom:.6rem}
+  .matrix-grid.m2{grid-template-columns:repeat(2,70px)}
+  .matrix-grid.m3{grid-template-columns:repeat(3,70px)}
+  .matrix-grid input{width:70px;text-align:center;background:rgba(0,0,0,.3);border:1px solid var(--line);color:var(--ink);padding:.4rem;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.85rem}
+  .matrix-grid input:focus{outline:none;border-color:var(--accent)}
+  .matrix-block{display:inline-block;padding:.6rem;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.15);margin-right:1rem;margin-bottom:.6rem;vertical-align:top}
+  .matrix-block h4{font-size:.75rem;color:var(--muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.1em}
+  @media (max-width:700px){
+    .sci-grid{grid-template-columns:repeat(5,1fr);gap:.3rem}
+    .sci-btn{padding:.6rem .1rem;font-size:.78rem;min-height:42px}
+    .sci-result{font-size:1.6rem}
+    .sci-expr{font-size:.95rem}
+  }
+  @media (max-width:420px){
+    .sci-grid{grid-template-columns:repeat(4,1fr)}
+    .sci-btn{font-size:.72rem}
+  }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
+    <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
+    <ul class="nav-links">
+      <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span> 🚀</a></li>
+      <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span> 🤖</a></li>
+      <li><a href="calculator.html" class="active"><span class="hl-cyan">◆</span> Calculator 🧮</a></li>
+      <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span> 📂</a></li>
+      <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span> 🔥</a></li>
+      <li><a href="notice.html"><span class="hl-purple">◆</span> <span data-i18n="notice">Notice</span> 📢</a></li>
+      <li><a href="notes.html"><span class="hl-pink">◆</span> <span data-i18n="notes">Notes</span> ✍️</a></li>
+      <li><a href="assignments.html"><span class="hl-red">◆</span> <span data-i18n="assignments">Assignments</span> 📋</a></li>
+      <li><a href="planner.html"><span class="hl-cyan">◆</span> <span data-i18n="planner">Planner</span> 📅</a></li>
+      <li><a href="flashcards.html"><span class="hl-orange">◆</span> <span data-i18n="flashcards">Flashcards</span> 🃏</a></li>
+      <li><a href="reading.html"><span class="hl-green">◆</span> <span data-i18n="reading">Reading</span> 📖</a></li>
+    </ul>
+    <div class="nav-right">
+      <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+        <option value="en">🇬🇧 English</option><option value="es">🇪🇸 Español</option><option value="zh">🇨🇳 中文</option>
+        <option value="hi">🇮🇳 हिन्दी</option><option value="ar">🇸🇦 العربية</option><option value="fr">🇫🇷 Français</option>
+        <option value="ru">🇷🇺 Русский</option><option value="pt">🇧🇷 Português</option><option value="bn">🇧🇩 বাংলা</option>
+        <option value="ur">🇵🇰 اردو</option><option value="id">🇮🇩 Indonesia</option><option value="de">🇩🇪 Deutsch</option>
+        <option value="ja">🇯🇵 日本語</option><option value="sw">🇰🇪 Kiswahili</option><option value="tr">🇹🇷 Türkçe</option>
+      </select>
+      <button id="blockerToggle" class="focus-toggle">🛡️ Blocker Off</button>
+      <button id="trashBtn" class="focus-toggle">🗑️ Trash (0)</button>
+      <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
+      <span class="nav-date" id="navDate"></span>
+    </div>
+  </div>
+</nav>
 
+<main class="container">
+  <section class="clock-section mini-clock">
+    <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
+    <div class="clock-container">
+      <div id="digitalClock" class="digital-clock active">00:00:00</div>
+      <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
+    </div>
+    <div class="clock-date" id="clockDate"></div>
+    <div class="calendar-widget">
+      <div class="calendar-compact">
+        <div class="cal-day" id="calCompactDay">—</div>
+        <div class="cal-date" id="calCompactDate">—</div>
+        <div class="cal-month" id="calCompactMonth">—</div>
+      </div>
+      <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar">📅</button>
+    </div>
+  </section>
+
+  <div class="calendar-modal" id="calendarModal" style="display:none;">
+    <div class="calendar-modal-content">
+      <div class="calendar-modal-header">
+        <button id="calPrevYear" title="Previous year">«</button>
+        <button id="calPrevMonth" title="Previous month">‹</button>
+        <span id="calModalTitle">—</span>
+        <button id="calNextMonth" title="Next month">›</button>
+        <button id="calNextYear" title="Next year">»</button>
+        <button id="calendarCloseBtn" class="cal-close-btn" title="Close">✕</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+  </div>
+
+  <header class="page-header">
+    <h1><span class="hl-cyan">🧮</span> <span class="neon-text">Scientific Calculator</span></h1>
+    <p>Full-featured scientific calculator with trig, logs, equations, statistics, base conversion, matrices, and programmer tools.</p>
+  </header>
+
+  <section class="glass-card">
+    <div class="calc-tabs">
+      <button class="calc-tab active" data-tab="scientific">🔬 Scientific</button>
+      <button class="calc-tab" data-tab="equations">📐 Equations</button>
+      <button class="calc-tab" data-tab="stats">📊 Statistics</button>
+      <button class="calc-tab" data-tab="base">🔢 Base</button>
+      <button class="calc-tab" data-tab="programmer">💻 Programmer</button>
+      <button class="calc-tab" data-tab="matrix">🔲 Matrix</button>
+      <button class="calc-tab" data-tab="convert">🔄 Convert</button>
+      <button class="calc-tab" data-tab="number">🔎 Number Theory</button>
+    </div>
+
+    <!-- ================= SCIENTIFIC ================= -->
+    <div class="calc-panel active" id="panel-scientific">
+      <div class="sci-display">
+        <div class="sci-display-top">
+          <div class="ind">
+            <span id="ind-angle" class="on">DEG</span>
+            <span id="ind-m">M</span>
+            <span id="ind-ans">ANS</span>
+          </div>
+          <div id="sci-mode-label">Standard</div>
+        </div>
+        <div class="sci-expr" id="sci-expr"></div>
+        <div class="sci-result" id="sci-result">0</div>
+      </div>
+
+      <div class="sci-grid">
+        <button class="sci-btn mode on" data-act="deg">DEG</button>
+        <button class="sci-btn mode" data-act="rad">RAD</button>
+        <button class="sci-btn mode" data-act="grad">GRAD</button>
+        <button class="sci-btn fn" data-insert="pi">π</button>
+        <button class="sci-btn fn" data-insert="e">e</button>
+        <button class="sci-btn danger" data-act="back">⌫</button>
+
+        <button class="sci-btn fn" data-wrap="sin(">sin</button>
+        <button class="sci-btn fn" data-wrap="cos(">cos</button>
+        <button class="sci-btn fn" data-wrap="tan(">tan</button>
+        <button class="sci-btn fn" data-insert="^2">x²</button>
+        <button class="sci-btn fn" data-insert="^3">x³</button>
+        <button class="sci-btn fn" data-insert="^">xʸ</button>
+
+        <button class="sci-btn fn" data-wrap="asin(">sin⁻¹</button>
+        <button class="sci-btn fn" data-wrap="acos(">cos⁻¹</button>
+        <button class="sci-btn fn" data-wrap="atan(">tan⁻¹</button>
+        <button class="sci-btn fn" data-wrap="sqrt(">√</button>
+        <button class="sci-btn fn" data-wrap="cbrt(">∛</button>
+        <button class="sci-btn fn" data-insert="^(-1)">1/x</button>
+
+        <button class="sci-btn fn" data-wrap="log(">log</button>
+        <button class="sci-btn fn" data-wrap="ln(">ln</button>
+        <button class="sci-btn fn" data-insert="10^">10ˣ</button>
+        <button class="sci-btn fn" data-insert="e^">eˣ</button>
+        <button class="sci-btn fn" data-wrap="abs(">|x|</button>
+        <button class="sci-btn fn" data-insert="!">x!</button>
+
+        <button class="sci-btn fn" data-wrap="sinh(">sinh</button>
+        <button class="sci-btn fn" data-wrap="cosh(">cosh</button>
+        <button class="sci-btn fn" data-wrap="tanh(">tanh</button>
+        <button class="sci-btn fn" data-insert="nPr(">nPr</button>
+        <button class="sci-btn fn" data-insert="nCr(">nCr</button>
+        <button class="sci-btn fn" data-insert="rand()">Rand</button>
+
+        <button class="sci-btn fn" data-insert="(">(</button>
+        <button class="sci-btn fn" data-insert=")">)</button>
+        <button class="sci-btn fn" data-insert=",">,</button>
+        <button class="sci-btn fn" data-insert="%">%</button>
+        <button class="sci-btn fn" data-act="ans">ANS</button>
+        <button class="sci-btn danger" data-act="clear">C</button>
+
+        <button class="sci-btn" data-insert="7">7</button>
+        <button class="sci-btn" data-insert="8">8</button>
+        <button class="sci-btn" data-insert="9">9</button>
+        <button class="sci-btn op" data-insert="/">÷</button>
+        <button class="sci-btn op" data-insert="*">×</button>
+        <button class="sci-btn op" data-insert="-">−</button>
+
+        <button class="sci-btn" data-insert="4">4</button>
+        <button class="sci-btn" data-insert="5">5</button>
+        <button class="sci-btn" data-insert="6">6</button>
+        <button class="sci-btn op" data-insert="+">+</button>
+        <button class="sci-btn fn" data-insert="E">E</button>
+        <button class="sci-btn op" data-insert="%">%</button>
+
+        <button class="sci-btn" data-insert="1">1</button>
+        <button class="sci-btn" data-insert="2">2</button>
+        <button class="sci-btn" data-insert="3">3</button>
+        <button class="sci-btn" data-insert="0">0</button>
+        <button class="sci-btn" data-insert=".">.</button>
+        <button class="sci-btn eq" data-act="equals">=</button>
+      </div>
+
+      <div class="mem-row">
+        <span>Memory:</span>
+        <button data-act="sto">STO</button>
+        <button data-act="rcl">RCL</button>
+        <button data-act="mplus">M+</button>
+        <button data-act="mminus">M−</button>
+        <button data-act="mc">MC</button>
+        <span style="margin-left:.5rem">Variables:</span>
+        <button data-var="A">A</button>
+        <button data-var="B">B</button>
+        <button data-var="C">C</button>
+        <button data-var="D">D</button>
+        <button data-var="E">E</button>
+        <button data-var="F">F</button>
+      </div>
+
+      <div class="hist-box">
+        <h4>History</h4>
+        <div id="sci-history"></div>
+      </div>
+    </div>
+
+    <!-- ================= EQUATIONS ================= -->
+    <div class="calc-panel tool-panel" id="panel-equations">
+      <div class="row">
+        <label>Type:</label>
+        <select id="eq-type">
+          <option value="linear">Linear: ax + b = 0</option>
+          <option value="quadratic" selected>Quadratic: ax² + bx + c = 0</option>
+          <option value="cubic">Cubic: ax³ + bx² + cx + d = 0</option>
+          <option value="sim2">Simultaneous 2×2</option>
+          <option value="sim3">Simultaneous 3×3</option>
+        </select>
+      </div>
+      <div id="eq-inputs"></div>
+      <button class="btn-primary" id="eq-solve" style="margin-top:.6rem">Solve</button>
+      <div class="tool-result" id="eq-result"></div>
+    </div>
+
+    <!-- ================= STATS ================= -->
+    <div class="calc-panel tool-panel" id="panel-stats">
+      <div class="row">
+        <label>Data:</label>
+        <textarea id="stats-input" placeholder="1, 2, 3, 4.5, 10, 22 ..."></textarea>
+      </div>
+      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+        <button class="btn-primary-sm" data-stat="all">All Stats</button>
+        <button class="btn-primary-sm" data-stat="mean">Mean</button>
+        <button class="btn-primary-sm" data-stat="median">Median</button>
+        <button class="btn-primary-sm" data-stat="mode">Mode</button>
+        <button class="btn-primary-sm" data-stat="sum">Σx</button>
+        <button class="btn-primary-sm" data-stat="sumsq">Σx²</button>
+        <button class="btn-primary-sm" data-stat="var">Variance</button>
+        <button class="btn-primary-sm" data-stat="svar">Sample Var</button>
+        <button class="btn-primary-sm" data-stat="sd">Std Dev</button>
+        <button class="btn-primary-sm" data-stat="ssd">Sample SD</button>
+        <button class="btn-primary-sm" data-stat="min">Min</button>
+        <button class="btn-primary-sm" data-stat="max">Max</button>
+        <button class="btn-primary-sm" data-stat="range">Range</button>
+        <button class="btn-primary-sm" data-stat="count">Count</button>
+        <button class="btn-primary-sm" data-stat="regression">Linear Regression</button>
+        <button class="btn-primary-sm" data-stat="corr">Correlation</button>
+      </div>
+      <div class="tool-result" id="stats-result"></div>
+    </div>
+
+    <!-- ================= BASE ================= -->
+    <div class="calc-panel tool-panel" id="panel-base">
+      <div class="row">
+        <label>Number:</label>
+        <input type="text" class="wide" id="base-input" placeholder="e.g. 255 or FF or 11111111" value="255">
+        <label>Base:</label>
+        <select id="base-from">
+          <option value="10" selected>DEC (10)</option>
+          <option value="2">BIN (2)</option>
+          <option value="8">OCT (8)</option>
+          <option value="16">HEX (16)</option>
+        </select>
+        <button class="btn-primary-sm" id="base-convert">Convert</button>
+      </div>
+      <div class="tool-result" id="base-result"></div>
+    </div>
+
+    <!-- ================= PROGRAMMER ================= -->
+    <div class="calc-panel tool-panel" id="panel-programmer">
+      <div class="row">
+        <label>Base:</label>
+        <select id="prog-base">
+          <option value="10" selected>DEC</option>
+          <option value="2">BIN</option>
+          <option value="8">OCT</option>
+          <option value="16">HEX</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>A:</label>
+        <input type="text" class="wide" id="prog-a" value="12">
+        <label>B:</label>
+        <input type="text" class="wide" id="prog-b" value="10">
+      </div>
+      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+        <button class="btn-primary-sm" data-op="and">A AND B</button>
+        <button class="btn-primary-sm" data-op="or">A OR B</button>
+        <button class="btn-primary-sm" data-op="xor">A XOR B</button>
+        <button class="btn-primary-sm" data-op="not">NOT A</button>
+        <button class="btn-primary-sm" data-op="shl">A &lt;&lt; B</button>
+        <button class="btn-primary-sm" data-op="shr">A &gt;&gt; B</button>
+        <button class="btn-primary-sm" data-op="add">A + B</button>
+        <button class="btn-primary-sm" data-op="sub">A − B</button>
+        <button class="btn-primary-sm" data-op="mul">A × B</button>
+        <button class="btn-primary-sm" data-op="div">A ÷ B (int)</button>
+        <button class="btn-primary-sm" data-op="mod">A MOD B</button>
+      </div>
+      <div class="tool-result" id="prog-result"></div>
+    </div>
+
+    <!-- ================= MATRIX ================= -->
+    <div class="calc-panel tool-panel" id="panel-matrix">
+      <div class="row">
+        <label>Size:</label>
+        <select id="mat-size">
+          <option value="2" selected>2 × 2</option>
+          <option value="3">3 × 3</option>
+        </select>
+      </div>
+      <div>
+        <div class="matrix-block">
+          <h4>Matrix A</h4>
+          <div class="matrix-grid m2" id="mat-a-grid">
+            <input type="number" value="1"><input type="number" value="2">
+            <input type="number" value="3"><input type="number" value="4">
+          </div>
+        </div>
+        <div class="matrix-block">
+          <h4>Matrix B</h4>
+          <div class="matrix-grid m2" id="mat-b-grid">
+            <input type="number" value="5"><input type="number" value="6">
+            <input type="number" value="7"><input type="number" value="8">
+          </div>
+        </div>
+      </div>
+      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+        <button class="btn-primary-sm" data-matop="add">A + B</button>
+        <button class="btn-primary-sm" data-matop="sub">A − B</button>
+        <button class="btn-primary-sm" data-matop="mul">A × B</button>
+        <button class="btn-primary-sm" data-matop="detA">det(A)</button>
+        <button class="btn-primary-sm" data-matop="detB">det(B)</button>
+        <button class="btn-primary-sm" data-matop="invA">A⁻¹</button>
+        <button class="btn-primary-sm" data-matop="transA">Aᵀ</button>
+      </div>
+      <div class="tool-result" id="mat-result"></div>
+    </div>
+
+    <!-- ================= CONVERT ================= -->
+    <div class="calc-panel tool-panel" id="panel-convert">
+      <h3 style="font-size:.95rem;color:var(--accent);margin-bottom:.8rem">🔹 DMS ↔ Decimal Degrees</h3>
+      <div class="row">
+        <input type="number" class="num" id="dms-deg" placeholder="deg" value="45">
+        <input type="number" class="num" id="dms-min" placeholder="min" value="30">
+        <input type="number" class="num" id="dms-sec" placeholder="sec" value="15">
+        <button class="btn-primary-sm" id="dms-convert">→ Decimal</button>
+        <span style="color:var(--muted)">or</span>
+        <input type="number" class="wide" id="dec-deg" placeholder="Decimal degrees" value="45.504167">
+        <button class="btn-primary-sm" id="dec-convert">→ DMS</button>
+      </div>
+      <div class="tool-result" id="dms-result"></div>
+
+      <h3 style="font-size:.95rem;color:var(--accent);margin:1.2rem 0 .8rem">🔹 Fraction ↔ Decimal</h3>
+      <div class="row">
+        <input type="number" class="num" id="frac-num" placeholder="num" value="3">
+        <span style="color:var(--muted)">/</span>
+        <input type="number" class="num" id="frac-den" placeholder="den" value="4">
+        <button class="btn-primary-sm" id="frac-convert">→ Decimal</button>
+        <span style="color:var(--muted)">or</span>
+        <input type="number" class="wide" id="dec-frac" placeholder="Decimal (e.g. 0.75)">
+        <button class="btn-primary-sm" id="decfrac-convert">→ Fraction</button>
+      </div>
+      <div class="tool-result" id="frac-result"></div>
+
+      <h3 style="font-size:.95rem;color:var(--accent);margin:1.2rem 0 .8rem">🔹 Rectangular ↔ Polar</h3>
+      <div class="row">
+        <input type="number" class="num" id="rect-x" placeholder="x" value="3">
+        <input type="number" class="num" id="rect-y" placeholder="y" value="4">
+        <button class="btn-primary-sm" id="rect-polar">→ Polar (r, θ)</button>
+        <span style="color:var(--muted)">or</span>
+        <input type="number" class="num" id="polar-r" placeholder="r">
+        <input type="number" class="num" id="polar-th" placeholder="θ°">
+        <button class="btn-primary-sm" id="polar-rect">→ Rectangular (x, y)</button>
+      </div>
+      <div class="tool-result" id="coord-result"></div>
+    </div>
+
+    <!-- ================= NUMBER THEORY ================= -->
+    <div class="calc-panel tool-panel" id="panel-number">
+      <div class="row">
+        <label>Number:</label>
+        <input type="number" class="wide" id="nt-input" value="360">
+      </div>
+      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+        <button class="btn-primary-sm" data-nt="prime">Is Prime?</button>
+        <button class="btn-primary-sm" data-nt="factors">Prime Factors</button>
+        <button class="btn-primary-sm" data-nt="divisors">Divisors</button>
+        <button class="btn-primary-sm" data-nt="gcdlcm">GCD & LCM</button>
+        <button class="btn-primary-sm" data-nt="all">All</button>
+      </div>
+      <div class="tool-result" id="nt-result"></div>
+    </div>
+
+  </section>
+</main>
+
+<footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
+<script src="script.js"></script>
+<script>
+// ================================================================
+// SCIENTIFIC CALCULATOR ENGINE
+// ================================================================
+(function () {
+  'use strict';
+
+  // ---------- STATE ----------
+  let angleMode = 'DEG';
+  let ans = 0;
+  let mem = 0;
+  const vars = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+  const history = [];
+  let expr = '';
+
+  const $ = (id) => document.getElementById(id);
+  const exprEl = $('sci-expr');
+  const resEl  = $('sci-result');
+  const histEl = $('sci-history');
+  const indAngle = $('ind-angle');
+  const indM = $('ind-m');
+  const indAns = $('ind-ans');
+
+  // ---------- MATH PRIMITIVES ----------
+  function toRad(x) {
+    if (angleMode === 'DEG') return x * Math.PI / 180;
+    if (angleMode === 'GRAD') return x * Math.PI / 200;
+    return x;
+  }
+  function fromRad(x) {
+    if (angleMode === 'DEG') return x * 180 / Math.PI;
+    if (angleMode === 'GRAD') return x * 200 / Math.PI;
+    return x;
+  }
+  function gamma(z) {
+    const g = 7;
+    const C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+    z -= 1;
+    let x = C[0];
+    for (let i = 1; i < g + 2; i++) x += C[i] / (z + i);
+    const t = z + g + 0.5;
+    return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+  }
+  function factorial(n) {
+    if (Number.isInteger(n)) {
+      if (n < 0) return NaN;
+      if (n > 170) return Infinity;
+      let r = 1;
+      for (let i = 2; i <= n; i++) r *= i;
+      return r;
+    }
+    return gamma(n + 1);
+  }
+  function nPr(n, r) { return factorial(n) / factorial(n - r); }
+  function nCr(n, r) { return factorial(n) / (factorial(r) * factorial(n - r)); }
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { const t = b; b = a % b; a = t; } return a; }
+  function lcm(a, b) { return Math.abs(a * b) / gcd(a, b); }
+
+  const CONSTANTS = { pi: Math.PI, e: Math.E, tau: 2 * Math.PI, phi: (1 + Math.sqrt(5)) / 2 };
+
+  const FUNCS = new Set(['sin','cos','tan','asin','acos','atan','sinh','cosh','tanh',
+    'asinh','acosh','atanh','log','log2','log10','ln','exp','sqrt','cbrt','abs',
+    'fact','nPr','nCr','gcd','lcm','round','floor','ceil','sign','rand','randInt','ranint']);
+
+  const TWO_ARG = new Set(['nPr','nCr','gcd','lcm','randInt','ranint']);
+
+  function callFunc(name, args) {
+    const x = args[0];
+    switch (name) {
+      case 'sin': return Math.sin(toRad(x));
+      case 'cos': return Math.cos(toRad(x));
+      case 'tan': return Math.tan(toRad(x));
+      case 'asin': return fromRad(Math.asin(x));
+      case 'acos': return fromRad(Math.acos(x));
+      case 'atan': return fromRad(Math.atan(x));
+      case 'sinh': return Math.sinh(x);
+      case 'cosh': return Math.cosh(x);
+      case 'tanh': return Math.tanh(x);
+      case 'asinh': return Math.asinh(x);
+      case 'acosh': return Math.acosh(x);
+      case 'atanh': return Math.atanh(x);
+      case 'log': case 'log10': return Math.log10(x);
+      case 'log2': return Math.log2(x);
+      case 'ln': return Math.log(x);
+      case 'exp': return Math.exp(x);
+      case 'sqrt': return Math.sqrt(x);
+      case 'cbrt': return Math.cbrt(x);
+      case 'abs': return Math.abs(x);
+      case 'fact': return factorial(x);
+      case 'nPr': return nPr(x, args[1]);
+      case 'nCr': return nCr(x, args[1]);
+      case 'gcd': return gcd(x, args[1]);
+      case 'lcm': return lcm(x, args[1]);
+      case 'round': return Math.round(x);
+      case 'floor': return Math.floor(x);
+      case 'ceil': return Math.ceil(x);
+      case 'sign': return Math.sign(x);
+      case 'rand': return Math.random();
+      case 'randInt': case 'ranint': {
+        const lo = Math.ceil(Math.min(x, args[1]));
+        const hi = Math.floor(Math.max(x, args[1]));
+        return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+      }
+      default: throw new Error('Unknown function: ' + name);
+    }
+  }
+
+  // ---------- TOKENIZER ----------
+  function tokenize(input) {
+    const s = String(input).replace(/π/g, 'pi').replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+    const tokens = [];
+    let i = 0;
+    while (i < s.length) {
+      const c = s[i];
+      if (c === ' ' || c === '\t') { i++; continue; }
+      if (/[0-9.]/.test(c)) {
+        let num = '';
+        while (i < s.length && /[0-9.]/.test(s[i])) num += s[i++];
+        if ((s[i] === 'E' || s[i] === 'e') && /[0-9+\-]/.test(s[i + 1] || '')) {
+          num += 'e';
+          i++;
+          if (/[+\-]/.test(s[i])) num += s[i++];
+          while (i < s.length && /[0-9]/.test(s[i])) num += s[i++];
+        }
+        tokens.push({ type: 'num', value: parseFloat(num) });
+        continue;
+      }
+      if (/[a-zA-Z_]/.test(c)) {
+        let name = '';
+        while (i < s.length && /[a-zA-Z0-9_]/.test(s[i])) name += s[i++];
+        tokens.push({ type: 'id', value: name });
+        continue;
+      }
+      if ('+-*/^%()!,'.includes(c)) {
+        tokens.push({ type: 'op', value: c });
+        i++;
+        continue;
+      }
+      i++;
+    }
+
+    // Implicit multiplication
+    const out = [];
+    for (let j = 0; j < tokens.length; j++) {
+      const t = tokens[j];
+      const prev = out[out.length - 1];
+      if (prev) {
+        const prevEnd = (prev.type === 'num') ||
+                        (prev.type === 'id' && !FUNCS.has(prev.value)) ||
+                        (prev.type === 'op' && (prev.value === ')' || prev.value === '!'));
+        const currStart = (t.type === 'num') ||
+                          (t.type === 'id') ||
+                          (t.type === 'op' && t.value === '(');
+        const prevIsFunc = prev.type === 'id' && FUNCS.has(prev.value);
+        if (prevEnd && currStart && !prevIsFunc) {
+          out.push({ type: 'op', value: '*' });
+        }
+      }
+      out.push(t);
+    }
+    return out;
+  }
+
+  // ---------- SHUNTING YARD ----------
+  const PREC = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2, '^': 4, 'u-': 5, 'u+': 5 };
+  const RIGHT_ASSOC = { '^': true, 'u-': true, 'u+': true };
+
+  function shuntingYard(tokens) {
+    const output = [];
+    const ops = [];
+    let prevType = null;
+
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type === 'num') { output.push(t); prevType = 'num'; }
+      else if (t.type === 'id') {
+        if (FUNCS.has(t.value)) ops.push(t);
+        else output.push(t);
+        prevType = 'id';
+      } else if (t.type === 'op') {
+        const v = t.value;
+        if (v === '(') { ops.push(t); prevType = 'op'; }
+        else if (v === ')') {
+          while (ops.length && ops[ops.length - 1].value !== '(') output.push(ops.pop());
+          ops.pop();
+          if (ops.length && ops[ops.length - 1].type === 'id' && FUNCS.has(ops[ops.length - 1].value)) {
+            output.push(ops.pop());
+          }
+          prevType = 'op';
+        } else if (v === ',') {
+          while (ops.length && ops[ops.length - 1].value !== '(') output.push(ops.pop());
+          prevType = 'op';
+        } else if (v === '!') {
+          output.push({ type: 'op', value: '!' });
+          prevType = 'op';
+        } else {
+          let op = v;
+          if ((op === '-' || op === '+') && (prevType === null || prevType === 'op')) {
+            op = (op === '-') ? 'u-' : 'u+';
+          }
+          while (ops.length) {
+            const top = ops[ops.length - 1];
+            if (top.value === '(') break;
+            if (top.type === 'id') { output.push(ops.pop()); continue; }
+            const tp = PREC[top.value] || 0;
+            const cp = PREC[op] || 0;
+            if (tp > cp || (tp === cp && !RIGHT_ASSOC[op])) output.push(ops.pop());
+            else break;
+          }
+          ops.push({ type: 'op', value: op });
+          prevType = 'op';
+        }
+      }
+    }
+    while (ops.length) output.push(ops.pop());
+    return output;
+  }
+
+  // ---------- RPN EVALUATOR ----------
+  function evalRPN(rpn) {
+    const stack = [];
+    for (const t of rpn) {
+      if (t.type === 'num') stack.push(t.value);
+      else if (t.type === 'id') {
+        if (FUNCS.has(t.value)) {
+          const argCount = TWO_ARG.has(t.value) ? 2 : 1;
+          const args = [];
+          for (let i = 0; i < argCount; i++) {
+            if (!stack.length) throw new Error('Missing argument for ' + t.value);
+            args.unshift(stack.pop());
+          }
+          stack.push(callFunc(t.value, args));
+        } else if (t.value in CONSTANTS) stack.push(CONSTANTS[t.value]);
+        else if (t.value in vars) stack.push(vars[t.value]);
+        else if (t.value === 'ans' || t.value === 'Ans') stack.push(ans);
+        else throw new Error('Unknown identifier: ' + t.value);
+      } else if (t.type === 'op') {
+        const op = t.value;
+        if (op === 'u-') { stack.push(-stack.pop()); }
+        else if (op === 'u+') { /* no-op */ }
+        else if (op === '!') {
+          const n = stack.pop();
+          stack.push(factorial(n));
+        } else {
+          const b = stack.pop();
+          const a = stack.pop();
+          switch (op) {
+            case '+': stack.push(a + b); break;
+            case '-': stack.push(a - b); break;
+            case '*': stack.push(a * b); break;
+            case '/': stack.push(a / b); break;
+            case '%': stack.push(a % b); break;
+            case '^': stack.push(Math.pow(a, b)); break;
+            default: throw new Error('Unknown operator: ' + op);
+          }
+        }
+      }
+    }
+    if (stack.length !== 1) throw new Error('Invalid expression');
+    return stack[0];
+  }
+
+  function evaluate(expression) {
+    const tokens = tokenize(expression);
+    const rpn = shuntingYard(tokens);
+    return evalRPN(rpn);
+  }
+
+  // ---------- DISPLAY HELPERS ----------
+  function fmt(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return String(n);
+    if (Number.isInteger(n) && Math.abs(n) < 1e15) return String(n);
+    if (Math.abs(n) > 1e12 || (Math.abs(n) < 1e-6 && n !== 0)) return n.toExponential(10).replace(/\.?0+e/, 'e');
+    return String(parseFloat(n.toPrecision(12)));
+  }
+
+  function updateDisplay() {
+    exprEl.textContent = expr || '0';
+    indAngle.textContent = angleMode;
+    indM.classList.toggle('on', mem !== 0);
+    indAns.textContent = 'ANS=' + fmt(ans);
+  }
+
+  function setResult(text, isErr) {
+    resEl.textContent = text;
+    resEl.classList.toggle('err', !!isErr);
+  }
+
+  function refreshHistory() {
+    if (!history.length) {
+      histEl.innerHTML = '<div class="hist-item" style="cursor:default;color:#475569">No calculations yet.</div>';
+      return;
+    }
+    histEl.innerHTML = history.slice().reverse().slice(0, 20).map((h, idx) =>
+      '<div class="hist-item" data-hist="' + (history.length - 1 - idx) + '">' + h.expr + '<span class="res">= ' + h.res + '</span></div>'
+    ).join('');
+    histEl.querySelectorAll('.hist-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const i = +el.dataset.hist;
+        expr = String(history[i].res);
+        updateDisplay();
+      });
+    });
+  }
+
+  // ---------- BUTTON HANDLERS ----------
+  document.querySelectorAll('[data-insert]').forEach(b => {
+    b.addEventListener('click', () => {
+      expr += b.dataset.insert;
+      updateDisplay();
+    });
+  });
+
+  document.querySelectorAll('[data-wrap]').forEach(b => {
+    b.addEventListener('click', () => {
+      expr += b.dataset.wrap;
+      updateDisplay();
+    });
+  });
+
+  document.querySelectorAll('.sci-btn[data-act]').forEach(b => {
+    b.addEventListener('click', () => {
+      const act = b.dataset.act;
+      if (act === 'clear') { expr = ''; setResult('0'); }
+      else if (act === 'back') { expr = expr.slice(0, -1); }
+      else if (act === 'equals') doEquals();
+      else if (act === 'ans') { expr += 'ans'; }
+      else if (act === 'deg' || act === 'rad' || act === 'grad') {
+        angleMode = act.toUpperCase();
+        document.querySelectorAll('.sci-btn.mode').forEach(m => m.classList.remove('on'));
+        b.classList.add('on');
+      }
+      else if (act === 'sto') {
+        const which = prompt('Store result in which variable? (A-F or M)', 'A');
+        if (which) {
+          const key = which.toUpperCase();
+          if (key === 'M') mem = ans;
+          else if (key in vars) vars[key] = ans;
+          else return;
+          updateDisplay();
+        }
+      }
+      else if (act === 'rcl') {
+        const which = prompt('Recall which variable? (A-F or M)', 'A');
+        if (which) {
+          const key = which.toUpperCase();
+          if (key === 'M') expr += mem;
+          else if (key in vars) expr += vars[key];
+          else return;
+          updateDisplay();
+        }
+      }
+      else if (act === 'mplus') { mem += ans; updateDisplay(); }
+      else if (act === 'mminus') { mem -= ans; updateDisplay(); }
+      else if (act === 'mc') { mem = 0; updateDisplay(); }
+      updateDisplay();
+    });
+  });
+
+  document.querySelectorAll('.mem-row [data-var]').forEach(b => {
+    b.addEventListener('click', () => {
+      expr += b.dataset.var;
+      updateDisplay();
+    });
+  });
+
+  function doEquals() {
+    if (!expr.trim()) return;
+    try {
+      const result = evaluate(expr);
+      if (typeof result !== 'number' || isNaN(result)) throw new Error('Invalid result');
+      ans = result;
+      setResult(fmt(result));
+      history.push({ expr: expr, res: fmt(result) });
+      if (history.length > 100) history.shift();
+      refreshHistory();
+      expr = String(result);
+      updateDisplay();
+    } catch (e) {
+      setResult('Error: ' + e.message, true);
+    }
+  }
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (e.key === 'Enter') { e.preventDefault(); doEquals(); }
+    else if (e.key === 'Backspace') { e.preventDefault(); expr = expr.slice(0, -1); updateDisplay(); }
+    else if (e.key === 'Escape') { expr = ''; setResult('0'); updateDisplay(); }
+    else if ('0123456789.+-*/^%()!,'.includes(e.key)) { expr += e.key; updateDisplay(); }
+    else if (e.key === 'p') { expr += 'pi'; updateDisplay(); }
+    else if (e.key === 'e') { expr += 'e'; updateDisplay(); }
+  });
+
+  // ---------- TAB SWITCHING ----------
+  document.querySelectorAll('.calc-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.calc-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.calc-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ====================================================
+  // EQUATIONS
+  // ====================================================
+  const eqInputs = $('eq-inputs');
+  const eqResult = $('eq-result');
+
+  function eqRenderInputs(type) {
+    eqInputs.innerHTML = '';
+    const mkRow = (label, id, val) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<label>' + label + '</label><input type="number" class="num" id="' + id + '" value="' + val + '">';
+      return row;
+    };
+    if (type === 'linear') {
+      eqInputs.appendChild(mkRow('a =', 'eq-a', 2));
+      eqInputs.appendChild(mkRow('b =', 'eq-b', -6));
+    } else if (type === 'quadratic') {
+      eqInputs.appendChild(mkRow('a =', 'eq-a', 1));
+      eqInputs.appendChild(mkRow('b =', 'eq-b', -3));
+      eqInputs.appendChild(mkRow('c =', 'eq-c', 2));
+    } else if (type === 'cubic') {
+      eqInputs.appendChild(mkRow('a =', 'eq-a', 1));
+      eqInputs.appendChild(mkRow('b =', 'eq-b', -6));
+      eqInputs.appendChild(mkRow('c =', 'eq-c', 11));
+      eqInputs.appendChild(mkRow('d =', 'eq-d', -6));
+    } else if (type === 'sim2') {
+      eqInputs.appendChild(mkRow('a1 =', 'eq-a1', 2));
+      eqInputs.appendChild(mkRow('b1 =', 'eq-b1', 3));
+      eqInputs.appendChild(mkRow('c1 =', 'eq-c1', 8));
+      eqInputs.appendChild(mkRow('a2 =', 'eq-a2', 5));
+      eqInputs.appendChild(mkRow('b2 =', 'eq-b2', -2));
+      eqInputs.appendChild(mkRow('c2 =', 'eq-c2', 1));
+    } else if (type === 'sim3') {
+      const defaults = [1, 1, 1, 6, 0, 2, 5, -4, 2, 5, -1, 27];
+      ['a1','b1','c1','d1','a2','b2','c2','d2','a3','b3','c3','d3'].forEach((id, i) => {
+        eqInputs.appendChild(mkRow(id + ' =', 'eq-' + id, defaults[i]));
+      });
+    }
+  }
+
+  $('eq-type').addEventListener('change', (e) => {
+    eqRenderInputs(e.target.value);
+    eqResult.textContent = '';
+    eqResult.classList.remove('err');
+  });
+  eqRenderInputs('quadratic');
+
+  function solveQuadratic(a, b, c) {
+    if (a === 0) return solveLinear(b, c);
+    const D = b * b - 4 * a * c;
+    if (D > 0) {
+      const r1 = (-b + Math.sqrt(D)) / (2 * a);
+      const r2 = (-b - Math.sqrt(D)) / (2 * a);
+      return 'x1 = ' + fmt(r1) + '\nx2 = ' + fmt(r2) + '\n\nDiscriminant D = ' + fmt(D) + ' (> 0, two real roots)';
+    } else if (D === 0) {
+      const r = -b / (2 * a);
+      return 'x = ' + fmt(r) + ' (double root)\n\nDiscriminant D = 0';
+    } else {
+      const re = -b / (2 * a);
+      const im = Math.sqrt(-D) / (2 * a);
+      return 'x1 = ' + fmt(re) + ' + ' + fmt(im) + 'i\nx2 = ' + fmt(re) + ' - ' + fmt(im) + 'i\n\nDiscriminant D = ' + fmt(D) + ' (< 0, two complex roots)';
+    }
+  }
+  function solveLinear(a, b) {
+    if (a === 0) return b === 0 ? 'Infinite solutions' : 'No solution';
+    return 'x = ' + fmt(-b / a);
+  }
+  function solveCubic(a, b, c, d) {
+    if (a === 0) return solveQuadratic(b, c, d);
+    b /= a; c /= a; d /= a;
+    const p = c - b * b / 3;
+    const q = 2 * b * b * b / 27 - b * c / 3 + d;
+    const D = q * q / 4 + p * p * p / 27;
+    const shift = -b / 3;
+    if (D > 0) {
+      const u = Math.cbrt(-q / 2 + Math.sqrt(D));
+      const v = Math.cbrt(-q / 2 - Math.sqrt(D));
+      const x1 = u + v + shift;
+      const re = -(u + v) / 2 + shift;
+      const im = (u - v) * Math.sqrt(3) / 2;
+      return 'x1 = ' + fmt(x1) + '\nx2 = ' + fmt(re) + ' + ' + fmt(im) + 'i\nx3 = ' + fmt(re) + ' - ' + fmt(im) + 'i';
+    } else if (D === 0) {
+      const u = Math.cbrt(-q / 2);
+      return 'x1 = ' + fmt(2 * u + shift) + '\nx2 = x3 = ' + fmt(-u + shift);
+    } else {
+      const r = Math.sqrt(-p * p * p / 27);
+      const phi = Math.acos(-q / (2 * r));
+      const m = 2 * Math.sqrt(-p / 3);
+      const r1 = m * Math.cos(phi / 3) + shift;
+      const r2 = m * Math.cos((phi + 2 * Math.PI) / 3) + shift;
+      const r3 = m * Math.cos((phi + 4 * Math.PI) / 3) + shift;
+      return 'x1 = ' + fmt(r1) + '\nx2 = ' + fmt(r2) + '\nx3 = ' + fmt(r3);
+    }
+  }
+  function solveSim2(a1, b1, c1, a2, b2, c2) {
+    const D = a1 * b2 - a2 * b1;
+    if (Math.abs(D) < 1e-12) {
+      const Dx = c1 * b2 - c2 * b1;
+      const Dy = a1 * c2 - a2 * c1;
+      return (Math.abs(Dx) < 1e-12 && Math.abs(Dy) < 1e-12) ? 'Infinite solutions (dependent)' : 'No solution (inconsistent)';
+    }
+    const x = (c1 * b2 - c2 * b1) / D;
+    const y = (a1 * c2 - a2 * c1) / D;
+    return 'x = ' + fmt(x) + '\ny = ' + fmt(y);
+  }
+  function solveSim3(m) {
+    const A = [
+      [m[0], m[1], m[2], m[3]],
+      [m[4], m[5], m[6], m[7]],
+      [m[8], m[9], m[10], m[11]]
+    ];
+    for (let i = 0; i < 3; i++) {
+      let maxR = i;
+      for (let r = i + 1; r < 3; r++) if (Math.abs(A[r][i]) > Math.abs(A[maxR][i])) maxR = r;
+      if (Math.abs(A[maxR][i]) < 1e-12) return 'No unique solution';
+      const tmp = A[i]; A[i] = A[maxR]; A[maxR] = tmp;
+      for (let r = i + 1; r < 3; r++) {
+        const f = A[r][i] / A[i][i];
+        for (let c = i; c < 4; c++) A[r][c] -= f * A[i][c];
+      }
+    }
+    const x2 = A[2][3] / A[2][2];
+    const x1 = (A[1][3] - A[1][2] * x2) / A[1][1];
+    const x0 = (A[0][3] - A[0][1] * x1 - A[0][2] * x2) / A[0][0];
+    return 'x = ' + fmt(x0) + '\ny = ' + fmt(x1) + '\nz = ' + fmt(x2);
+  }
+
+  $('eq-solve').addEventListener('click', () => {
+    const type = $('eq-type').value;
+    const v = id => {
+      const el = $(id);
+      return el ? (parseFloat(el.value) || 0) : 0;
+    };
+    try {
+      let out = '';
+      if (type === 'linear') out = solveLinear(v('eq-a'), v('eq-b'));
+      else if (type === 'quadratic') out = solveQuadratic(v('eq-a'), v('eq-b'), v('eq-c'));
+      else if (type === 'cubic') out = solveCubic(v('eq-a'), v('eq-b'), v('eq-c'), v('eq-d'));
+      else if (type === 'sim2') out = solveSim2(v('eq-a1'), v('eq-b1'), v('eq-c1'), v('eq-a2'), v('eq-b2'), v('eq-c2'));
+      else if (type === 'sim3') {
+        const ids = ['a1','b1','c1','d1','a2','b2','c2','d2','a3','b3','c3','d3'];
+        out = solveSim3(ids.map(id => v('eq-' + id)));
+      }
+      eqResult.textContent = out;
+      eqResult.classList.remove('err');
+    } catch (e) {
+      eqResult.textContent = 'Error: ' + e.message;
+      eqResult.classList.add('err');
+    }
+  });
+
+  // ====================================================
+  // STATISTICS
+  // ====================================================
+  function parseNums(str) {
+    return String(str).split(/[\s,;]+/).map(s => parseFloat(s)).filter(n => !isNaN(n));
+  }
+  function statsCompute(arr) {
+    const n = arr.length;
+    if (!n) throw new Error('No data');
+    const sorted = arr.slice().sort((a, b) => a - b);
+    const sum = arr.reduce((a, b) => a + b, 0);
+    const sumsq = arr.reduce((a, b) => a + b * b, 0);
+    const mean = sum / n;
+    const variance = arr.reduce((a, b) => a + (b - mean) * (b - mean), 0) / n;
+    const sampleVar = n > 1 ? arr.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (n - 1) : 0;
+    const median = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+    const freq = {};
+    arr.forEach(v => freq[v] = (freq[v] || 0) + 1);
+    let maxF = 0;
+    Object.values(freq).forEach(f => { if (f > maxF) maxF = f; });
+    const modes = maxF > 1 ? Object.keys(freq).filter(k => freq[k] === maxF).map(Number) : [];
+    return { n, sum, sumsq, mean, median, modes, min: sorted[0], max: sorted[n - 1], range: sorted[n - 1] - sorted[0], variance, sampleVar, sd: Math.sqrt(variance), sampleSd: Math.sqrt(sampleVar) };
+  }
+  function regression(arr) {
+    const xs = [], ys = [];
+    for (let i = 0; i + 1 < arr.length; i += 2) { xs.push(arr[i]); ys.push(arr[i + 1]); }
+    const n = xs.length;
+    if (n < 2) throw new Error('Need at least 2 pairs (x,y)');
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0, denY = 0;
+    for (let i = 0; i < n; i++) {
+      num += (xs[i] - mx) * (ys[i] - my);
+      den += (xs[i] - mx) * (xs[i] - mx);
+      denY += (ys[i] - my) * (ys[i] - my);
+    }
+    const slope = num / den;
+    const intercept = my - slope * mx;
+    const r = num / Math.sqrt(den * denY);
+    return { slope, intercept, r, r2: r * r };
+  }
+
+  document.querySelectorAll('[data-stat]').forEach(b => {
+    b.addEventListener('click', () => {
+      try {
+        const arr = parseNums($('stats-input').value);
+        if (!arr.length) throw new Error('Please enter some numbers');
+        const op = b.dataset.stat;
+        const s = statsCompute(arr);
+        let out = '';
+        switch (op) {
+          case 'mean': out = 'Mean = ' + fmt(s.mean); break;
+          case 'median': out = 'Median = ' + fmt(s.median); break;
+          case 'mode': out = s.modes.length ? 'Mode = ' + s.modes.map(fmt).join(', ') : 'No mode (all values unique)'; break;
+          case 'sum': out = 'Sum x = ' + fmt(s.sum); break;
+          case 'sumsq': out = 'Sum x^2 = ' + fmt(s.sumsq); break;
+          case 'var': out = 'Variance (population) = ' + fmt(s.variance); break;
+          case 'svar': out = 'Variance (sample) = ' + fmt(s.sampleVar); break;
+          case 'sd': out = 'Std Dev (population) = ' + fmt(s.sd); break;
+          case 'ssd': out = 'Std Dev (sample) = ' + fmt(s.sampleSd); break;
+          case 'min': out = 'Min = ' + fmt(s.min); break;
+          case 'max': out = 'Max = ' + fmt(s.max); break;
+          case 'range': out = 'Range = ' + fmt(s.range); break;
+          case 'count': out = 'Count n = ' + s.n; break;
+          case 'regression': {
+            const r = regression(arr);
+            out = 'Linear Regression: y = ' + fmt(r.slope) + 'x + ' + fmt(r.intercept) +
+                  '\nSlope (a) = ' + fmt(r.slope) +
+                  '\nIntercept (b) = ' + fmt(r.intercept) +
+                  '\nR^2 = ' + fmt(r.r2);
+            break;
+          }
+          case 'corr': {
+            const r = regression(arr);
+            out = 'Correlation r = ' + fmt(r.r) + '\nR^2 = ' + fmt(r.r2);
+            break;
+          }
+          case 'all': {
+            out = 'Count n = ' + s.n +
+                  '\nSum x = ' + fmt(s.sum) +
+                  '\nSum x^2 = ' + fmt(s.sumsq) +
+                  '\nMean = ' + fmt(s.mean) +
+                  '\nMedian = ' + fmt(s.median) +
+                  '\nMode = ' + (s.modes.length ? s.modes.map(fmt).join(', ') : '-') +
+                  '\nMin = ' + fmt(s.min) + '   Max = ' + fmt(s.max) +
+                  '\nRange = ' + fmt(s.range) +
+                  '\nPopulation Variance = ' + fmt(s.variance) +
+                  '\nSample Variance = ' + fmt(s.sampleVar) +
+                  '\nPopulation SD = ' + fmt(s.sd) +
+                  '\nSample SD = ' + fmt(s.sampleSd);
+            break;
+          }
+        }
+        $('stats-result').textContent = out;
+        $('stats-result').classList.remove('err');
+      } catch (e) {
+        $('stats-result').textContent = 'Error: ' + e.message;
+        $('stats-result').classList.add('err');
+      }
+    });
+  });
+
+  // ====================================================
+  // BASE CONVERSION
+  // ====================================================
+  $('base-convert').addEventListener('click', () => {
+    try {
+      const input = $('base-input').value.trim();
+      const base = parseInt($('base-from').value);
+      const dec = parseInt(input, base);
+      if (isNaN(dec)) throw new Error('Invalid number for base ' + base);
+      $('base-result').textContent =
+        'DEC : ' + dec +
+        '\nBIN : ' + dec.toString(2) +
+        '\nOCT : ' + dec.toString(8) +
+        '\nHEX : ' + dec.toString(16).toUpperCase();
+      $('base-result').classList.remove('err');
+    } catch (e) {
+      $('base-result').textContent = 'Error: ' + e.message;
+      $('base-result').classList.add('err');
+    }
+  });
+
+  // ====================================================
+  // PROGRAMMER
+  // ====================================================
+  document.querySelectorAll('[data-op]').forEach(b => {
+    b.addEventListener('click', () => {
+      try {
+        const base = parseInt($('prog-base').value);
+        const A = parseInt($('prog-a').value, base);
+        const B = parseInt($('prog-b').value, base);
+        if (isNaN(A) || isNaN(B)) throw new Error('Invalid numbers');
+        const op = b.dataset.op;
+        let r, label;
+        switch (op) {
+          case 'and': r = A & B; label = 'A AND B'; break;
+          case 'or': r = A | B; label = 'A OR B'; break;
+          case 'xor': r = A ^ B; label = 'A XOR B'; break;
+          case 'not': r = ~A; label = 'NOT A'; break;
+          case 'shl': r = A << B; label = 'A << B'; break;
+          case 'shr': r = A >> B; label = 'A >> B'; break;
+          case 'add': r = A + B; label = 'A + B'; break;
+          case 'sub': r = A - B; label = 'A - B'; break;
+          case 'mul': r = A * B; label = 'A x B'; break;
+          case 'div': r = Math.trunc(A / B); label = 'A / B'; break;
+          case 'mod': r = A % B; label = 'A MOD B'; break;
+        }
+        const u = r >>> 0;
+        $('prog-result').textContent =
+          label + ' = ' + r +
+          '\nDEC : ' + r +
+          '\nBIN : ' + (r < 0 ? '-' : '') + Math.abs(r).toString(2) +
+          '\nOCT : ' + (r < 0 ? '-' : '') + Math.abs(r).toString(8) +
+          '\nHEX : ' + (r < 0 ? '-' : '') + Math.abs(r).toString(16).toUpperCase() +
+          '\nUnsigned (32-bit): ' + u;
+        $('prog-result').classList.remove('err');
+      } catch (e) {
+        $('prog-result').textContent = 'Error: ' + e.message;
+        $('prog-result').classList.add('err');
+      }
+    });
+  });
+
+  // ====================================================
+  // MATRIX
+  // ====================================================
+  function buildMatrixGrid(id, size, defaults) {
+    const g = document.getElementById(id);
+    g.className = 'matrix-grid m' + size;
+    g.innerHTML = '';
+    for (let i = 0; i < size * size; i++) {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.value = defaults[i] !== undefined ? defaults[i] : 0;
+      g.appendChild(inp);
+    }
+  }
+  function readMatrix(id) {
+    const g = document.getElementById(id);
+    const inputs = Array.prototype.slice.call(g.querySelectorAll('input'));
+    const n = Math.round(Math.sqrt(inputs.length));
+    const m = [];
+    for (let i = 0; i < n; i++) m.push(inputs.slice(i * n, (i + 1) * n).map(x => parseFloat(x.value) || 0));
+    return { m, n };
+  }
+  function fmtMatrix(m) {
+    return m.map(row => row.map(v => fmt(v).padStart(10)).join(' ')).join('\n');
+  }
+  function matAdd(A, B) { return A.map((r, i) => r.map((v, j) => v + B[i][j])); }
+  function matSub(A, B) { return A.map((r, i) => r.map((v, j) => v - B[i][j])); }
+  function matMul(A, B) {
+    const n = A.length, m = B[0].length, k = B.length;
+    const R = [];
+    for (let i = 0; i < n; i++) { R.push([]); for (let j = 0; j < m; j++) R[i].push(0); }
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < m; j++)
+        for (let p = 0; p < k; p++) R[i][j] += A[i][p] * B[p][j];
+    return R;
+  }
+  function matDet(M) {
+    const n = M.length;
+    if (n === 1) return M[0][0];
+    if (n === 2) return M[0][0] * M[1][1] - M[0][1] * M[1][0];
+    let d = 0;
+    for (let c = 0; c < n; c++) {
+      const sub = M.slice(1).map(row => row.filter((_, j) => j !== c));
+      d += ((c % 2 === 0) ? 1 : -1) * M[0][c] * matDet(sub);
+    }
+    return d;
+  }
+  function matTranspose(M) { return M[0].map((_, j) => M.map(r => r[j])); }
+  function matInverse(M) {
+    const n = M.length;
+    const det = matDet(M);
+    if (Math.abs(det) < 1e-12) throw new Error('Matrix is singular (det ~ 0)');
+    const adj = [];
+    for (let i = 0; i < n; i++) { adj.push([]); for (let j = 0; j < n; j++) adj[i].push(0); }
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const minor = M.filter((_, r) => r !== i).map(row => row.filter((_, c) => c !== j));
+        adj[j][i] = ((i + j) % 2 === 0 ? 1 : -1) * matDet(minor);
+      }
+    }
+    return adj.map(row => row.map(v => v / det));
+  }
+
+  $('mat-size').addEventListener('change', (e) => {
+    const s = +e.target.value;
+    if (s === 2) {
+      buildMatrixGrid('mat-a-grid', 2, [1, 2, 3, 4]);
+      buildMatrixGrid('mat-b-grid', 2, [5, 6, 7, 8]);
+    } else {
+      buildMatrixGrid('mat-a-grid', 3, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      buildMatrixGrid('mat-b-grid', 3, [9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    }
+  });
+
+  document.querySelectorAll('[data-matop]').forEach(b => {
+    b.addEventListener('click', () => {
+      try {
+        const A = readMatrix('mat-a-grid').m;
+        const B = readMatrix('mat-b-grid').m;
+        const op = b.dataset.matop;
+        let out = '';
+        if (op === 'add') out = 'A + B =\n' + fmtMatrix(matAdd(A, B));
+        else if (op === 'sub') out = 'A - B =\n' + fmtMatrix(matSub(A, B));
+        else if (op === 'mul') out = 'A x B =\n' + fmtMatrix(matMul(A, B));
+        else if (op === 'detA') out = 'det(A) = ' + fmt(matDet(A));
+        else if (op === 'detB') out = 'det(B) = ' + fmt(matDet(B));
+        else if (op === 'invA') out = 'A^-1 =\n' + fmtMatrix(matInverse(A));
+        else if (op === 'transA') out = 'A^T =\n' + fmtMatrix(matTranspose(A));
+        $('mat-result').textContent = out;
+        $('mat-result').classList.remove('err');
+      } catch (e) {
+        $('mat-result').textContent = 'Error: ' + e.message;
+        $('mat-result').classList.add('err');
+      }
+    });
+  });
+
+  // ====================================================
+  // CONVERT
+  // ====================================================
+  $('dms-convert').addEventListener('click', () => {
+    const d = parseFloat($('dms-deg').value) || 0;
+    const m = parseFloat($('dms-min').value) || 0;
+    const s = parseFloat($('dms-sec').value) || 0;
+    const sign = d < 0 ? -1 : 1;
+    const dec = sign * (Math.abs(d) + m / 60 + s / 3600);
+    $('dms-result').textContent = dec.toFixed(8) + ' degrees (decimal)';
+    $('dms-result').classList.remove('err');
+  });
+  $('dec-convert').addEventListener('click', () => {
+    const dec = parseFloat($('dec-deg').value) || 0;
+    const sign = dec < 0 ? -1 : 1;
+    const abs = Math.abs(dec);
+    const d = Math.floor(abs);
+    const mF = (abs - d) * 60;
+    const m = Math.floor(mF);
+    const s = (mF - m) * 60;
+    $('dms-result').textContent = (sign * d) + ' deg ' + m + ' min ' + s.toFixed(2) + ' sec';
+    $('dms-result').classList.remove('err');
+  });
+
+  function toFrac(x, maxDen) {
+    maxDen = maxDen || 100000;
+    const sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    let bestN = 1, bestD = 1, bestErr = Infinity;
+    for (let d = 1; d <= maxDen; d++) {
+      const n = Math.round(x * d);
+      const err = Math.abs(x - n / d);
+      if (err < bestErr) { bestErr = err; bestN = n; bestD = d; }
+      if (err < 1e-12) break;
+    }
+    return sign * bestN + '/' + bestD;
+  }
+
+  $('frac-convert').addEventListener('click', () => {
+    const n = parseFloat($('frac-num').value);
+    const d = parseFloat($('frac-den').value);
+    if (d === 0) { $('frac-result').textContent = 'Error: division by zero'; $('frac-result').classList.add('err'); return; }
+    $('frac-result').textContent = n + '/' + d + ' = ' + (n / d);
+    $('frac-result').classList.remove('err');
+  });
+  $('decfrac-convert').addEventListener('click', () => {
+    const x = parseFloat($('dec-frac').value);
+    if (isNaN(x)) { $('frac-result').textContent = 'Error: invalid number'; $('frac-result').classList.add('err'); return; }
+    const sign = x < 0 ? -1 : 1;
+    const f = toFrac(x);
+    const parts = f.split('/');
+    const num = sign * Math.abs(parseFloat(parts[0]));
+    const den = parseFloat(parts[1]);
+    const whole = Math.floor(Math.abs(num) / den);
+    const rem = Math.abs(num) % den;
+    const mixed = whole > 0 && rem > 0 ? (sign < 0 ? '-' : '') + whole + ' ' + rem + '/' + den : '';
+    $('frac-result').textContent = x + ' ~= ' + f + (mixed ? '  (mixed: ' + mixed + ')' : '');
+    $('frac-result').classList.remove('err');
+  });
+
+  $('rect-polar').addEventListener('click', () => {
+    const x = parseFloat($('rect-x').value) || 0;
+    const y = parseFloat($('rect-y').value) || 0;
+    const r = Math.sqrt(x * x + y * y);
+    const th = Math.atan2(y, x) * 180 / Math.PI;
+    $('coord-result').textContent = 'r = ' + fmt(r) + '\ntheta = ' + fmt(th) + ' degrees';
+    $('coord-result').classList.remove('err');
+  });
+  $('polar-rect').addEventListener('click', () => {
+    const r = parseFloat($('polar-r').value) || 0;
+    const th = (parseFloat($('polar-th').value) || 0) * Math.PI / 180;
+    const x = r * Math.cos(th);
+    const y = r * Math.sin(th);
+    $('coord-result').textContent = 'x = ' + fmt(x) + '\ny = ' + fmt(y);
+    $('coord-result').classList.remove('err');
+  });
+
+  // ====================================================
+  // NUMBER THEORY
+  // ====================================================
+  function isPrime(n) {
+    n = Math.abs(Math.floor(n));
+    if (n < 2) return false;
+    if (n < 4) return true;
+    if (n % 2 === 0) return false;
+    for (let i = 3; i * i <= n; i += 2) if (n % i === 0) return false;
+    return true;
+  }
+  function primeFactors(n) {
+    n = Math.abs(Math.floor(n));
+    const f = [];
+    for (let d = 2; d * d <= n; d++) while (n % d === 0) { f.push(d); n /= d; }
+    if (n > 1) f.push(n);
+    return f;
+  }
+  function divisors(n) {
+    n = Math.abs(Math.floor(n));
+    const d = [];
+    for (let i = 1; i * i <= n; i++) {
+      if (n % i === 0) {
+        d.push(i);
+        if (i !== n / i) d.push(n / i);
+      }
+    }
+    return d.sort((a, b) => a - b);
+  }
+
+  document.querySelectorAll('[data-nt]').forEach(b => {
+    b.addEventListener('click', () => {
+      try {
+        const n = parseFloat($('nt-input').value);
+        if (!Number.isInteger(n)) throw new Error('Please enter an integer');
+        const op = b.dataset.nt;
+        let out = '';
+        if (op === 'prime') out = n + ' is ' + (isPrime(n) ? 'PRIME' : 'NOT prime');
+        else if (op === 'factors') {
+          const f = primeFactors(n);
+          out = 'Prime factors of ' + n + ':\n' + (f.length ? f.join(' x ') + ' = ' + n : 'None (n <= 1)');
+        }
+        else if (op === 'divisors') {
+          const d = divisors(n);
+          out = 'Divisors of ' + n + ' (' + d.length + '):\n' + d.join(', ');
+        }
+        else if (op === 'gcdlcm') {
+          const m = parseInt(prompt('Enter second integer:', '48'), 10);
+          if (!isNaN(m)) out = 'gcd(' + n + ', ' + m + ') = ' + gcd(n, m) + '\nlcm(' + n + ', ' + m + ') = ' + lcm(n, m);
+          else return;
+        }
+        else if (op === 'all') {
+          const f = primeFactors(n);
+          const d = divisors(n);
+          out = 'Number: ' + n +
+                '\nPrime? ' + (isPrime(n) ? 'Yes' : 'No') +
+                '\nPrime factors: ' + (f.length ? f.join(' x ') : '-') +
+                '\nNumber of divisors: ' + d.length +
+                '\nDivisors: ' + d.join(', ');
+        }
+        $('nt-result').textContent = out;
+        $('nt-result').classList.remove('err');
+      } catch (e) {
+        $('nt-result').textContent = 'Error: ' + e.message;
+        $('nt-result').classList.add('err');
+      }
+    });
+  });
+
+  // ====================================================
+  // INIT
+  // ====================================================
+  updateDisplay();
+  refreshHistory();
+  setResult('0');
+})();
+</script>
+</body>
+</html>
