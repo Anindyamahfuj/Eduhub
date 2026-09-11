@@ -1600,3 +1600,29 @@ body.focus-mode::before {
     .priority-grid { grid-template-columns: 1fr; }
     .deepwork-timer { font-size: 1.5rem; }
 }
+
+/* Theme toggle — stands out from the other pills */
+.theme-toggle-btn {
+    background: linear-gradient(180deg, rgba(192, 132, 252, 0.20), rgba(192, 132, 252, 0.08)) !important;
+    border-color: rgba(192, 132, 252, 0.55) !important;
+    color: #c084fc !important;
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(192, 132, 252, 0.20);
+}
+.theme-toggle-btn:hover {
+    background: rgba(192, 132, 252, 0.30) !important;
+    border-color: #c084fc !important;
+    color: #e9d5ff !important;
+    box-shadow: 0 0 20px rgba(192, 132, 252, 0.40);
+}
+body.theme-light .theme-toggle-btn {
+    background: linear-gradient(180deg, rgba(124, 58, 237, 0.12), rgba(124, 58, 237, 0.04)) !important;
+    border-color: rgba(124, 58, 237, 0.45) !important;
+    color: #7c3aed !important;
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.15);
+}
+body.theme-light .theme-toggle-btn:hover {
+    background: rgba(124, 58, 237, 0.20) !important;
+    border-color: #7c3aed !important;
+    color: #6d28d9 !important;
+}
