@@ -8013,7 +8013,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ---------- Boot ----------
     function boot() {
         try { if (sessionStorage.getItem(HIDDEN_KEY) === '1') return; } catch (e) {}
-
+        // Hide the whole bar if the student has "News & Forums" blocked
+        if (isNewsBlocked()) { hideBar(); return; }
         buildBar();
 
         var cached = loadCache();
