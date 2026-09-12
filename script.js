@@ -7695,7 +7695,26 @@ document.addEventListener('DOMContentLoaded', function() {
     var currentIndex = 0;
     var rotateTimer = null;
     var bar = null;
+    // ---------- News-blocked check (reads Blocker state) ----------
+    function isNewsBlocked() {
+        try {
+            var d = JSON.parse(localStorage.getItem('studyHubData') || '{}');
+            return !!(d.blockerCategories && d.blockerCategories.news);
+        } catch (e) { return false; }
+    }
 
+    function hideBar() {
+        var b = document.getElementById('newsBar');
+        if (b) b.remove();
+        if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+    }
+
+    function showBarIfAllowed() {
+        if (isNewsBlocked()) { hideBar(); return; }
+        if (document.getElementById('newsBar')) return;   // already visible
+        // Re-show: reuses cached items so it's instant
+        boot();
+    }
     // ---------- Cache ----------
     function loadCache() {
         try {
