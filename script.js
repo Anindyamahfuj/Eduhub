@@ -6422,9 +6422,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
 })();
 // ================================================================
-// SEARCH SHORTCUTS — user-defined quick-launch tiles  (v2)
-//  • Blocks social media + all common URL shorteners
-//  • Also catches Google/redirection wrappers
+// SEARCH SHORTCUTS — user-defined quick-launch tiles  (v3)
+//  • Blocks social media + shorteners + redirect wrappers
+//  • Deep-scans the FULL URL (path & query), not just the host
+//  • Purges any previously-saved shortcut that now matches the blocklist
 //  • Persists in localStorage
 // ================================================================
 (function () {
@@ -6432,42 +6433,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var SHORTCUTS_KEY = 'studyHubShortcuts';
 
-    // ---- Social media blocklist ----
-    var SOCIAL_BLOCK = [
-        // Facebook family
-        'facebook.com', 'fb.com', 'fb.me', 'fb.watch', 'messenger.com',
-        'm.me', 'fbsbx.com',
-        // Instagram
+    // ---- Hostname blocklist (exact match or subdomain) ----
+    var SOCIAL_HOSTS = [
+        'facebook.com', 'fb.com', 'fb.me', 'fb.watch', 'messenger.com', 'm.me', 'fbsbx.com',
         'instagram.com', 'instagr.am', 'igtv.com',
-        // Twitter / X
         'twitter.com', 'x.com', 't.co',
-        // TikTok
         'tiktok.com', 'douyin.com', 'vt.tiktok.com',
-        // Snapchat
-        'snapchat.com', 'snap.com', 'sc-cdn.net',
-        // Reddit
-        'reddit.com', 'redd.it', 'redditmedia.com', 'redditstatic.com',
-        // Pinterest
+        'snapchat.com', 'snap.com',
+        'reddit.com', 'redd.it', 'redditmedia.com',
         'pinterest.com', 'pin.it', 'pinimg.com',
-        // Tumblr
         'tumblr.com',
-        // LinkedIn
-        'linkedin.com', 'lnkd.in', 'licdn.com',
-        // WhatsApp
+        'linkedin.com', 'lnkd.in',
         'whatsapp.com', 'wa.me', 'whatsapp.net',
-        // Telegram — all known variants
-        'telegram.org', 'telegram.me', 't.me', 'telegram.dog',
-        'teleg.run', 'tx.me', 'tlgrm.eu', 'telesco.pe', 'tg.dev',
-        'telegram.im', 'telegramdesktop.com',
-        // Discord
+        'telegram.org', 'telegram.me', 'telegram.dog', 'telegram.im',
+        'telegram.link', 'telegram.ws', 'telegram.group', 'telegram.black',
+        'telegram.blue', 'telegram.pink', 'telegram.red', 'telegramchat.com',
+        't.me', 'tlgrm.eu', 'tlgrm.ru', 'teleg.run', 'tx.me', 'telesco.pe', 'tg.dev',
+        'telegramdesktop.com', 'telegramlite.org',
         'discord.com', 'discord.gg', 'discordapp.com', 'discordapp.net',
-        // WeChat / QQ
         'wechat.com', 'weixin.qq.com', 'wx.qq.com', 'qq.com',
-        // VK family
         'vk.com', 'vkontakte.ru', 'vk.me', 'ok.ru', 'odnoklassniki.ru',
-        // Chinese social
         'weibo.com', 'weibo.cn', 'douban.com', 'zhihu.com', 'xiaohongshu.com',
-        // Threads / Mastodon / Bluesky / others
         'threads.net', 'threads.com', 'mastodon.social', 'mastodon.online',
         'bsky.app', 'blueskyweb.xyz', 'truthsocial.com', 'truth.social',
         'parler.com', 'gab.com', 'clubhouse.com', 'clubhouse.io',
@@ -6475,64 +6461,96 @@ document.addEventListener('DOMContentLoaded', function() {
         'yik-yak.com', 'yikyak.com', '4chan.org', '8chan.co', '8kun.top',
         'imgur.com', '9gag.com', '9gag.tv', 'ifunny.co',
         'flickr.com', 'flic.kr', 'meetup.com', 'nextdoor.com',
-        // Streaming / entertainment distractions
         'netflix.com', 'hulu.com', 'disneyplus.com', 'disney.com',
         'primevideo.com', 'hbomax.com', 'max.com', 'peacocktv.com',
         'twitch.tv', 'kick.com', 'rumble.com', 'dailymotion.com',
         'vimeo.com', 'spotify.com', 'soundcloud.com', 'deezer.com'
     ];
 
-    // ---- URL shorteners (any entry here → shortcut rejected with a specific message) ----
-    var SHORTENERS = [
+    // ---- Shortener hostnames ----
+    var SHORTENER_HOSTS = [
         'bit.ly', 'bitly.com', 'tinyurl.com', 'tiny.cc', 'cutt.ly', 'cutt.us',
         'shorturl.at', 'rebrand.ly', 'rebrandly.com', 'is.gd', 'v.gd',
         'ow.ly', 'buff.ly', 'bl.ink', 'shorte.st', 'adf.ly', 'bc.vc',
         'rb.gy', 'rb.link', 'urlz.fr', 'urlshort.com', 'tiny.pl',
         't.ly', 'soo.gd', 's2r.co', 'clck.ru', 'clc.kz', 'goo.gl',
-        'short.link', 'shorte.link', 'short.io', 'surl.li', 'snip.ly',
-        'x.co', 'mcaf.ee', 'trib.al', 'po.st', 'ln.is', 'hyperurl.co',
-        'short.gy', 'shorturl.gg', 'shrtco.de', '1link.club', '2.gp',
+        'surl.li', 'snip.ly', 'x.co', 'mcaf.ee', 'trib.al', 'po.st',
+        'hyperurl.co', 'short.gy', 'shrtco.de', '1link.club', '2.gp',
         '3.ly', '4.ly', '6.ly', '7.ly', '9.ly', '0.gp', 'yep.it',
-        'xlink.link', 'shrinkme.io', 'shrinkearn.com', 'shrinkforcloud.com',
-        'linkvertise.com', 'linkvertise.net', 'linkshrink.net',
-        'ouo.io', 'ouo.press', 'fc.lc', 'exe.io', 'exee.io',
-        'gplinks.co', 'gplinks.in', 'mdiskshortner.com', 'mdisk.me',
-        'urlcash.net', 'urlcash.org', 'upfiles.pro', 'upfiles.com',
-        'za.gl', 'za.gg', 'za.gl', 'zagl.xyz', 'gurl.lv',
-        'sh.st', 'sh.st', 'bhpho.to', 'ceesty.com', 'corneey.com',
-        'festyy.com', 'shorte.st', 'gestyy.com', 'destyy.com',
-        'swarvel.com', 'swarvel.net', 'tii.ai', 'tii.la',
-        'tolink.co', 'tolink.pw', 'tolink.me', 'linkpays.in',
-        'linkshortifier.com', 'clk.sh', 'clk.asia', 'clk.ink',
-        'cuty.io', 'cuty.me', 'cutpaid.com', 'cutwin.com',
+        'xlink.link', 'shrinkme.io', 'shrinkearn.com', 'linkvertise.com',
+        'linkvertise.net', 'linkshrink.net', 'ouo.io', 'ouo.press',
+        'fc.lc', 'exe.io', 'exee.io', 'gplinks.co', 'gplinks.in',
+        'mdiskshortner.com', 'mdisk.me', 'urlcash.net', 'urlcash.org',
+        'upfiles.pro', 'upfiles.com', 'za.gl', 'zagl.xyz', 'gurl.lv',
+        'sh.st', 'ceesty.com', 'corneey.com', 'festyy.com', 'gestyy.com',
+        'destyy.com', 'swarvel.com', 'swarvel.net', 'tii.ai', 'tii.la',
+        'tolink.co', 'tolink.pw', 'tolink.me', 'clk.sh', 'clk.asia',
+        'clk.ink', 'cuty.io', 'cuty.me', 'cutpaid.com', 'cutwin.com',
         'kutt.it', 'polr.me', 'polr.xyz', 'vurl.io', 'vurl.me',
         'shr.be', 'shr.link', 'shrt.li', 'short.am', 'zzb.bz',
-        'tr.im', 'tweez.me', 'tinurl.com', 'tinylink.co'
+        'tr.im', 'tweez.me', 'tinurl.com', 'tinylink.co', 'zpr.io'
     ];
 
-    // ---- Redirect wrappers (Google Translate, /url?q=, etc.) ----
-    var REDIRECT_WRAPPERS = [
-        'google.com', 'google.co', 'bing.com', 'yahoo.com', 'duckduckgo.com',
-        'baidu.com', 'yandex.ru', 'facebook.com', 'l.facebook.com',
-        'lm.facebook.com', 'translate.google.com', 'googleusercontent.com',
-        'webcache.googleusercontent.com', 'out.reddit.com', 'reddit.com',
-        'linkedin.com', 'instagram.com', 'youtube.com/redirect',
-        'l.instagram.com', 'l.wl.co'
+    // ---- Long keyword substrings — safe to scan the FULL URL for these ----
+    var SOCIAL_KEYWORDS = [
+        'telegram', 'facebook', 'instagram', 'twitter', 'tiktok', 'snapchat',
+        'reddit', 'pinterest', 'discord', 'whatsapp', 'tumblr', 'linkedin',
+        'wechat', 'weixin', 'vkontakte', 'mastodon', 'bluesky', 'threads.net',
+        'clubhouse', 'truthsocial', 'netflix', 'twitch.tv', 'spotify',
+        'soundcloud', 'dailymotion', 'shorte.st', 'linkvertise', 'shrinkme',
+        'gplinks', 'mdiskshort', 'mdisk.me'
     ];
 
-    function matchDomain(host, list) {
+    var SHORTENER_KEYWORDS = [
+        'bit.ly', 'bitly.com', 'tinyurl', 'cutt.ly', 'cutt.us',
+        'shorturl.at', 'rebrand.ly', 'rebrandly', 'shorte.st', 'adf.ly',
+        'shrinkme', 'shrinkearn', 'linkvertise', 'linkshrink', 'urlcash',
+        'gplinks', 'mdiskshort', 'ouo.io', 'gestyy', 'corneey', 'destyy',
+        'hyperurl', 'shrtco.de', 'shorturl', 'shrinkforcloud'
+    ];
+
+    function matchHost(host, list) {
         var h = String(host || '').toLowerCase().replace(/^www\./, '');
         for (var i = 0; i < list.length; i++) {
             var d = list[i].toLowerCase();
-            // exact or subdomain
             if (h === d || h.slice(-(d.length + 1)) === '.' + d) return d;
         }
         return null;
     }
 
-    function isSocialMedia(host)  { return matchDomain(host, SOCIAL_BLOCK); }
-    function isShortener(host)    { return matchDomain(host, SHORTENERS); }
-    function isRedirectWrapper(host) { return matchDomain(host, REDIRECT_WRAPPERS); }
+    // Hostname checks
+    function isSocialHost(host)     { return matchHost(host, SOCIAL_HOSTS); }
+    function isShortenerHost(host)  { return matchHost(host, SHORTENER_HOSTS); }
+
+    // Deep scan — check the WHOLE url string for long keywords
+    function deepScan(fullUrl) {
+        var lower = String(fullUrl || '').toLowerCase();
+        for (var i = 0; i < SOCIAL_KEYWORDS.length; i++) {
+            if (lower.indexOf(SOCIAL_KEYWORDS[i]) !== -1) {
+                return { kind: 'social', domain: SOCIAL_KEYWORDS[i] };
+            }
+        }
+        for (var j = 0; j < SHORTENER_KEYWORDS.length; j++) {
+            if (lower.indexOf(SHORTENER_KEYWORDS[j]) !== -1) {
+                return { kind: 'shortener', domain: SHORTENER_KEYWORDS[j] };
+            }
+        }
+        return null;
+    }
+
+    // Master check — returns null if allowed, or { kind, domain } if blocked
+    function checkUrl(fullUrl, hostname) {
+        var social = isSocialHost(hostname);
+        if (social) return { kind: 'social', domain: social };
+
+        var short = isShortenerHost(hostname);
+        if (short) return { kind: 'shortener', domain: short };
+
+        var deep = deepScan(fullUrl);
+        if (deep) return deep;
+
+        return null;
+    }
 
     // ---- Storage ----
     function loadShortcuts() {
@@ -6545,6 +6563,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     function saveShortcuts(list) {
         try { localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(list)); } catch (e) {}
+    }
+
+    // Purge any saved shortcut that now matches the blocklist.
+    // Returns the number removed.
+    function purgeBlockedShortcuts() {
+        var list = loadShortcuts();
+        if (!list.length) return 0;
+        var kept = [];
+        var removed = 0;
+        var lastBlocked = null;
+
+        for (var i = 0; i < list.length; i++) {
+            var sc = list[i];
+            var host = '';
+            try { host = new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) {}
+            var verdict = checkUrl(sc.url, host);
+            if (verdict) {
+                removed++;
+                lastBlocked = { item: sc, verdict: verdict };
+            } else {
+                kept.push(sc);
+            }
+        }
+
+        if (removed > 0) {
+            saveShortcuts(kept);
+            // Notify the user once, mentioning the first offender
+            if (lastBlocked) {
+                setTimeout(function () {
+                    showToast('removed', lastBlocked.verdict.domain, removed, lastBlocked.item.name);
+                }, 500);
+            }
+        }
+        return removed;
     }
 
     // ---- URL parsing ----
@@ -6569,24 +6621,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ---- Toast ----
-    function showToast(kind, domain) {
+    function showToast(kind, domain, extraCount, extraName) {
         var old = document.getElementById('shortcutBlockToast');
         if (old) old.remove();
 
-        var isShortenerCase = (kind === 'shortener');
-        var isRedirectCase  = (kind === 'redirect');
+        var icon, heading, body;
 
-        var icon = isShortenerCase ? '⛓️' : isRedirectCase ? '🔁' : '🛡️';
-        var heading = isShortenerCase
-            ? 'Shortened links aren\'t allowed.'
-            : isRedirectCase
-                ? 'Redirect links aren\'t allowed.'
-                : 'Social media is banned here.';
-        var body = isShortenerCase
-            ? 'Please enter the site&rsquo;s real address — a shortener could be hiding anything.'
-            : isRedirectCase
-                ? 'Please enter the site&rsquo;s real address directly, not through a redirect service.'
-                : '"' + domain + '" can\'t be added. StudyHub is a distraction-free space for students.';
+        if (kind === 'shortener') {
+            icon = '⛓️';
+            heading = 'Shortened links aren\'t allowed.';
+            body = 'Please enter the site&rsquo;s real address — a shortener could be hiding anything.';
+        } else if (kind === 'redirect') {
+            icon = '🔁';
+            heading = 'Redirect links aren\'t allowed.';
+            body = 'Please enter the site&rsquo;s real address directly, not through a redirect service.';
+        } else if (kind === 'removed') {
+            icon = '🧹';
+            heading = 'Removed a blocked shortcut.';
+            body = '"' + (extraName || domain) + '" matched our blocked list (' + domain + ').';
+            if (extraCount > 1) body += ' ' + extraCount + ' shortcuts were removed.';
+        } else {
+            icon = '🛡️';
+            heading = 'Social media is banned here.';
+            body = '"' + domain + '" can\'t be added. StudyHub is a distraction-free space for students.';
+        }
 
         var t = document.createElement('div');
         t.className = 'shortcut-block-toast';
@@ -6608,7 +6666,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5200);
     }
 
-    // ---- Render tiles ----
+    // ---- Render ----
     function renderShortcuts() {
         var grid  = document.getElementById('shortcutsGrid');
         var empty = document.getElementById('shortcutsEmpty');
@@ -6670,7 +6728,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (empty) empty.style.display = list.length === 0 ? 'block' : 'none';
     }
 
-    // ---- Add modal ----
+    // ---- Modal ----
     var modal = null;
     function buildModal() {
         if (modal) return modal;
@@ -6742,32 +6800,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         var host = parsed.hostname.replace(/^www\./, '');
+        var verdict = checkUrl(parsed.href, host);
 
-        // 1. Social media check
-        var blockedSocial = isSocialMedia(host);
-        if (blockedSocial) {
-            showToast('social', blockedSocial);
+        if (verdict) {
+            showToast(verdict.kind, verdict.domain);
             closeAddModal();
             return;
         }
 
-        // 2. URL shortener check
-        var blockedShort = isShortener(host);
-        if (blockedShort) {
-            showToast('shortener', blockedShort);
-            closeAddModal();
-            return;
-        }
-
-        // 3. Redirect wrapper check
-        var blockedRedirect = isRedirectWrapper(host);
-        if (blockedRedirect) {
-            showToast('redirect', blockedRedirect);
-            closeAddModal();
-            return;
-        }
-
-        // 4. Duplicate check
+        // Duplicate check
         var existing = loadShortcuts();
         if (existing.some(function (s) { return s.host === host; })) {
             urlInp.style.borderColor = '#fbbf24';
@@ -6790,6 +6831,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ---- Boot ----
     function boot() {
         if (!document.getElementById('shortcutsGrid')) return;
+        purgeBlockedShortcuts();   // remove any previously-saved blocked entries
         renderShortcuts();
     }
     if (document.readyState === 'loading') {
@@ -6803,9 +6845,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var parsed = normalizeUrl(url);
         if (!parsed) return false;
         var host = parsed.hostname.replace(/^www\./, '');
-        if (isSocialMedia(host))   { showToast('social', host);   return false; }
-        if (isShortener(host))     { showToast('shortener', host); return false; }
-        if (isRedirectWrapper(host)) { showToast('redirect', host); return false; }
+        var verdict = checkUrl(parsed.href, host);
+        if (verdict) { showToast(verdict.kind, verdict.domain); return false; }
         var list = loadShortcuts();
         list.push({
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
