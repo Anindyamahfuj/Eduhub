@@ -4230,3 +4230,84 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
 /* --- Reduce visual weight of search card inside main --- */
 .dash-main .search-section { margin-bottom: 0; }
 .dash-main .search-section .card-title { font-size: 0.95rem; }
+
+/* ============================================================
+   AI TOOLS PAGE — categories + enhanced cards
+   ============================================================ */
+
+.tools-category {
+    margin-bottom: 2rem;
+}
+.tools-category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.95rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--line);
+}
+.tools-category-header .cat-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+.tools-category-header .cat-title {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    flex: 1;
+}
+.tools-category-header .cat-count {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 700;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 0.2rem 0.75rem;
+    border-radius: var(--r-pill);
+}
+
+/* Enhanced tool card */
+.tool-card .tool-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.15rem;
+}
+.tool-card .tool-tags .tool-tag {
+    align-self: auto;
+    font-size: 0.6rem;
+    padding: 0.12rem 0.55rem;
+}
+.tool-card .tool-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.01em;
+    transition: gap var(--dur), color var(--dur);
+}
+.tool-card:hover .tool-open {
+    gap: 0.45rem;
+    color: var(--accent-2);
+}
+
+/* Tool card min-height for consistency */
+.tool-card {
+    min-height: 190px;
+    justify-content: flex-start;
+}
+.tool-card h3 { margin: 0.25rem 0 0.35rem; }
+.tool-card p  { margin-bottom: 0.35rem; }
+
+/* Responsive */
+@media (max-width: 640px) {
+    .tools-category-header .cat-title { font-size: 1rem; }
+    .tool-card { min-height: 175px; }
+}
