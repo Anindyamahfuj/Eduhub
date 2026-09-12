@@ -5251,27 +5251,58 @@ function closeCommandPalette() {
 }
 
 // ================================================================
-// BREAK REMINDER (50 min)
+// BREAK REMINDER — every 50 minutes, repeats forever
 // ================================================================
 function initBreakReminder() {
     var breakKey = 'studyHubLastBreakReminder';
-    var interval = 50 * 60 * 1000;
+    var INTERVAL = 50 * 60 * 1000;   // 50 minutes
+    var breakTick = null;
+
+    function fireReminder() {
+        try { notifyBreak(); } catch (e) {}
+        try { localStorage.setItem(breakKey, Date.now()); } catch (e) {}
+        // Optional: also show a small in-page toast so it's impossible to miss
+        if (typeof window.showToast === 'function') {
+            try { window.showToast('☕ Time for a break! You have been studying for 50 minutes.', 'ok'); } catch (e) {}
+        }
+    }
+
+    function startTimer() {
+        if (breakTick) clearInterval(breakTick);
+        // Fire every 50 minutes regardless of the last stored time
+        breakTick = setInterval(fireReminder, INTERVAL);
+    }
+
+    // If the stored timestamp is already older than 50 min,
+    // fire once on load and then continue on the repeating schedule.
     var last = parseInt(localStorage.getItem(breakKey) || '0', 10);
     var now = Date.now();
-    if (last === 0) {
-        localStorage.setItem(breakKey, now);
-        return;
+
+    if (last && (now - last) >= INTERVAL) {
+        fireReminder();
+    } else if (!last) {
+        try { localStorage.setItem(breakKey, now); } catch (e) {}
     }
-    var elapsed = now - last;
-    if (elapsed >= interval) {
-        notifyBreak();
-        localStorage.setItem(breakKey, now);
-    } else {
-        setTimeout(function() {
-            notifyBreak();
-            localStorage.setItem(breakKey, Date.now());
-        }, interval - elapsed);
-    }
+
+    startTimer();
+
+    // Pause the reminder when the tab is hidden so it doesn't drift
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            if (breakTick) { clearInterval(breakTick); breakTick = null; }
+        } else {
+            startTimer();
+        }
+    });
+
+    // Expose a manual trigger for the console / other scripts
+    window.studyHubBreakReminder = {
+        reset: function () {
+            try { localStorage.setItem(breakKey, Date.now()); } catch (e) {}
+        },
+        fire: fireReminder,
+        stop: function () { if (breakTick) { clearInterval(breakTick); breakTick = null; } }
+    };
 }
 
 function notifyBreak() {
