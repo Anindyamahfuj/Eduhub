@@ -7041,10 +7041,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!d.blockerOn) { d.blockerOn = true; writeD(d); paintBlocker(); }
     }
 
-    function endFocusSession() {
+        function endFocusSession() {
         const s = getFocusSession();
-        if (!s) { document.body.classList.remove('focus-mode'); return; }
+
+        // No session → just clean up UI and bail
+        if (!s) {
+            document.body.classList.remove('focus-mode');
+            paintFocusButton();
+            return;
+        }
+
         const durMin = Math.round((Date.now() - s.startTs) / 60000);
+
+        // Very short session (< 1 min) → discard, no summary, but still repaint
         if (durMin < 1) {
             setFocusSession(null);
             document.body.classList.remove('focus-mode');
@@ -7052,8 +7061,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const d = readD();
                 if (d.blockerOn) { d.blockerOn = false; writeD(d); paintBlocker(); }
             }
+            paintFocusButton();   // ← FIX
             return;
         }
+
         let score = 100 - (s.distract * 5);
         if (durMin < s.goalMin * 0.5) score -= 15;
         if (durMin < 5) score -= 20;
@@ -7079,7 +7090,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const dd = readD();
             if (dd.blockerOn) { dd.blockerOn = false; writeD(dd); paintBlocker(); }
         }
+
         document.body.classList.remove('focus-mode');
+        paintFocusButton();   // ← FIX
         showFocusSummary({ durMin: durMin, distract: s.distract, score: score, goalMet: goalMet, goalMin: s.goalMin });
     }
 
