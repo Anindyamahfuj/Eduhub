@@ -2496,6 +2496,8 @@ const translations = {
         'wolfram_desc': 'Hesaplamalı STEM motoru.',
         'canva_desc': 'Sunumlar, posterler ve sosyal medya için AI destekli tasarım.',
         'youtube_desc': 'Eğitim videoları, eğitimler ve dersler.',
+        },
+  };
 
 
 
