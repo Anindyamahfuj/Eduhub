@@ -6178,3 +6178,256 @@ document.addEventListener('DOMContentLoaded', function() {
         applyTheme(theme);
     };
 })();
+// ================================================================
+// THEME & WALLPAPER PICKER
+//  • Button + modal only appear on index.html (dashboard)
+//  • Chosen theme/background apply to EVERY page
+//  • Choice persists in localStorage
+// ================================================================
+(function () {
+    'use strict';
+
+    const COLOR_KEY = 'studyHubColorTheme';
+    const BG_KEY    = 'studyHubBackground';
+
+    // ---------- 10 COLOR THEMES ----------
+    const COLOR_THEMES = {
+        aurora:   { name: 'Aurora',   accent: '#5eead4', accent2: '#7dd3fc', brand: '#c4b5fd', brandHot: '#c084fc' },
+        sunset:   { name: 'Sunset',   accent: '#fdba74', accent2: '#fca5a5', brand: '#fb7185', brandHot: '#e11d48' },
+        ocean:    { name: 'Ocean',    accent: '#38bdf8', accent2: '#67e8f9', brand: '#818cf8', brandHot: '#6366f1' },
+        forest:   { name: 'Forest',   accent: '#6ee7b7', accent2: '#86efac', brand: '#34d399', brandHot: '#10b981' },
+        rose:     { name: 'Rose',     accent: '#f9a8d4', accent2: '#fda4af', brand: '#fb7185', brandHot: '#e11d48' },
+        mono:     { name: 'Mono',     accent: '#cbd5e1', accent2: '#94a3b8', brand: '#e2e8f0', brandHot: '#f1f5f9' },
+        midnight: { name: 'Midnight', accent: '#a78bfa', accent2: '#8b5cf6', brand: '#c4b5fd', brandHot: '#7c3aed' },
+        cyber:    { name: 'Cyber',    accent: '#22d3ee', accent2: '#f472b6', brand: '#f0abfc', brandHot: '#e879f9' },
+        amber:    { name: 'Amber',    accent: '#fbbf24', accent2: '#f59e0b', brand: '#fb923c', brandHot: '#ea580c' },
+        lavender: { name: 'Lavender', accent: '#c4b5fd', accent2: '#ddd6fe', brand: '#a78bfa', brandHot: '#8b5cf6' }
+    };
+
+    // ---------- 20 BACKGROUNDS (10 gradients + 10 photos) ----------
+    const BACKGROUNDS = [
+        // Gradients (darkened so UI text stays readable)
+        { id: 'bg-default',  name: 'Default',    css: '' },
+        { id: 'bg-deepsea',  name: 'Deep Sea',   css: 'linear-gradient(135deg, #041418 0%, #0f766e 50%, #041418 100%)' },
+        { id: 'bg-twilight', name: 'Twilight',   css: 'linear-gradient(135deg, #0f0a1e 0%, #4c1d95 50%, #0f0a1e 100%)' },
+        { id: 'bg-ember',    name: 'Ember',      css: 'linear-gradient(135deg, #1a0707 0%, #b91c1c 50%, #1a0707 100%)' },
+        { id: 'bg-forest',   name: 'Forest',     css: 'linear-gradient(135deg, #051410 0%, #065f46 50%, #051410 100%)' },
+        { id: 'bg-sunset',   name: 'Sunset',     css: 'linear-gradient(135deg, #1a0a1a 0%, #9a3412 50%, #1a0a1a 100%)' },
+        { id: 'bg-cyber',    name: 'Cyber',      css: 'linear-gradient(135deg, #0a0014 0%, #7c3aed 40%, #06b6d4 100%)' },
+        { id: 'bg-arctic',   name: 'Arctic',     css: 'linear-gradient(135deg, #071825 0%, #0284c7 50%, #071825 100%)' },
+        { id: 'bg-gold',     name: 'Gold',       css: 'linear-gradient(135deg, #1a1000 0%, #b45309 50%, #1a1000 100%)' },
+        { id: 'bg-plum',     name: 'Plum',       css: 'linear-gradient(135deg, #130513 0%, #86198f 50%, #130513 100%)' },
+
+        // Photos (fixed picsum seeds — always return same image)
+        { id: 'bg-mountain', name: 'Mountain',   css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/mountain/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-ocean',    name: 'Ocean',      css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/ocean12/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-forest2',  name: 'Forest',     css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/forest7/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-city',     name: 'City',       css: 'linear-gradient(rgba(3,10,20,0.75), rgba(3,10,20,0.88)), url("https://picsum.photos/seed/city42/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-desert',   name: 'Desert',     css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/desert3/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-night',    name: 'Night Sky',  css: 'linear-gradient(rgba(3,10,20,0.75), rgba(3,10,20,0.88)), url("https://picsum.photos/seed/nightsky/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-aurora',   name: 'Aurora',     css: 'linear-gradient(rgba(3,10,20,0.70), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/aurora9/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-snow',     name: 'Snow',       css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/snow5/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-sunset2',  name: 'Sunset Sky', css: 'linear-gradient(rgba(3,10,20,0.70), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/sunset8/1920/1080") center/cover no-repeat fixed' },
+        { id: 'bg-clouds',   name: 'Clouds',     css: 'linear-gradient(rgba(3,10,20,0.70), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/clouds2/1920/1080") center/cover no-repeat fixed' }
+    ];
+
+    // ---------- Storage helpers ----------
+    function getColor() { try { return localStorage.getItem(COLOR_KEY) || 'aurora'; } catch (e) { return 'aurora'; } }
+    function getBg()    { try { return localStorage.getItem(BG_KEY) || 'bg-default'; } catch (e) { return 'bg-default'; } }
+    function setColor(id) { try { localStorage.setItem(COLOR_KEY, id); } catch (e) {} }
+    function setBg(id)    { try { localStorage.setItem(BG_KEY, id); } catch (e) {} }
+
+    // ---------- Apply color theme (every page) ----------
+    function applyColorTheme(id) {
+        const t = COLOR_THEMES[id] || COLOR_THEMES.aurora;
+        document.body.style.setProperty('--accent', t.accent);
+        document.body.style.setProperty('--accent-2', t.accent2);
+        document.body.style.setProperty('--brand', t.brand);
+        document.body.style.setProperty('--brand-hot', t.brandHot);
+    }
+
+    // ---------- Apply background (every page) ----------
+    function applyBackground(id) {
+        const bg = BACKGROUNDS.find(function (b) { return b.id === id; }) || BACKGROUNDS[0];
+        if (!bg.css) {
+            // Reset to stylesheet default
+            document.body.style.removeProperty('background');
+            document.body.style.removeProperty('background-image');
+            document.body.style.removeProperty('background-size');
+            document.body.style.removeProperty('background-position');
+            document.body.style.removeProperty('background-attachment');
+            document.body.style.removeProperty('background-repeat');
+        } else {
+            document.body.style.background = bg.css;
+        }
+    }
+
+    // ---------- Boot: apply saved theme on EVERY page ----------
+    function boot() {
+        applyColorTheme(getColor());
+        applyBackground(getBg());
+    }
+
+    if (document.body) boot();
+    else document.addEventListener('DOMContentLoaded', boot);
+
+    // ---------- Only build the picker UI on index.html ----------
+    function isDashboard() {
+        const p = window.location.pathname.split('/').pop() || 'index.html';
+        return p === 'index.html' || p === '' || p === '/' || /index\.html?$/i.test(p);
+    }
+
+    if (!isDashboard()) return;
+
+    // Build FAB
+    const fab = document.createElement('button');
+    fab.className = 'theme-picker-fab';
+    fab.type = 'button';
+    fab.title = 'Customize theme & background';
+    fab.innerHTML = '🎨';
+    document.body.appendChild(fab);
+
+    // Build overlay + panel
+    const overlay = document.createElement('div');
+    overlay.className = 'theme-picker-overlay';
+    overlay.innerHTML = `
+        <div class="theme-picker-panel" role="dialog" aria-label="Theme and background picker">
+            <div class="theme-picker-header">
+                <h2>🎨 Customize</h2>
+                <button class="theme-picker-close" type="button" aria-label="Close">✕</button>
+            </div>
+            <div class="theme-picker-tabs">
+                <button class="theme-picker-tab active" data-tab="colors" type="button">🎨 Color Theme</button>
+                <button class="theme-picker-tab" data-tab="backgrounds" type="button">🖼️ Background</button>
+            </div>
+            <div class="theme-picker-body">
+                <div class="theme-picker-section active" data-section="colors">
+                    <h3>Choose a color theme</h3>
+                    <div class="theme-swatch-grid" id="themeSwatchGrid"></div>
+                </div>
+                <div class="theme-picker-section" data-section="backgrounds">
+                    <h3>Gradients</h3>
+                    <div class="theme-bg-grid" id="themeBgGradients"></div>
+                    <h3 style="margin-top:1.2rem;">Photos</h3>
+                    <div class="theme-bg-grid" id="themeBgPhotos"></div>
+                </div>
+            </div>
+            <div class="theme-picker-actions">
+                <button class="reset-btn" type="button" id="themePickerReset">↺ Reset to default</button>
+                <button type="button" id="themePickerDone">✓ Done</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Swatches
+    const swatchGrid = overlay.querySelector('#themeSwatchGrid');
+    Object.keys(COLOR_THEMES).forEach(function (key) {
+        const t = COLOR_THEMES[key];
+        const s = document.createElement('button');
+        s.type = 'button';
+        s.className = 'theme-swatch';
+        s.dataset.theme = key;
+        s.innerHTML =
+            '<span class="swatch-check">✓</span>' +
+            '<div class="swatch-dots">' +
+                '<span class="swatch-dot" style="background:' + t.accent + '"></span>' +
+                '<span class="swatch-dot" style="background:' + t.brand + '"></span>' +
+                '<span class="swatch-dot" style="background:' + t.accent2 + '"></span>' +
+            '</div>' +
+            '<div class="swatch-name">' + t.name + '</div>';
+        s.addEventListener('click', function () {
+            setColor(key);
+            applyColorTheme(key);
+            refreshSwatches();
+        });
+        swatchGrid.appendChild(s);
+    });
+
+    // Backgrounds — split into gradients and photos
+    const bgGradientsEl = overlay.querySelector('#themeBgGradients');
+    const bgPhotosEl    = overlay.querySelector('#themeBgPhotos');
+    BACKGROUNDS.forEach(function (bg) {
+        const isPhoto = bg.css.indexOf('url(') !== -1;
+        const thumb = document.createElement('button');
+        thumb.type = 'button';
+        thumb.className = 'theme-bg-thumb';
+        thumb.dataset.bg = bg.id;
+
+        // Set a preview: for gradients, use the css directly; for photos, strip the gradient overlay
+        if (!bg.css) {
+            thumb.style.background = 'linear-gradient(135deg, #0a1824, #0f766e, #0a1824)';
+        } else if (isPhoto) {
+            // Extract just the url(...) part for the thumbnail
+            const m = bg.css.match(/url\([^)]+\)/);
+            thumb.style.background = (m ? m[0] : '') + ' center/cover no-repeat';
+        } else {
+            thumb.style.background = bg.css;
+        }
+
+        thumb.innerHTML =
+            '<span class="bg-check">✓</span>' +
+            '<span class="bg-label">' + bg.name + '</span>';
+
+        thumb.addEventListener('click', function () {
+            setBg(bg.id);
+            applyBackground(bg.id);
+            refreshBgThumbs();
+        });
+
+        if (isPhoto) bgPhotosEl.appendChild(thumb);
+        else bgGradientsEl.appendChild(thumb);
+    });
+
+    function refreshSwatches() {
+        const current = getColor();
+        swatchGrid.querySelectorAll('.theme-swatch').forEach(function (s) {
+            s.classList.toggle('active', s.dataset.theme === current);
+        });
+    }
+    function refreshBgThumbs() {
+        const current = getBg();
+        overlay.querySelectorAll('.theme-bg-thumb').forEach(function (t) {
+            t.classList.toggle('active', t.dataset.bg === current);
+        });
+    }
+    refreshSwatches();
+    refreshBgThumbs();
+
+    // Tabs
+    overlay.querySelectorAll('.theme-picker-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            overlay.querySelectorAll('.theme-picker-tab').forEach(function (t) { t.classList.remove('active'); });
+            overlay.querySelectorAll('.theme-picker-section').forEach(function (s) { s.classList.remove('active'); });
+            tab.classList.add('active');
+            overlay.querySelector('.theme-picker-section[data-section="' + tab.dataset.tab + '"]').classList.add('active');
+        });
+    });
+
+    // Open / close
+    function openPicker()  { overlay.classList.add('open'); }
+    function closePicker() { overlay.classList.remove('open'); }
+
+    fab.addEventListener('click', openPicker);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closePicker(); });
+    overlay.querySelector('.theme-picker-close').addEventListener('click', closePicker);
+    overlay.querySelector('#themePickerDone').addEventListener('click', closePicker);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closePicker();
+    });
+
+    // Reset
+    overlay.querySelector('#themePickerReset').addEventListener('click', function () {
+        if (!confirm('Reset theme and background to default?')) return;
+        setColor('aurora');
+        setBg('bg-default');
+        applyColorTheme('aurora');
+        applyBackground('bg-default');
+        refreshSwatches();
+        refreshBgThumbs();
+    });
+
+    // Public API
+    window.setStudyHubColorTheme = function (id) { setColor(id); applyColorTheme(id); refreshSwatches(); };
+    window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
+})();
