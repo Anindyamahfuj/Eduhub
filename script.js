@@ -6657,3 +6657,637 @@ document.addEventListener('DOMContentLoaded', function() {
         return true;
     };
 })();
+// ================================================================
+// FOCUS MODE + DISTRACTION BLOCKER — FULL POWER EDITION (v2)
+// ================================================================
+(function () {
+    'use strict';
+
+    const STORAGE = 'studyHubData';
+    const FOCUS_GOAL_DEFAULT = 60;
+
+    function readD() { try { return JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch (e) { return {}; } }
+    function writeD(d) { try { localStorage.setItem(STORAGE, JSON.stringify(d)); } catch (e) {} }
+    function today() { return new Date().toISOString().slice(0,10); }
+    function yest() { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+
+    // ---------- Categories ----------
+    const CATS = {
+        social:   { label: '📱 Social Media',       domains: ['facebook.com','fb.com','fb.me','messenger.com','instagram.com','instagr.am','twitter.com','x.com','t.co','tiktok.com','douyin.com','snapchat.com','reddit.com','redd.it','pinterest.com','pin.it','tumblr.com','linkedin.com','lnkd.in','whatsapp.com','wa.me','telegram.org','telegram.me','t.me','telegram.dog','teleg.run','discord.com','discord.gg','wechat.com','vk.com','vkontakte.ru','weibo.com','threads.net','threads.com','mastodon.social','bsky.app','clubhouse.com','bereal.com','4chan.org','imgur.com','9gag.com','quora.com','flickr.com','meetup.com','nextdoor.com'] },
+        video:    { label: '🎬 Video & Streaming',  domains: ['netflix.com','hulu.com','disneyplus.com','primevideo.com','hbomax.com','max.com','peacocktv.com','twitch.tv','kick.com','rumble.com','dailymotion.com','vimeo.com','spotify.com','soundcloud.com','deezer.com','tidal.com'] },
+        gaming:   { label: '🎮 Gaming',             domains: ['steamcommunity.com','steampowered.com','epicgames.com','roblox.com','minecraft.net','playstation.com','xbox.com','ign.com','gamespot.com','polygon.com'] },
+        shopping: { label: '🛒 Shopping',           domains: ['amazon.com','ebay.com','aliexpress.com','alibaba.com','etsy.com','walmart.com','target.com','bestbuy.com','shein.com','temu.com','wish.com','daraz.com','flipkart.com'] },
+        news:     { label: '📰 News & Forums',      domains: ['cnn.com','bbc.com','nytimes.com','theguardian.com','foxnews.com','dailymail.co.uk','buzzfeed.com','boredpanda.com','distractify.com','ranker.com'] }
+    };
+
+    function buildBlockedSet() {
+        const d = readD();
+        const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
+        const set = {};
+        Object.keys(CATS).forEach(function (k) {
+            if (enabled[k]) CATS[k].domains.forEach(function (dom) { set[dom] = k; });
+        });
+        (d.blockerCustomBlocked || []).forEach(function (dom) {
+            set[String(dom).toLowerCase().replace(/^www\./, '')] = 'custom';
+        });
+        (d.blockerCustomAllowed || []).forEach(function (dom) {
+            delete set[String(dom).toLowerCase().replace(/^www\./, '')];
+        });
+        return set;
+    }
+
+    function matchBlocked(host) {
+        host = String(host || '').toLowerCase().replace(/^www\./, '');
+        const d = readD();
+        const wl = d.blockerWhitelist || {};
+        if (wl[host] && wl[host] > Date.now()) return null;
+        const set = buildBlockedSet();
+        if (set[host]) return { domain: host, cat: set[host] };
+        const parts = host.split('.');
+        for (let i = 1; i < parts.length - 1; i++) {
+            const sub = parts.slice(i).join('.');
+            if (set[sub]) return { domain: sub, cat: set[sub] };
+        }
+        return null;
+    }
+
+    function isBlockerOn() { return !!readD().blockerOn; }
+
+    function logBlocked(domain, cat, source) {
+        const d = readD();
+        if (!d.blockerLog) d.blockerLog = [];
+        d.blockerLog.push({ ts: Date.now(), domain: domain, cat: cat || 'other', src: source || 'click' });
+        if (d.blockerLog.length > 200) d.blockerLog.splice(0, d.blockerLog.length - 200);
+        if (!d.blockerStats) d.blockerStats = { today: 0, total: 0, lastReset: '' };
+        if (d.blockerStats.lastReset !== today()) { d.blockerStats.today = 0; d.blockerStats.lastReset = today(); }
+        d.blockerStats.today++;
+        d.blockerStats.total++;
+        writeD(d);
+        updateBannerCount();
+    }
+
+    function updateBannerCount() {
+        const banner = document.getElementById('blockerBanner');
+        if (!banner) return;
+        const d = readD();
+        const s = d.blockerStats || { today: 0, total: 0 };
+        const t = (s.lastReset === today()) ? s.today : 0;
+        const el = banner.querySelector('.blocker-count');
+        if (el) el.textContent = t;
+    }
+
+    // ---------- Intercepts ----------
+    function interceptClick(e) {
+        if (!isBlockerOn()) return;
+        const a = e.target.closest && e.target.closest('a');
+        if (!a) return;
+        let host = '';
+        try { host = new URL(a.href).hostname; } catch (err) { return; }
+        const m = matchBlocked(host);
+        if (!m) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        logBlocked(m.domain, m.cat, 'click');
+        showBlockPopup(m.domain, m.cat);
+    }
+
+    function interceptOpen() {
+        if (window.__fbOpenHooked) return;
+        window.__fbOpenHooked = true;
+        const orig = window.open;
+        window.open = function (url) {
+            if (isBlockerOn() && url) {
+                let host = '';
+                try { host = new URL(url, location.href).hostname; } catch (err) {}
+                const m = matchBlocked(host);
+                if (m) {
+                    logBlocked(m.domain, m.cat, 'window.open');
+                    showBlockPopup(m.domain, m.cat);
+                    return null;
+                }
+            }
+            return orig.apply(window, arguments);
+        };
+    }
+
+    function interceptSubmit() {
+        if (window.__fbSubmitHooked) return;
+        window.__fbSubmitHooked = true;
+        document.addEventListener('submit', function (e) {
+            if (!isBlockerOn()) return;
+            const form = e.target;
+            if (!form || !form.action) return;
+            let host = '';
+            try { host = new URL(form.action).hostname; } catch (err) { return; }
+            const m = matchBlocked(host);
+            if (!m) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            logBlocked(m.domain, m.cat, 'form');
+            showBlockPopup(m.domain, m.cat);
+        }, true);
+    }
+
+    // ---------- Popups ----------
+    function showBlockPopup(domain, cat) {
+        const old = document.getElementById('blockerModal');
+        if (old) old.remove();
+        const label = (CATS[cat] && CATS[cat].label) || '🚫 Blocked';
+        const modal = document.createElement('div');
+        modal.className = 'blocker-modal';
+        modal.id = 'blockerModal';
+        modal.innerHTML =
+            '<div class="blocker-modal-panel">' +
+                '<div class="blocker-modal-icon">🛡️</div>' +
+                '<h3>Blocked!</h3>' +
+                '<p class="blocker-domain">' + domain + '</p>' +
+                '<p class="blocker-cat">' + label + '</p>' +
+                '<p class="blocker-msg">This site is on your distraction list. Stay focused — you can do this.</p>' +
+                '<div class="blocker-actions">' +
+                    '<button class="btn-allow-once" data-domain="' + domain + '">Allow 5 min</button>' +
+                    '<button class="btn-close-blocker">Got it</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+        modal.querySelector('.btn-close-blocker').addEventListener('click', function () {
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+        });
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 220); }
+        });
+        modal.querySelector('.btn-allow-once').addEventListener('click', function () {
+            const d = readD();
+            if (!d.blockerWhitelist) d.blockerWhitelist = {};
+            d.blockerWhitelist[domain] = Date.now() + 5 * 60 * 1000;
+            writeD(d);
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+            showToast('Allowed ' + domain + ' for 5 minutes', 'ok');
+        });
+    }
+
+    function showToast(msg, type) {
+        const old = document.getElementById('fbtToast');
+        if (old) old.remove();
+        const t = document.createElement('div');
+        t.className = 'fbt-toast' + (type ? ' ' + type : '');
+        t.id = 'fbtToast';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        requestAnimationFrame(function () { t.classList.add('show'); });
+        setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 300); }, 2600);
+    }
+
+    // ---------- Blocker UI ----------
+    function paintBlocker() {
+        const btn = document.getElementById('blockerToggle');
+        if (!btn) return;
+        const on = isBlockerOn();
+        btn.textContent = on ? '🛡️ Blocker On' : '🛡️ Blocker Off';
+        btn.classList.toggle('active', on);
+        document.body.classList.toggle('blocker-active', on);
+
+        let banner = document.getElementById('blockerBanner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.className = 'blocker-banner';
+            banner.id = 'blockerBanner';
+            banner.innerHTML =
+                '🛡️ <strong>Distraction Blocker is ON.</strong>' +
+                '<span class="blocker-count-chip"><span class="blocker-count">0</span> blocked today</span>' +
+                '<button class="blocker-banner-btn" data-act="settings">⚙ Settings</button>' +
+                '<button class="blocker-banner-btn" data-act="log">📜 Log</button>' +
+                '<button class="blocker-banner-btn" data-act="off">Turn off</button>';
+            const main = document.querySelector('main.container') || document.body;
+            main.insertBefore(banner, main.firstChild);
+            banner.addEventListener('click', function (e) {
+                const b = e.target.closest('.blocker-banner-btn');
+                if (!b) return;
+                const act = b.dataset.act;
+                if (act === 'settings') openBlockerSettings();
+                else if (act === 'log') openBlockerLog();
+                else if (act === 'off') { const d = readD(); d.blockerOn = false; writeD(d); paintBlocker(); }
+            });
+        }
+        banner.style.display = on ? 'flex' : 'none';
+        updateBannerCount();
+    }
+
+    function setupBlockerButton() {
+        const btn = document.getElementById('blockerToggle');
+        if (!btn || btn.dataset.fbtHooked) return;
+        btn.dataset.fbtHooked = '1';
+        btn.addEventListener('click', function (e) {
+            if (e.shiftKey) { openBlockerSettings(); return; }
+            const d = readD();
+            d.blockerOn = !d.blockerOn;
+            writeD(d);
+            paintBlocker();
+        });
+        btn.addEventListener('contextmenu', function (e) { e.preventDefault(); openBlockerSettings(); });
+    }
+
+    function openBlockerSettings() {
+        const ex = document.getElementById('blockerSettingsModal');
+        if (ex) ex.remove();
+        const d = readD();
+        const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
+        const custom = d.blockerCustomBlocked || [];
+        const allowed = d.blockerCustomAllowed || [];
+
+        const modal = document.createElement('div');
+        modal.className = 'blocker-settings-modal';
+        modal.id = 'blockerSettingsModal';
+        let html = '<div class="blocker-settings-panel">';
+        html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
+        html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
+        html += '<div class="bs-section"><h3>Categories</h3><div class="bs-cats">';
+        Object.keys(CATS).forEach(function (k) {
+            html += '<label class="bs-cat"><input type="checkbox" data-cat="' + k + '" ' + (enabled[k] ? 'checked' : '') + '>' +
+                    '<span>' + CATS[k].label + '</span>' +
+                    '<span class="bs-cat-count">' + CATS[k].domains.length + '</span></label>';
+        });
+        html += '</div></div>';
+        html += '<div class="bs-section"><h3>Custom blocklist</h3>';
+        html += '<div class="bs-add-row"><input type="text" id="bsAddInput" placeholder="e.g. example.com"><button class="bs-add-btn" type="button">+ Add</button></div>';
+        html += '<div class="bs-custom-list" id="bsCustomList">';
+        if (!custom.length) html += '<div class="bs-empty">No custom domains yet.</div>';
+        else custom.forEach(function (dom) {
+            html += '<div class="bs-custom-item"><span>' + dom + '</span><button data-remove="' + dom + '" type="button">✕</button></div>';
+        });
+        html += '</div></div>';
+        if (allowed.length) {
+            html += '<div class="bs-section"><h3>Always allowed</h3><div class="bs-custom-list">';
+            allowed.forEach(function (dom) {
+                html += '<div class="bs-custom-item bs-allowed"><span>' + dom + '</span><button data-unallow="' + dom + '" type="button">✕</button></div>';
+            });
+            html += '</div></div>';
+        }
+        html += '<div class="bs-section bs-stats">';
+        html += '<div class="bs-stat"><b>' + ((d.blockerStats && d.blockerStats.total) || 0) + '</b><span>total blocked</span></div>';
+        html += '<div class="bs-stat"><b>' + ((d.blockerLog && d.blockerLog.length) || 0) + '</b><span>recent events</span></div>';
+        html += '</div></div>';
+        modal.innerHTML = html;
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+
+        function close() {
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+            paintBlocker();
+        }
+        modal.querySelector('.bs-close').addEventListener('click', close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+
+        modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                const dd = readD();
+                if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false, news: false };
+                dd.blockerCategories[cb.dataset.cat] = cb.checked;
+                writeD(dd);
+            });
+        });
+
+        const addInp = modal.querySelector('#bsAddInput');
+        function addCustom() {
+            const raw = modal.querySelector('#bsAddInput').value.trim().toLowerCase();
+            const val = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+            if (!val || val.indexOf('.') === -1) {
+                addInp.style.borderColor = '#fca5a5';
+                setTimeout(function () { addInp.style.borderColor = ''; }, 1200);
+                return;
+            }
+            const dd = readD();
+            if (!dd.blockerCustomBlocked) dd.blockerCustomBlocked = [];
+            if (dd.blockerCustomBlocked.indexOf(val) === -1) dd.blockerCustomBlocked.push(val);
+            if (dd.blockerCustomAllowed) dd.blockerCustomAllowed = dd.blockerCustomAllowed.filter(function (x) { return x !== val; });
+            writeD(dd);
+            close();
+            setTimeout(openBlockerSettings, 250);
+        }
+        modal.querySelector('.bs-add-btn').addEventListener('click', addCustom);
+        addInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addCustom(); });
+
+        modal.querySelectorAll('[data-remove]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                const dd = readD();
+                dd.blockerCustomBlocked = (dd.blockerCustomBlocked || []).filter(function (x) { return x !== b.dataset.remove; });
+                writeD(dd);
+                b.parentElement.remove();
+            });
+        });
+        modal.querySelectorAll('[data-unallow]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                const dd = readD();
+                dd.blockerCustomAllowed = (dd.blockerCustomAllowed || []).filter(function (x) { return x !== b.dataset.unallow; });
+                writeD(dd);
+                b.parentElement.remove();
+            });
+        });
+    }
+
+    function openBlockerLog() {
+        const ex = document.getElementById('blockerLogModal');
+        if (ex) ex.remove();
+        const d = readD();
+        const log = (d.blockerLog || []).slice().reverse();
+        const modal = document.createElement('div');
+        modal.className = 'blocker-settings-modal';
+        modal.id = 'blockerLogModal';
+        let html = '<div class="blocker-settings-panel">';
+        html += '<div class="blocker-settings-head"><h2>📜 Blocked attempts</h2><button class="bs-close" type="button">✕</button></div>';
+        html += '<p class="bs-desc">Every time you (or a link) tried to reach a blocked site.</p>';
+        if (!log.length) {
+            html += '<div class="bs-empty" style="padding:2rem 0;text-align:center;">🎉 No blocked attempts yet. Keep it up!</div>';
+        } else {
+            html += '<div class="blocker-log-list">';
+            log.forEach(function (item) {
+                const t = new Date(item.ts);
+                const time = t.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                html += '<div class="blocker-log-item"><span class="bl-dot"></span><div class="bl-info">' +
+                        '<span class="bl-domain">' + item.domain + '</span>' +
+                        '<span class="bl-meta">' + time + ' · ' + (item.src || 'click') + '</span></div></div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+        modal.innerHTML = html;
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+        function close() { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 220); }
+        modal.querySelector('.bs-close').addEventListener('click', close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    }
+
+    // ---------- FOCUS MODE ----------
+    let focusTick = null;
+
+    function getFocusSession() { return readD().focusSession || null; }
+    function setFocusSession(s) { const d = readD(); d.focusSession = s; writeD(d); }
+    function getFocusGoal() { return readD().focusGoalMin || FOCUS_GOAL_DEFAULT; }
+    function isFocusOn() { return document.body.classList.contains('focus-mode'); }
+
+    function startFocusSession() {
+        const session = {
+            startTs: Date.now(),
+            distract: 0,
+            goalMin: getFocusGoal(),
+            blockerWasOn: isBlockerOn()
+        };
+        setFocusSession(session);
+        const d = readD();
+        if (!d.blockerOn) { d.blockerOn = true; writeD(d); paintBlocker(); }
+    }
+
+    function endFocusSession() {
+        const s = getFocusSession();
+        if (!s) { document.body.classList.remove('focus-mode'); return; }
+        const durMin = Math.round((Date.now() - s.startTs) / 60000);
+        if (durMin < 1) {
+            setFocusSession(null);
+            document.body.classList.remove('focus-mode');
+            if (s.blockerWasOn === false) {
+                const d = readD();
+                if (d.blockerOn) { d.blockerOn = false; writeD(d); paintBlocker(); }
+            }
+            return;
+        }
+        let score = 100 - (s.distract * 5);
+        if (durMin < s.goalMin * 0.5) score -= 15;
+        if (durMin < 5) score -= 20;
+        score = Math.max(0, Math.min(100, score));
+        const goalMet = durMin >= s.goalMin;
+
+        const d = readD();
+        if (!d.focusLog) d.focusLog = [];
+        d.focusLog.push({
+            date: today(),
+            startTs: s.startTs,
+            endTs: Date.now(),
+            minutes: durMin,
+            distract: s.distract,
+            score: score,
+            goalMet: goalMet
+        });
+        if (d.focusLog.length > 500) d.focusLog.splice(0, d.focusLog.length - 500);
+        d.focusSession = null;
+        writeD(d);
+
+        if (s.blockerWasOn === false) {
+            const dd = readD();
+            if (dd.blockerOn) { dd.blockerOn = false; writeD(dd); paintBlocker(); }
+        }
+        document.body.classList.remove('focus-mode');
+        showFocusSummary({ durMin: durMin, distract: s.distract, score: score, goalMet: goalMet, goalMin: s.goalMin });
+    }
+
+    function showFocusSummary(data) {
+        const streak = computeFocusStreak();
+        const todayMin = computeTodayFocusMin();
+        const msg = data.goalMet
+            ? '🏆 Goal crushed! You\'re on fire.'
+            : data.durMin >= data.goalMin * 0.5
+                ? '👍 Solid session. Keep going!'
+                : '💪 Every minute counts. Try again!';
+
+        const modal = document.createElement('div');
+        modal.className = 'focus-summary-modal';
+        modal.innerHTML =
+            '<div class="focus-summary-panel">' +
+                '<div class="fs-icon">' + (data.goalMet ? '🏆' : '🎯') + '</div>' +
+                '<h2>Session Complete</h2>' +
+                '<div class="fs-grid">' +
+                    '<div class="fs-stat"><span class="fs-label">Duration</span><span class="fs-val">' + data.durMin + '<small>min</small></span></div>' +
+                    '<div class="fs-stat"><span class="fs-label">Goal</span><span class="fs-val">' + data.goalMin + '<small>min</small></span></div>' +
+                    '<div class="fs-stat"><span class="fs-label">Distractions</span><span class="fs-val">' + data.distract + '</span></div>' +
+                    '<div class="fs-stat"><span class="fs-label">Score</span><span class="fs-val">' + data.score + '<small>/100</small></span></div>' +
+                '</div>' +
+                '<div class="fs-badge ' + (data.goalMet ? 'met' : '') + '">' + (data.goalMet ? '✅ Goal met' : '⚠️ Goal not met') + '</div>' +
+                '<div class="fs-extra"><span>🔥 ' + streak + ' day streak</span><span>📅 ' + todayMin + ' min today</span></div>' +
+                '<p class="fs-msg">' + msg + '</p>' +
+                '<button class="fs-close" type="button">Close</button>' +
+            '</div>';
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+        function close() { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 300); }
+        modal.querySelector('.fs-close').addEventListener('click', close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    }
+
+    function computeFocusStreak() {
+        const log = readD().focusLog || [];
+        if (!log.length) return 0;
+        const dates = Array.from(new Set(log.map(function (l) { return l.date; }))).sort().reverse();
+        if (!dates.length) return 0;
+        let check = today();
+        if (dates[0] !== check) {
+            if (dates[0] !== yest()) return 0;
+            check = yest();
+        }
+        let streak = 0;
+        const set = new Set(dates);
+        const cursor = new Date(check);
+        while (set.has(cursor.toISOString().slice(0,10))) {
+            streak++;
+            cursor.setDate(cursor.getDate() - 1);
+        }
+        return streak;
+    }
+
+    function computeTodayFocusMin() {
+        const log = readD().focusLog || [];
+        const t = today();
+        return log.filter(function (l) { return l.date === t; }).reduce(function (s, l) { return s + l.minutes; }, 0);
+    }
+
+    function ensureFocusBar() {
+        let bar = document.getElementById('focusIndicatorBar');
+        if (bar && bar.dataset.v2) return bar;
+        if (bar) bar.remove();
+        bar = document.createElement('div');
+        bar.id = 'focusIndicatorBar';
+        bar.className = 'focus-indicator-bar';
+        bar.dataset.v2 = '1';
+        bar.innerHTML =
+            '<span>🔒</span>' +
+            '<span>FOCUS MODE</span>' +
+            '<span class="fb-timer" id="fbTimer">00:00</span>' +
+            '<span class="fb-sep">·</span>' +
+            '<span class="fb-stat">Goal <b id="fbGoal">60</b>m</span>' +
+            '<span class="fb-sep">·</span>' +
+            '<span class="fb-stat">👀 <b id="fbDist">0</b></span>' +
+            '<span class="fb-sep">·</span>' +
+            '<span class="fb-stat">⚡ <b id="fbScore">100</b></span>' +
+            '<button class="fb-icon-btn" id="fbGoalBtn" title="Change goal">⚙</button>' +
+            '<button class="fb-end" id="fbEndBtn" type="button">End</button>';
+        document.body.insertBefore(bar, document.body.firstChild);
+        bar.querySelector('#fbEndBtn').addEventListener('click', function () {
+            if (confirm('End this focus session?')) endFocusSession();
+        });
+        bar.querySelector('#fbGoalBtn').addEventListener('click', function () {
+            const cur = getFocusGoal();
+            const n = parseInt(prompt('Daily focus goal (minutes):', cur), 10);
+            if (!isNaN(n) && n > 0) {
+                const d = readD();
+                d.focusGoalMin = Math.max(5, Math.min(480, n));
+                writeD(d);
+                const s = getFocusSession();
+                if (s) { s.goalMin = d.focusGoalMin; setFocusSession(s); }
+                tickFocusBar();
+            }
+        });
+        return bar;
+    }
+
+    function tickFocusBar() {
+        const s = getFocusSession();
+        if (!s || !isFocusOn()) return;
+        const elapsed = Math.floor((Date.now() - s.startTs) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const sec = String(elapsed % 60).padStart(2, '0');
+        const t = document.getElementById('fbTimer');
+        if (t) t.textContent = m + ':' + sec;
+        const g = document.getElementById('fbGoal');
+        if (g) g.textContent = s.goalMin;
+        const dd = document.getElementById('fbDist');
+        if (dd) dd.textContent = s.distract;
+        let score = 100 - (s.distract * 5);
+        if (elapsed / 60 < 5) score = Math.min(score, 70);
+        const sc = document.getElementById('fbScore');
+        if (sc) sc.textContent = Math.max(0, score);
+    }
+
+    function paintFocusButton() {
+        const btn = document.getElementById('focusToggle');
+        if (!btn) return;
+        const on = isFocusOn();
+        btn.textContent = on ? '🔒 Focus On' : '🔓 Focus Off';
+        btn.classList.toggle('active', on);
+    }
+
+    function setupFocusButton() {
+        const btn = document.getElementById('focusToggle');
+        if (!btn || btn.dataset.fbtHooked) return;
+        btn.dataset.fbtHooked = '1';
+        btn.addEventListener('click', function () {
+            if (isFocusOn()) {
+                endFocusSession();
+                paintFocusButton();
+            } else {
+                document.body.classList.add('focus-mode');
+                ensureFocusBar();
+                startFocusSession();
+                paintFocusButton();
+            }
+        });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!isFocusOn()) return;
+        const s = getFocusSession();
+        if (!s) return;
+        if (document.hidden) {
+            window.__focusHiddenAt = Date.now();
+        } else {
+            if (window.__focusHiddenAt && (Date.now() - window.__focusHiddenAt) > 3000) {
+                const s2 = getFocusSession();
+                if (s2) {
+                    s2.distract = (s2.distract || 0) + 1;
+                    setFocusSession(s2);
+                    const bar = document.getElementById('focusIndicatorBar');
+                    if (bar) { bar.classList.add('warning'); setTimeout(function () { bar.classList.remove('warning'); }, 2500); }
+                }
+            }
+            window.__focusHiddenAt = 0;
+        }
+    });
+
+    // ---------- BOOT ----------
+    function boot() {
+        setupBlockerButton();
+        paintBlocker();
+        document.addEventListener('click', interceptClick, true);
+        interceptOpen();
+        interceptSubmit();
+        setupFocusButton();
+        paintFocusButton();
+        if (focusTick) clearInterval(focusTick);
+        focusTick = setInterval(tickFocusBar, 1000);
+        setInterval(function () {
+            const d = readD();
+            if (d.blockerStats && d.blockerStats.lastReset !== today()) {
+                d.blockerStats.today = 0;
+                d.blockerStats.lastReset = today();
+                writeD(d);
+                updateBannerCount();
+            }
+        }, 60000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+
+    // Public API
+    window.studyHubFocus = {
+        start: function () { if (!isFocusOn()) document.getElementById('focusToggle').click(); },
+        end: function () { if (isFocusOn()) { endFocusSession(); paintFocusButton(); } },
+        isOn: isFocusOn,
+        setGoal: function (min) { const d = readD(); d.focusGoalMin = Math.max(5, Math.min(480, min)); writeD(d); },
+        getStreak: computeFocusStreak,
+        getTodayMinutes: computeTodayFocusMin,
+        log: function () { return readD().focusLog || []; }
+    };
+    window.studyHubBlocker = {
+        isOn: isBlockerOn,
+        toggle: function () { const d = readD(); d.blockerOn = !d.blockerOn; writeD(d); paintBlocker(); },
+        settings: openBlockerSettings,
+        log: openBlockerLog,
+        allowOnce: function (domain, min) {
+            const d = readD();
+            if (!d.blockerWhitelist) d.blockerWhitelist = {};
+            d.blockerWhitelist[domain] = Date.now() + (min || 5) * 60000;
+            writeD(d);
+        }
+    };
+})();
