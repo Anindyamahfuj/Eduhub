@@ -7196,114 +7196,145 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openBlockerSettings() {
-        const ex = document.getElementById('blockerSettingsModal');
-        if (ex) ex.remove();
-        const d = readD();
-        const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
-        const custom = d.blockerCustomBlocked || [];
-        const allowed = d.blockerCustomAllowed || [];
+    const ex = document.getElementById('blockerSettingsModal');
+    if (ex) ex.remove();
+    const d = readD();
+    const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
+    const custom = d.blockerCustomBlocked || [];
+    const allowed = d.blockerCustomAllowed || [];
 
-        const modal = document.createElement('div');
-        modal.className = 'blocker-settings-modal';
-        modal.id = 'blockerSettingsModal';
-        let html = '<div class="blocker-settings-panel">';
-        html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
-        html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
-                html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">— 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
-        Object.keys(CATS).forEach(function (k) {
-            var locked = !!LOCKED_CATS[k];
-            html += '<label class="bs-cat' + (locked ? ' bs-cat-locked' : '') + '"' +
-                    (locked ? ' title="This category is locked on and cannot be removed"' : '') + '>' +
-                    '<input type="checkbox" data-cat="' + k + '" ' +
-                        (locked || enabled[k] ? 'checked' : '') + ' ' +
-                        (locked ? 'disabled' : '') + '>' +
-                    '<span>' + CATS[k].label + '</span>' +
-                    (locked ? '<span class="bs-lock-badge">🔒 Locked</span>' : '') +
-                    '<span class="bs-cat-count">' + CATS[k].domains.length + '</span></label>';
+    const modal = document.createElement('div');
+    modal.className = 'blocker-settings-modal';
+    modal.id = 'blockerSettingsModal';
+    let html = '<div class="blocker-settings-panel">';
+    html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
+    html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
+    html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">— 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
+    Object.keys(CATS).forEach(function (k) {
+        var locked = !!LOCKED_CATS[k];
+        html += '<label class="bs-cat' + (locked ? ' bs-cat-locked' : '') + '"' +
+                (locked ? ' title="This category is locked on and cannot be removed"' : '') + '>' +
+                '<input type="checkbox" data-cat="' + k + '" ' +
+                    (locked || enabled[k] ? 'checked' : '') + ' ' +
+                    (locked ? 'disabled' : '') + '>' +
+                '<span>' + CATS[k].label + '</span>' +
+                (locked ? '<span class="bs-lock-badge">🔒 Locked</span>' : '') +
+                '<span class="bs-cat-count">' + CATS[k].domains.length + '</span></label>';
+    });
+    html += '</div></div>';
+    html += '<div class="bs-section"><h3>Custom blocklist</h3>';
+    html += '<div class="bs-add-row"><input type="text" id="bsAddInput" placeholder="e.g. example.com"><button class="bs-add-btn" type="button">+ Add</button></div>';
+    html += '<div class="bs-custom-list" id="bsCustomList">';
+    if (!custom.length) html += '<div class="bs-empty">No custom domains yet.</div>';
+    else custom.forEach(function (dom) {
+        html += '<div class="bs-custom-item"><span>' + dom + '</span><button data-remove="' + dom + '" type="button">✕</button></div>';
+    });
+    html += '</div></div>';
+    if (allowed.length) {
+        html += '<div class="bs-section"><h3>Always allowed</h3><div class="bs-custom-list">';
+        allowed.forEach(function (dom) {
+            html += '<div class="bs-custom-item bs-allowed"><span>' + dom + '</span><button data-unallow="' + dom + '" type="button">✕</button></div>';
         });
         html += '</div></div>';
-        html += '<div class="bs-section"><h3>Custom blocklist</h3>';
-        html += '<div class="bs-add-row"><input type="text" id="bsAddInput" placeholder="e.g. example.com"><button class="bs-add-btn" type="button">+ Add</button></div>';
-        html += '<div class="bs-custom-list" id="bsCustomList">';
-        if (!custom.length) html += '<div class="bs-empty">No custom domains yet.</div>';
-        else custom.forEach(function (dom) {
-            html += '<div class="bs-custom-item"><span>' + dom + '</span><button data-remove="' + dom + '" type="button">✕</button></div>';
-        });
-        html += '</div></div>';
-        if (allowed.length) {
-            html += '<div class="bs-section"><h3>Always allowed</h3><div class="bs-custom-list">';
-            allowed.forEach(function (dom) {
-                html += '<div class="bs-custom-item bs-allowed"><span>' + dom + '</span><button data-unallow="' + dom + '" type="button">✕</button></div>';
-            });
-            html += '</div></div>';
-        }
-        html += '<div class="bs-section bs-stats">';
-        html += '<div class="bs-stat"><b>' + ((d.blockerStats && d.blockerStats.total) || 0) + '</b><span>total blocked</span></div>';
-        html += '<div class="bs-stat"><b>' + ((d.blockerLog && d.blockerLog.length) || 0) + '</b><span>recent events</span></div>';
-        html += '</div></div>';
-        modal.innerHTML = html;
-        document.body.appendChild(modal);
-        requestAnimationFrame(function () { modal.classList.add('open'); });
+    }
+    html += '<div class="bs-section bs-stats">';
+    html += '<div class="bs-stat"><b>' + ((d.blockerStats && d.blockerStats.total) || 0) + '</b><span>total blocked</span></div>';
+    html += '<div class="bs-stat"><b>' + ((d.blockerLog && d.blockerLog.length) || 0) + '</b><span>recent events</span></div>';
+    html += '</div></div>';
 
-        function close() {
-            modal.classList.remove('open');
-            setTimeout(function () { modal.remove(); }, 220);
-            paintBlocker();
-        }
-                modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                const dd = readD();
-                if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false, news: false };
-                dd.blockerCategories[cb.dataset.cat] = cb.checked;
-                writeD(dd);
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+    requestAnimationFrame(function () { modal.classList.add('open'); });
 
-                // Tell the news ticker to hide/show itself in real time
-                if (cb.dataset.cat === 'news') {
-                    try {
-                        window.dispatchEvent(new CustomEvent('studyHubBlockerChanged', {
-                            detail: { cat: 'news', on: cb.checked }
-                        }));
-                    } catch (e) {}
-                }
-            });
-        });
-        const addInp = modal.querySelector('#bsAddInput');
-        function addCustom() {
-            const raw = modal.querySelector('#bsAddInput').value.trim().toLowerCase();
-            const val = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-            if (!val || val.indexOf('.') === -1) {
-                addInp.style.borderColor = '#fca5a5';
-                setTimeout(function () { addInp.style.borderColor = ''; }, 1200);
-                return;
-            }
-            const dd = readD();
-            if (!dd.blockerCustomBlocked) dd.blockerCustomBlocked = [];
-            if (dd.blockerCustomBlocked.indexOf(val) === -1) dd.blockerCustomBlocked.push(val);
-            if (dd.blockerCustomAllowed) dd.blockerCustomAllowed = dd.blockerCustomAllowed.filter(function (x) { return x !== val; });
-            writeD(dd);
+    // ---- Close behaviour ----
+    function close() {
+        modal.classList.remove('open');
+        setTimeout(function () { modal.remove(); }, 220);
+        paintBlocker();
+    }
+
+    // ✕ button
+    var closeBtn = modal.querySelector('.bs-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
             close();
-            setTimeout(openBlockerSettings, 250);
-        }
-        modal.querySelector('.bs-add-btn').addEventListener('click', addCustom);
-        addInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addCustom(); });
-
-        modal.querySelectorAll('[data-remove]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                const dd = readD();
-                dd.blockerCustomBlocked = (dd.blockerCustomBlocked || []).filter(function (x) { return x !== b.dataset.remove; });
-                writeD(dd);
-                b.parentElement.remove();
-            });
-        });
-        modal.querySelectorAll('[data-unallow]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                const dd = readD();
-                dd.blockerCustomAllowed = (dd.blockerCustomAllowed || []).filter(function (x) { return x !== b.dataset.unallow; });
-                writeD(dd);
-                b.parentElement.remove();
-            });
         });
     }
+
+    // Click backdrop to close
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) close();
+    });
+
+    // ESC to close
+    var escHandler = function (e) {
+        if (e.key === 'Escape') {
+            close();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // ---- Category checkboxes ----
+    modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            const dd = readD();
+            if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false, news: false };
+            dd.blockerCategories[cb.dataset.cat] = cb.checked;
+            writeD(dd);
+
+            // Tell the news ticker to hide/show itself in real time
+            if (cb.dataset.cat === 'news') {
+                try {
+                    window.dispatchEvent(new CustomEvent('studyHubBlockerChanged', {
+                        detail: { cat: 'news', on: cb.checked }
+                    }));
+                } catch (e) {}
+            }
+        });
+    });
+
+    // ---- Custom blocklist ----
+    const addInp = modal.querySelector('#bsAddInput');
+    function addCustom() {
+        const raw = modal.querySelector('#bsAddInput').value.trim().toLowerCase();
+        const val = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+        if (!val || val.indexOf('.') === -1) {
+            addInp.style.borderColor = '#fca5a5';
+            setTimeout(function () { addInp.style.borderColor = ''; }, 1200);
+            return;
+        }
+        const dd = readD();
+        if (!dd.blockerCustomBlocked) dd.blockerCustomBlocked = [];
+        if (dd.blockerCustomBlocked.indexOf(val) === -1) dd.blockerCustomBlocked.push(val);
+        if (dd.blockerCustomAllowed) dd.blockerCustomAllowed = dd.blockerCustomAllowed.filter(function (x) { return x !== val; });
+        writeD(dd);
+        close();
+        setTimeout(openBlockerSettings, 250);
+    }
+    modal.querySelector('.bs-add-btn').addEventListener('click', addCustom);
+    addInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addCustom(); });
+
+    modal.querySelectorAll('[data-remove]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            const dd = readD();
+            dd.blockerCustomBlocked = (dd.blockerCustomBlocked || []).filter(function (x) { return x !== b.dataset.remove; });
+            writeD(dd);
+            b.parentElement.remove();
+        });
+    });
+
+    modal.querySelectorAll('[data-unallow]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            const dd = readD();
+            dd.blockerCustomAllowed = (dd.blockerCustomAllowed || []).filter(function (x) { return x !== b.dataset.unallow; });
+            writeD(dd);
+            b.parentElement.remove();
+        });
+    });
+}
 
     function openBlockerLog() {
         const ex = document.getElementById('blockerLogModal');
