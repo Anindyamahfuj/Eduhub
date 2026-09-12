@@ -61,11 +61,12 @@
     --r-pill: 999px;
 
     /* Type */
-    --font: "Sora", "Inter", -apple-system, system-ui, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-        "Noto Color Emoji", "Android Emoji", sans-serif;
-    --mono: "JetBrains Mono", "Inter", ui-monospace, monospace;
-    --display: "Fraunces", "Sora", serif;
+   --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+         "Noto Color Emoji", "Android Emoji", "EmojiOne Color", sans-serif;
+
+--font: "Sora", "Inter", -apple-system, system-ui, sans-serif, var(--emoji);
+--mono: "JetBrains Mono", "Inter", ui-monospace, monospace, var(--emoji);
+--display: "Fraunces", "Sora", serif, var(--emoji);
 
     /* Motion */
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
