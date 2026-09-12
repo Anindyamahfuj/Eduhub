@@ -8075,6 +8075,49 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isNewsBlocked()) { hideBar(); return; }
         buildBar();
 
+    function boot() {
+        if (isNewsBlocked()) { hideBar(); return; }
+        buildBar();
+
+        // Safety: if nothing resolves within 12 s, show the fallback
+        var guard = setTimeout(function () {
+            if (items.length === 0) {
+                items = getFallback();
+                paint();
+                restartRotation();
+                console.warn('[News] 12-second timeout — showing fallback');
+            }
+        }, 12000);
+
+        var cached = loadCache();
+        if (cached && !shouldRefetch(cached)) {
+            clearTimeout(guard);
+            items = cached.items;
+            currentIndex = 0;
+            paint();
+            restartRotation();
+            startDailyRefreshWatcher();
+            return;
+        }
+
+        fetchAllNews().then(function (list) {
+            clearTimeout(guard);
+            items = (list && list.length) ? list : getFallback();
+            saveCache(items);
+            currentIndex = 0;
+            paint();
+            restartRotation();
+            startDailyRefreshWatcher();
+        }).catch(function () {
+            clearTimeout(guard);
+            items = getFallback();
+            currentIndex = 0;
+            paint();
+            restartRotation();
+            startDailyRefreshWatcher();
+        });
+    }
+        
         var cached = loadCache();
         if (cached && !shouldRefetch(cached)) {
             items = cached.items;
