@@ -7326,9 +7326,10 @@ document.addEventListener('DOMContentLoaded', function() {
         getTodayMinutes: computeTodayFocusMin,
         log: function () { return readD().focusLog || []; }
     };
-    window.studyHubBlocker = {
+       window.studyHubBlocker = {
         isOn: isBlockerOn,
-        toggle: function () { const d = readD(); d.blockerOn = !d.blockerOn; writeD(d); paintBlocker(); },
+        // Blocker cannot be toggled off — this is a no-op.
+        toggle: function () { /* locked */ },
         settings: openBlockerSettings,
         log: openBlockerLog,
         allowOnce: function (domain, min) {
@@ -7336,6 +7337,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!d.blockerWhitelist) d.blockerWhitelist = {};
             d.blockerWhitelist[domain] = Date.now() + (min || 5) * 60000;
             writeD(d);
+        },
+        // Emergency session-only disable. Resets on next page reload.
+        // Use only if the blocker is breaking something you truly need.
+        emergencyDisable: function () {
+            if (!confirm('Disable the blocker for THIS SESSION only? Reload the page to restore it.')) return;
+            window.__blockerEmergencyOff = true;
+            paintBlocker();
+            if (typeof showToast === 'function') showToast('Blocker disabled for this session.', 'ok');
         }
     };
-})();
