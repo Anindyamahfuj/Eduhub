@@ -4290,3 +4290,85 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
     .tools-category-header .cat-title { font-size: 1rem; }
     .tool-card { min-height: 175px; }
 }
+
+
+/* ============================================================
+   EMOJI COLOR SAFETY NET — must come last
+   Guarantees emoji glyphs render in full color everywhere
+   ============================================================ */
+
+/* 1. Reset text-fill-color inheritance for emoji glyphs */
+.emoji {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: initial !important;
+    color: inherit;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+                 "Noto Color Emoji", "Android Emoji", "EmojiOne Color", sans-serif !important;
+    font-variant-emoji: emoji;
+    font-style: normal;
+    font-weight: 400;
+    display: inline-block;
+    vertical-align: -0.05em;
+}
+
+/* 2. Any element with a .hl-* class or .neon-text gets emoji fallback */
+[class*="hl-"],
+.neon-text,
+.nav-brand,
+.nav-links a,
+.card-title,
+.section-header h2,
+.stat-icon,
+.tool-icon,
+.ov-icon,
+.streak-icon,
+.upload-icon,
+.cat-icon,
+.cp-icon,
+.cp-group-icon,
+.cp-preview-icon,
+.cp-preview-group-icon,
+.fs-icon,
+.blocker-modal-icon,
+.ai-badge,
+.tool-tag {
+    font-family: var(--font), var(--emoji);
+    font-variant-emoji: emoji;
+}
+
+/* 3. Headings that DON'T use gradient — safe to add emoji fallback */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--display), var(--emoji);
+    font-variant-emoji: emoji;
+}
+
+/* 4. Buttons always show emojis (they had font-family: inherit before) */
+button,
+.btn-primary,
+.btn-primary-sm,
+.btn-danger,
+.btn-danger-sm,
+.focus-toggle,
+.clock-toggle,
+.keyboard-toggle,
+.planner-chip,
+.pomodoro-controls button,
+.deepwork-controls button {
+    font-family: var(--font), var(--emoji);
+    font-variant-emoji: emoji;
+}
+
+/* 5. Emoji inside a gradient-text parent — override the transparent fill */
+.dash-header h1 .emoji,
+.page-header h1 .emoji,
+.gradient-text .emoji,
+h1 .emoji,
+h2 .emoji,
+h3 .emoji {
+    -webkit-text-fill-color: initial !important;
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+}
