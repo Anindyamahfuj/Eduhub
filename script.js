@@ -6422,9 +6422,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
 })();
 // ================================================================
-// SEARCH SHORTCUTS — user-defined quick-launch tiles
-//  • Add/delete shortcuts with auto-fetched favicons
-//  • Social media domains are BLOCKED
+// SEARCH SHORTCUTS — user-defined quick-launch tiles  (v2)
+//  • Blocks social media + all common URL shorteners
+//  • Also catches Google/redirection wrappers
 //  • Persists in localStorage
 // ================================================================
 (function () {
@@ -6432,50 +6432,107 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var SHORTCUTS_KEY = 'studyHubShortcuts';
 
-    // ---- Social media blocklist (domain fragments) ----
+    // ---- Social media blocklist ----
     var SOCIAL_BLOCK = [
-        'facebook.com', 'fb.com', 'fb.me',
-        'instagram.com', 'instagr.am',
+        // Facebook family
+        'facebook.com', 'fb.com', 'fb.me', 'fb.watch', 'messenger.com',
+        'm.me', 'fbsbx.com',
+        // Instagram
+        'instagram.com', 'instagr.am', 'igtv.com',
+        // Twitter / X
         'twitter.com', 'x.com', 't.co',
-        'tiktok.com', 'douyin.com',
-        'snapchat.com', 'snap.com',
-        'reddit.com', 'redd.it',
-        'pinterest.com', 'pin.it',
+        // TikTok
+        'tiktok.com', 'douyin.com', 'vt.tiktok.com',
+        // Snapchat
+        'snapchat.com', 'snap.com', 'sc-cdn.net',
+        // Reddit
+        'reddit.com', 'redd.it', 'redditmedia.com', 'redditstatic.com',
+        // Pinterest
+        'pinterest.com', 'pin.it', 'pinimg.com',
+        // Tumblr
         'tumblr.com',
-        'linkedin.com', 'lnkd.in',
+        // LinkedIn
+        'linkedin.com', 'lnkd.in', 'licdn.com',
+        // WhatsApp
         'whatsapp.com', 'wa.me', 'whatsapp.net',
-        'telegram.org', 'telegram.me', 't.me',
-        'discord.com', 'discord.gg', 'discordapp.com',
-        'wechat.com', 'weixin.qq.com',
-        'vk.com', 'vkontakte.ru',
-        'weibo.com', 'weibo.cn',
-        'threads.net', 'threads.com',
-        'quora.com',
-        'mastodon.social', 'mastodon.online',
-        'bsky.app', 'blueskyweb.xyz',
-        'truthsocial.com', 'truth.social',
-        'parler.com', 'gab.com',
-        'clubhouse.com', 'clubhouse.io',
-        'line.me', 'kakao.com', 'kaokao.com',
-        'vk.me', 'ok.ru', 'odnoklassniki.ru',
-        'douban.com', 'zhihu.com',
-        'flickr.com', 'flic.kr',
-        'meetup.com', 'nextdoor.com',
-        'bereal.com', 'be-real.app',
-        'yik-yak.com', 'yikyak.com',
-        '4chan.org', '8chan.co', '8kun.top',
-        'imgur.com', '9gag.com',
-        '9gag.tv', 'ifunny.co'
+        // Telegram — all known variants
+        'telegram.org', 'telegram.me', 't.me', 'telegram.dog',
+        'teleg.run', 'tx.me', 'tlgrm.eu', 'telesco.pe', 'tg.dev',
+        'telegram.im', 'telegramdesktop.com',
+        // Discord
+        'discord.com', 'discord.gg', 'discordapp.com', 'discordapp.net',
+        // WeChat / QQ
+        'wechat.com', 'weixin.qq.com', 'wx.qq.com', 'qq.com',
+        // VK family
+        'vk.com', 'vkontakte.ru', 'vk.me', 'ok.ru', 'odnoklassniki.ru',
+        // Chinese social
+        'weibo.com', 'weibo.cn', 'douban.com', 'zhihu.com', 'xiaohongshu.com',
+        // Threads / Mastodon / Bluesky / others
+        'threads.net', 'threads.com', 'mastodon.social', 'mastodon.online',
+        'bsky.app', 'blueskyweb.xyz', 'truthsocial.com', 'truth.social',
+        'parler.com', 'gab.com', 'clubhouse.com', 'clubhouse.io',
+        'line.me', 'kakao.com', 'kaokao.com', 'bereal.com', 'be-real.app',
+        'yik-yak.com', 'yikyak.com', '4chan.org', '8chan.co', '8kun.top',
+        'imgur.com', '9gag.com', '9gag.tv', 'ifunny.co',
+        'flickr.com', 'flic.kr', 'meetup.com', 'nextdoor.com',
+        // Streaming / entertainment distractions
+        'netflix.com', 'hulu.com', 'disneyplus.com', 'disney.com',
+        'primevideo.com', 'hbomax.com', 'max.com', 'peacocktv.com',
+        'twitch.tv', 'kick.com', 'rumble.com', 'dailymotion.com',
+        'vimeo.com', 'spotify.com', 'soundcloud.com', 'deezer.com'
     ];
 
-    function isSocialMedia(host) {
+    // ---- URL shorteners (any entry here → shortcut rejected with a specific message) ----
+    var SHORTENERS = [
+        'bit.ly', 'bitly.com', 'tinyurl.com', 'tiny.cc', 'cutt.ly', 'cutt.us',
+        'shorturl.at', 'rebrand.ly', 'rebrandly.com', 'is.gd', 'v.gd',
+        'ow.ly', 'buff.ly', 'bl.ink', 'shorte.st', 'adf.ly', 'bc.vc',
+        'rb.gy', 'rb.link', 'urlz.fr', 'urlshort.com', 'tiny.pl',
+        't.ly', 'soo.gd', 's2r.co', 'clck.ru', 'clc.kz', 'goo.gl',
+        'short.link', 'shorte.link', 'short.io', 'surl.li', 'snip.ly',
+        'x.co', 'mcaf.ee', 'trib.al', 'po.st', 'ln.is', 'hyperurl.co',
+        'short.gy', 'shorturl.gg', 'shrtco.de', '1link.club', '2.gp',
+        '3.ly', '4.ly', '6.ly', '7.ly', '9.ly', '0.gp', 'yep.it',
+        'xlink.link', 'shrinkme.io', 'shrinkearn.com', 'shrinkforcloud.com',
+        'linkvertise.com', 'linkvertise.net', 'linkshrink.net',
+        'ouo.io', 'ouo.press', 'fc.lc', 'exe.io', 'exee.io',
+        'gplinks.co', 'gplinks.in', 'mdiskshortner.com', 'mdisk.me',
+        'urlcash.net', 'urlcash.org', 'upfiles.pro', 'upfiles.com',
+        'za.gl', 'za.gg', 'za.gl', 'zagl.xyz', 'gurl.lv',
+        'sh.st', 'sh.st', 'bhpho.to', 'ceesty.com', 'corneey.com',
+        'festyy.com', 'shorte.st', 'gestyy.com', 'destyy.com',
+        'swarvel.com', 'swarvel.net', 'tii.ai', 'tii.la',
+        'tolink.co', 'tolink.pw', 'tolink.me', 'linkpays.in',
+        'linkshortifier.com', 'clk.sh', 'clk.asia', 'clk.ink',
+        'cuty.io', 'cuty.me', 'cutpaid.com', 'cutwin.com',
+        'kutt.it', 'polr.me', 'polr.xyz', 'vurl.io', 'vurl.me',
+        'shr.be', 'shr.link', 'shrt.li', 'short.am', 'zzb.bz',
+        'tr.im', 'tweez.me', 'tinurl.com', 'tinylink.co'
+    ];
+
+    // ---- Redirect wrappers (Google Translate, /url?q=, etc.) ----
+    var REDIRECT_WRAPPERS = [
+        'google.com', 'google.co', 'bing.com', 'yahoo.com', 'duckduckgo.com',
+        'baidu.com', 'yandex.ru', 'facebook.com', 'l.facebook.com',
+        'lm.facebook.com', 'translate.google.com', 'googleusercontent.com',
+        'webcache.googleusercontent.com', 'out.reddit.com', 'reddit.com',
+        'linkedin.com', 'instagram.com', 'youtube.com/redirect',
+        'l.instagram.com', 'l.wl.co'
+    ];
+
+    function matchDomain(host, list) {
         var h = String(host || '').toLowerCase().replace(/^www\./, '');
-        for (var i = 0; i < SOCIAL_BLOCK.length; i++) {
-            var d = SOCIAL_BLOCK[i];
+        for (var i = 0; i < list.length; i++) {
+            var d = list[i].toLowerCase();
+            // exact or subdomain
             if (h === d || h.slice(-(d.length + 1)) === '.' + d) return d;
         }
         return null;
     }
+
+    function isSocialMedia(host)  { return matchDomain(host, SOCIAL_BLOCK); }
+    function isShortener(host)    { return matchDomain(host, SHORTENERS); }
+    function isRedirectWrapper(host) { return matchDomain(host, REDIRECT_WRAPPERS); }
 
     // ---- Storage ----
     function loadShortcuts() {
@@ -6508,21 +6565,35 @@ document.addEventListener('DOMContentLoaded', function() {
         return first.charAt(0).toUpperCase() + first.slice(1);
     }
     function faviconFor(host) {
-        // Google's public favicon service — returns a 64px PNG for any domain
         return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=64';
     }
 
-    // ---- Block toast ----
-    function showBlockToast(domain) {
+    // ---- Toast ----
+    function showToast(kind, domain) {
         var old = document.getElementById('shortcutBlockToast');
         if (old) old.remove();
+
+        var isShortenerCase = (kind === 'shortener');
+        var isRedirectCase  = (kind === 'redirect');
+
+        var icon = isShortenerCase ? '⛓️' : isRedirectCase ? '🔁' : '🛡️';
+        var heading = isShortenerCase
+            ? 'Shortened links aren\'t allowed.'
+            : isRedirectCase
+                ? 'Redirect links aren\'t allowed.'
+                : 'Social media is banned here.';
+        var body = isShortenerCase
+            ? 'Please enter the site&rsquo;s real address — a shortener could be hiding anything.'
+            : isRedirectCase
+                ? 'Please enter the site&rsquo;s real address directly, not through a redirect service.'
+                : '"' + domain + '" can\'t be added. StudyHub is a distraction-free space for students.';
+
         var t = document.createElement('div');
         t.className = 'shortcut-block-toast';
         t.id = 'shortcutBlockToast';
         t.innerHTML =
-            '<span style="font-size:1.2rem;">🛡️</span>' +
-            '<span><strong>Social media is banned here.</strong><br>' +
-            '"' + domain + '" cannot be added — StudyHub is a distraction-free space for students.</span>' +
+            '<span style="font-size:1.2rem;">' + icon + '</span>' +
+            '<span><strong>' + heading + '</strong><br>' + body + '</span>' +
             '<button class="toast-close" aria-label="Close">✕</button>';
         document.body.appendChild(t);
         requestAnimationFrame(function () { t.classList.add('show'); });
@@ -6589,13 +6660,10 @@ document.addEventListener('DOMContentLoaded', function() {
             grid.appendChild(tile);
         });
 
-        // Always show the "+ Add" tile as the last item
         var addTile = document.createElement('button');
         addTile.type = 'button';
         addTile.className = 'shortcut-add-tile';
-        addTile.innerHTML =
-            '<span class="add-plus">+</span>' +
-            '<span class="add-label">Add</span>';
+        addTile.innerHTML = '<span class="add-plus">+</span><span class="add-label">Add</span>';
         addTile.addEventListener('click', openAddModal);
         grid.appendChild(addTile);
 
@@ -6615,7 +6683,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="field">
                     <label for="scUrlInput">Website URL</label>
                     <input type="text" id="scUrlInput" placeholder="e.g. khanacademy.org" autocomplete="off" />
-                    <div class="hint">Paste a full URL or just the domain — we&rsquo;ll find the logo automatically.</div>
+                    <div class="hint">Paste the site&rsquo;s real address — no shorteners, no redirects.</div>
                 </div>
                 <div class="field">
                     <label for="scNameInput">Display name <span style="opacity:.6;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -6653,6 +6721,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var nameInp = m.querySelector('#scNameInput');
         urlInp.value = '';
         nameInp.value = '';
+        urlInp.style.borderColor = '';
         setTimeout(function () { urlInp.focus(); }, 60);
     }
     function closeAddModal() {
@@ -6672,16 +6741,33 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Social-media check
-        var blocked = isSocialMedia(parsed.hostname);
-        if (blocked) {
-            showBlockToast(blocked);
+        var host = parsed.hostname.replace(/^www\./, '');
+
+        // 1. Social media check
+        var blockedSocial = isSocialMedia(host);
+        if (blockedSocial) {
+            showToast('social', blockedSocial);
             closeAddModal();
             return;
         }
 
-        // Duplicate check
-        var host = parsed.hostname.replace(/^www\./, '');
+        // 2. URL shortener check
+        var blockedShort = isShortener(host);
+        if (blockedShort) {
+            showToast('shortener', blockedShort);
+            closeAddModal();
+            return;
+        }
+
+        // 3. Redirect wrapper check
+        var blockedRedirect = isRedirectWrapper(host);
+        if (blockedRedirect) {
+            showToast('redirect', blockedRedirect);
+            closeAddModal();
+            return;
+        }
+
+        // 4. Duplicate check
         var existing = loadShortcuts();
         if (existing.some(function (s) { return s.host === host; })) {
             urlInp.style.borderColor = '#fbbf24';
@@ -6701,7 +6787,7 @@ document.addEventListener('DOMContentLoaded', function() {
         closeAddModal();
     }
 
-    // ---- Boot (only runs on pages that actually contain the grid) ----
+    // ---- Boot ----
     function boot() {
         if (!document.getElementById('shortcutsGrid')) return;
         renderShortcuts();
@@ -6716,14 +6802,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addStudyHubShortcut = function (url, name) {
         var parsed = normalizeUrl(url);
         if (!parsed) return false;
-        var blocked = isSocialMedia(parsed.hostname);
-        if (blocked) { showBlockToast(blocked); return false; }
+        var host = parsed.hostname.replace(/^www\./, '');
+        if (isSocialMedia(host))   { showToast('social', host);   return false; }
+        if (isShortener(host))     { showToast('shortener', host); return false; }
+        if (isRedirectWrapper(host)) { showToast('redirect', host); return false; }
         var list = loadShortcuts();
         list.push({
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            name: prettyName(parsed.hostname, name),
+            name: prettyName(host, name),
             url: parsed.href,
-            host: parsed.hostname.replace(/^www\./, '')
+            host: host
         });
         saveShortcuts(list);
         renderShortcuts();
