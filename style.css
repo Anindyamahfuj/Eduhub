@@ -3372,7 +3372,7 @@ body.theme-light {
     color: var(--ink);
 }
 body.theme-light::before { opacity: 0.5; }
-body.theme-light::after { opacity: 0.05; }
+/* body.theme-light::after removed — noise texture deleted */
 
 body.theme-light .navbar {
     background: rgba(255, 255, 255, 0.85) !important;
