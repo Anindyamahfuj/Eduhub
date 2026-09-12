@@ -6421,3 +6421,312 @@ document.addEventListener('DOMContentLoaded', function() {
     window.setStudyHubColorTheme = function (id) { setColor(id); applyColorTheme(id); applyBackground(getBg()); refreshSwatches(); };
     window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
 })();
+// ================================================================
+// SEARCH SHORTCUTS — user-defined quick-launch tiles
+//  • Add/delete shortcuts with auto-fetched favicons
+//  • Social media domains are BLOCKED
+//  • Persists in localStorage
+// ================================================================
+(function () {
+    'use strict';
+
+    var SHORTCUTS_KEY = 'studyHubShortcuts';
+
+    // ---- Social media blocklist (domain fragments) ----
+    var SOCIAL_BLOCK = [
+        'facebook.com', 'fb.com', 'fb.me',
+        'instagram.com', 'instagr.am',
+        'twitter.com', 'x.com', 't.co',
+        'tiktok.com', 'douyin.com',
+        'snapchat.com', 'snap.com',
+        'reddit.com', 'redd.it',
+        'pinterest.com', 'pin.it',
+        'tumblr.com',
+        'linkedin.com', 'lnkd.in',
+        'whatsapp.com', 'wa.me', 'whatsapp.net',
+        'telegram.org', 'telegram.me', 't.me',
+        'discord.com', 'discord.gg', 'discordapp.com',
+        'wechat.com', 'weixin.qq.com',
+        'vk.com', 'vkontakte.ru',
+        'weibo.com', 'weibo.cn',
+        'threads.net', 'threads.com',
+        'quora.com',
+        'mastodon.social', 'mastodon.online',
+        'bsky.app', 'blueskyweb.xyz',
+        'truthsocial.com', 'truth.social',
+        'parler.com', 'gab.com',
+        'clubhouse.com', 'clubhouse.io',
+        'line.me', 'kakao.com', 'kaokao.com',
+        'vk.me', 'ok.ru', 'odnoklassniki.ru',
+        'douban.com', 'zhihu.com',
+        'flickr.com', 'flic.kr',
+        'meetup.com', 'nextdoor.com',
+        'bereal.com', 'be-real.app',
+        'yik-yak.com', 'yikyak.com',
+        '4chan.org', '8chan.co', '8kun.top',
+        'imgur.com', '9gag.com',
+        '9gag.tv', 'ifunny.co'
+    ];
+
+    function isSocialMedia(host) {
+        var h = String(host || '').toLowerCase().replace(/^www\./, '');
+        for (var i = 0; i < SOCIAL_BLOCK.length; i++) {
+            var d = SOCIAL_BLOCK[i];
+            if (h === d || h.slice(-(d.length + 1)) === '.' + d) return d;
+        }
+        return null;
+    }
+
+    // ---- Storage ----
+    function loadShortcuts() {
+        try {
+            var raw = localStorage.getItem(SHORTCUTS_KEY);
+            if (!raw) return [];
+            var arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr : [];
+        } catch (e) { return []; }
+    }
+    function saveShortcuts(list) {
+        try { localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(list)); } catch (e) {}
+    }
+
+    // ---- URL parsing ----
+    function normalizeUrl(input) {
+        var u = String(input || '').trim();
+        if (!u) return null;
+        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+        try {
+            var parsed = new URL(u);
+            if (!parsed.hostname.includes('.')) return null;
+            return parsed;
+        } catch (e) { return null; }
+    }
+    function prettyName(host, given) {
+        if (given && given.trim()) return given.trim();
+        var h = String(host || '').replace(/^www\./, '');
+        var first = h.split('.')[0];
+        return first.charAt(0).toUpperCase() + first.slice(1);
+    }
+    function faviconFor(host) {
+        // Google's public favicon service — returns a 64px PNG for any domain
+        return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=64';
+    }
+
+    // ---- Block toast ----
+    function showBlockToast(domain) {
+        var old = document.getElementById('shortcutBlockToast');
+        if (old) old.remove();
+        var t = document.createElement('div');
+        t.className = 'shortcut-block-toast';
+        t.id = 'shortcutBlockToast';
+        t.innerHTML =
+            '<span style="font-size:1.2rem;">🛡️</span>' +
+            '<span><strong>Social media is banned here.</strong><br>' +
+            '"' + domain + '" cannot be added — StudyHub is a distraction-free space for students.</span>' +
+            '<button class="toast-close" aria-label="Close">✕</button>';
+        document.body.appendChild(t);
+        requestAnimationFrame(function () { t.classList.add('show'); });
+        t.querySelector('.toast-close').addEventListener('click', function () {
+            t.classList.remove('show');
+            setTimeout(function () { t.remove(); }, 320);
+        });
+        setTimeout(function () {
+            if (!document.body.contains(t)) return;
+            t.classList.remove('show');
+            setTimeout(function () { t.remove(); }, 320);
+        }, 5200);
+    }
+
+    // ---- Render tiles ----
+    function renderShortcuts() {
+        var grid  = document.getElementById('shortcutsGrid');
+        var empty = document.getElementById('shortcutsEmpty');
+        if (!grid) return;
+
+        var list = loadShortcuts();
+        grid.innerHTML = '';
+
+        list.forEach(function (sc) {
+            var tile = document.createElement('a');
+            tile.className = 'shortcut-tile';
+            tile.href = sc.url;
+            tile.target = '_blank';
+            tile.rel = 'noopener noreferrer';
+            tile.title = sc.url;
+
+            var logo = document.createElement('div');
+            logo.className = 'sc-logo';
+            var img = document.createElement('img');
+            img.alt = '';
+            img.loading = 'lazy';
+            img.src = faviconFor(sc.host);
+            img.onerror = function () {
+                logo.innerHTML = '<span class="sc-fallback">' + (sc.name || '?').charAt(0) + '</span>';
+            };
+            logo.appendChild(img);
+
+            var name = document.createElement('div');
+            name.className = 'sc-name';
+            name.textContent = sc.name;
+
+            var del = document.createElement('button');
+            del.className = 'sc-delete';
+            del.type = 'button';
+            del.title = 'Remove shortcut';
+            del.textContent = '✕';
+            del.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!confirm('Remove "' + sc.name + '" shortcut?')) return;
+                var fresh = loadShortcuts().filter(function (x) { return x.id !== sc.id; });
+                saveShortcuts(fresh);
+                renderShortcuts();
+            });
+
+            tile.appendChild(del);
+            tile.appendChild(logo);
+            tile.appendChild(name);
+            grid.appendChild(tile);
+        });
+
+        // Always show the "+ Add" tile as the last item
+        var addTile = document.createElement('button');
+        addTile.type = 'button';
+        addTile.className = 'shortcut-add-tile';
+        addTile.innerHTML =
+            '<span class="add-plus">+</span>' +
+            '<span class="add-label">Add</span>';
+        addTile.addEventListener('click', openAddModal);
+        grid.appendChild(addTile);
+
+        if (empty) empty.style.display = list.length === 0 ? 'block' : 'none';
+    }
+
+    // ---- Add modal ----
+    var modal = null;
+    function buildModal() {
+        if (modal) return modal;
+        modal = document.createElement('div');
+        modal.className = 'shortcut-modal';
+        modal.id = 'shortcutModal';
+        modal.innerHTML = `
+            <div class="shortcut-modal-panel" role="dialog" aria-label="Add shortcut">
+                <h3>🔗 Add a shortcut</h3>
+                <div class="field">
+                    <label for="scUrlInput">Website URL</label>
+                    <input type="text" id="scUrlInput" placeholder="e.g. khanacademy.org" autocomplete="off" />
+                    <div class="hint">Paste a full URL or just the domain — we&rsquo;ll find the logo automatically.</div>
+                </div>
+                <div class="field">
+                    <label for="scNameInput">Display name <span style="opacity:.6;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                    <input type="text" id="scNameInput" placeholder="e.g. Khan Academy" autocomplete="off" />
+                </div>
+                <div class="btn-row">
+                    <button type="button" class="btn-cancel" id="scCancelBtn">Cancel</button>
+                    <button type="button" class="btn-save" id="scSaveBtn">Save shortcut</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeAddModal();
+        });
+        modal.querySelector('#scCancelBtn').addEventListener('click', closeAddModal);
+        modal.querySelector('#scSaveBtn').addEventListener('click', submitShortcut);
+        modal.querySelector('#scUrlInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitShortcut(); }
+        });
+        modal.querySelector('#scNameInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitShortcut(); }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('open')) closeAddModal();
+        });
+        return modal;
+    }
+
+    function openAddModal() {
+        var m = buildModal();
+        m.classList.add('open');
+        var urlInp  = m.querySelector('#scUrlInput');
+        var nameInp = m.querySelector('#scNameInput');
+        urlInp.value = '';
+        nameInp.value = '';
+        setTimeout(function () { urlInp.focus(); }, 60);
+    }
+    function closeAddModal() {
+        if (modal) modal.classList.remove('open');
+    }
+
+    function submitShortcut() {
+        var m = buildModal();
+        var urlInp  = m.querySelector('#scUrlInput');
+        var nameInp = m.querySelector('#scNameInput');
+
+        var parsed = normalizeUrl(urlInp.value);
+        if (!parsed) {
+            urlInp.focus();
+            urlInp.style.borderColor = '#fca5a5';
+            setTimeout(function () { urlInp.style.borderColor = ''; }, 1400);
+            return;
+        }
+
+        // Social-media check
+        var blocked = isSocialMedia(parsed.hostname);
+        if (blocked) {
+            showBlockToast(blocked);
+            closeAddModal();
+            return;
+        }
+
+        // Duplicate check
+        var host = parsed.hostname.replace(/^www\./, '');
+        var existing = loadShortcuts();
+        if (existing.some(function (s) { return s.host === host; })) {
+            urlInp.style.borderColor = '#fbbf24';
+            setTimeout(function () { urlInp.style.borderColor = ''; }, 1400);
+            return;
+        }
+
+        var name = prettyName(host, nameInp.value);
+        existing.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            name: name,
+            url: parsed.href,
+            host: host
+        });
+        saveShortcuts(existing);
+        renderShortcuts();
+        closeAddModal();
+    }
+
+    // ---- Boot (only runs on pages that actually contain the grid) ----
+    function boot() {
+        if (!document.getElementById('shortcutsGrid')) return;
+        renderShortcuts();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    // Public API
+    window.addStudyHubShortcut = function (url, name) {
+        var parsed = normalizeUrl(url);
+        if (!parsed) return false;
+        var blocked = isSocialMedia(parsed.hostname);
+        if (blocked) { showBlockToast(blocked); return false; }
+        var list = loadShortcuts();
+        list.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            name: prettyName(parsed.hostname, name),
+            url: parsed.href,
+            host: parsed.hostname.replace(/^www\./, '')
+        });
+        saveShortcuts(list);
+        renderShortcuts();
+        return true;
+    };
+})();
