@@ -3849,72 +3849,132 @@ function setupNotice() {
 // ================================================================
 // NOTES
 // ================================================================
+// ================================================================
+// NOTES  (event-delegation — delete works reliably on every render)
+// ================================================================
 function setupNotes() {
-    var input = document.getElementById('noteInput');
+    var input  = document.getElementById('noteInput');
     var addBtn = document.getElementById('addNoteBtn');
-    var list = document.getElementById('noteList');
+    var list   = document.getElementById('noteList');
     var delBtn = document.getElementById('deleteAllNotesBtn');
 
+    if (!list) return;
+
+    // ---- Render ----
     function renderNotes() {
         var data = loadData();
         if (data.notes.length === 0) {
             list.innerHTML = '<p class="empty-state">' + getTranslation('no_notes') + '</p>';
-        } else {
-            list.innerHTML = data.notes.map(function(n) {
-                return '<div class="note-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
-            }).join('');
+            return;
         }
+        list.innerHTML = data.notes.map(function(n) {
+            var dateStr = new Date(n.date).toLocaleDateString();
+            return '<div class="note-item">' +
+                       '<span class="note-text">' + escapeNoteHtml(n.text) + '</span>' +
+                       '<span class="time">' + dateStr +
+                           ' <button class="delete-item-btn" data-id="' + n.id + '" ' +
+                           'data-action="delete-note" type="button" title="Delete note">✕</button>' +
+                       '</span>' +
+                   '</div>';
+        }).join('');
+    }
 
-        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.dataset.id;
-                if (confirm('Delete this note? It will go to Trash for 24 hours.')) {
-                    var data = loadData();
-                    var item = data.notes.find(function(n) { return n.id === id; });
-                    if (item) pushToTrash(data, 'note', item);
-                    data.notes = data.notes.filter(function(n) { return n.id !== id; });
-                    addActivity(data, 'delete', 'Moved note to trash');
-                    saveData(data);
-                    renderNotes();
-                    updateTrashCount();
-                    if (document.getElementById('statTasks')) renderDashboard();
-                }
-            });
+    // Small HTML escape so user text can't break the DOM
+    function escapeNoteHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
         });
     }
 
-    addBtn.addEventListener('click', function() {
-        var text = input.value.trim();
-        if (!text) return;
-        var data = loadData();
-        data.notes.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            text: text,
-            date: new Date().toISOString()
-        });
-        addActivity(data, 'note_add', 'Added note: "' + text + '"');
-        saveData(data);
-        input.value = '';
-        renderNotes();
-        if (document.getElementById('statTasks')) renderDashboard();
-    });
+    // ---- ONE delegated listener on the container (survives re-renders) ----
+    if (!list.dataset.notesHooked) {
+        list.dataset.notesHooked = '1';
 
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') addBtn.click();
-    });
+        list.addEventListener('click', function(e) {
+            var btn = e.target.closest('.delete-item-btn[data-action="delete-note"]');
+            if (!btn) return;
 
-    delBtn.addEventListener('click', function() {
-        if (confirm('Move all notes to Trash? They will be recoverable for 24 hours.')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var id = btn.dataset.id;
+            if (!id) return;
+
+            if (!confirm('Delete this note? It will go to Trash for 24 hours.')) return;
+
             var data = loadData();
-            data.notes.forEach(function(n) { pushToTrash(data, 'note', n); });
+            var item = data.notes.find(function(n) { return n.id === id; });
+            if (!item) return;
+
+            // Soft-delete → Trash
+            if (typeof pushToTrash === 'function') pushToTrash(data, 'note', item);
+            data.notes = data.notes.filter(function(n) { return n.id !== id; });
+
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'delete', 'Moved note to trash');
+            }
+            saveData(data);
+
+            renderNotes();
+            if (typeof updateTrashCount === 'function') updateTrashCount();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
+    // ---- Add note ----
+    if (addBtn && !addBtn.dataset.notesHooked) {
+        addBtn.dataset.notesHooked = '1';
+        addBtn.addEventListener('click', function() {
+            var text = input.value.trim();
+            if (!text) return;
+            var data = loadData();
+            data.notes.push({
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                text: text,
+                date: new Date().toISOString()
+            });
+            if (typeof addActivity === 'function') addActivity(data, 'note_add', 'Added note: "' + text + '"');
+            saveData(data);
+            input.value = '';
+            renderNotes();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
+    if (input && !input.dataset.notesHooked) {
+        input.dataset.notesHooked = '1';
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addBtn.click();
+            }
+        });
+    }
+
+    // ---- Delete all notes ----
+    if (delBtn && !delBtn.dataset.notesHooked) {
+        delBtn.dataset.notesHooked = '1';
+        delBtn.addEventListener('click', function() {
+            if (!confirm('Move all notes to Trash? They will be recoverable for 24 hours.')) return;
+            var data = loadData();
+            data.notes.forEach(function(n) {
+                if (typeof pushToTrash === 'function') pushToTrash(data, 'note', n);
+            });
             data.notes = [];
-            addActivity(data, 'delete', 'Moved all notes to trash');
+            if (typeof addActivity === 'function') addActivity(data, 'delete', 'Moved all notes to trash');
             saveData(data);
             renderNotes();
-            updateTrashCount();
-            if (document.getElementById('statTasks')) renderDashboard();
-        }
-    });
+            if (typeof updateTrashCount === 'function') updateTrashCount();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
     renderNotes();
 }
 
