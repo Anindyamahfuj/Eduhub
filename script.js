@@ -2919,6 +2919,18 @@ Object.keys(extraTranslations).forEach(function (lang) {
     }
 });
 
+// ================================================================
+// AUTO-FILL: every language inherits any key it's missing from English
+// This guarantees no untranslated key ever shows as raw text.
+// ================================================================
+Object.keys(translations).forEach(function (lang) {
+    if (lang === 'en') return;
+    Object.keys(translations.en).forEach(function (key) {
+        if (typeof translations[lang][key] === 'undefined') {
+            translations[lang][key] = translations.en[key];
+        }
+    });
+});
 
 let currentLang = 'en';
 
