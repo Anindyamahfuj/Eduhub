@@ -7209,10 +7209,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '<div class="blocker-settings-panel">';
         html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
         html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
-        html += '<div class="bs-section"><h3>Categories</h3><div class="bs-cats">';
+                html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">— 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
         Object.keys(CATS).forEach(function (k) {
-            html += '<label class="bs-cat"><input type="checkbox" data-cat="' + k + '" ' + (enabled[k] ? 'checked' : '') + '>' +
+            var locked = !!LOCKED_CATS[k];
+            html += '<label class="bs-cat' + (locked ? ' bs-cat-locked' : '') + '"' +
+                    (locked ? ' title="This category is locked on and cannot be removed"' : '') + '>' +
+                    '<input type="checkbox" data-cat="' + k + '" ' +
+                        (locked || enabled[k] ? 'checked' : '') + ' ' +
+                        (locked ? 'disabled' : '') + '>' +
                     '<span>' + CATS[k].label + '</span>' +
+                    (locked ? '<span class="bs-lock-badge">🔒 Locked</span>' : '') +
                     '<span class="bs-cat-count">' + CATS[k].domains.length + '</span></label>';
         });
         html += '</div></div>';
