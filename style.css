@@ -539,6 +539,9 @@ h1, h2, h3, h4 {
 .page-header h1 {
     font-size: 1.95rem;
     font-weight: 650;
+    /* gradient moved into a child class so emojis keep their color */
+}
+.page-header h1 .gradient-text {
     background: linear-gradient(180deg, var(--ink), var(--ink-2));
     -webkit-background-clip: text;
     background-clip: text;
