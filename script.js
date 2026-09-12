@@ -6968,7 +6968,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function yest() { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
 
     // ---------- Categories ----------
-      const CATS = {
+    const CATS = {
         social:   { label: '📱 Social Media',       domains: ['facebook.com','fb.com','fb.me','messenger.com','instagram.com','instagr.am','twitter.com','x.com','t.co','tiktok.com','douyin.com','snapchat.com','reddit.com','redd.it','pinterest.com','pin.it','tumblr.com','linkedin.com','lnkd.in','whatsapp.com','wa.me','telegram.org','telegram.me','t.me','telegram.dog','teleg.run','discord.com','discord.gg','wechat.com','vk.com','vkontakte.ru','weibo.com','threads.net','threads.com','mastodon.social','bsky.app','clubhouse.com','bereal.com','4chan.org','imgur.com','9gag.com','quora.com','flickr.com','meetup.com','nextdoor.com'] },
         video:    { label: '🎬 Video & Streaming',  domains: ['netflix.com','hulu.com','disneyplus.com','primevideo.com','hbomax.com','max.com','peacocktv.com','twitch.tv','kick.com','rumble.com','dailymotion.com','vimeo.com','spotify.com','soundcloud.com','deezer.com','tidal.com'] },
         gaming:   { label: '🎮 Gaming',             domains: ['steamcommunity.com','steampowered.com','epicgames.com','roblox.com','minecraft.net','playstation.com','xbox.com','ign.com','gamespot.com','polygon.com'] },
@@ -6980,7 +6980,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function buildBlockedSet() {
         const d = readD();
-        const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
+        const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false };
         const set = {};
         Object.keys(CATS).forEach(function (k) {
             // Locked categories are ALWAYS on, regardless of stored value
@@ -7198,7 +7198,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ex = document.getElementById('blockerSettingsModal');
     if (ex) ex.remove();
     const d = readD();
-    const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
+    const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false };
     const custom = d.blockerCustomBlocked || [];
     const allowed = d.blockerCustomAllowed || [];
 
@@ -7280,18 +7280,9 @@ document.addEventListener('DOMContentLoaded', function() {
     modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
         cb.addEventListener('change', function () {
             const dd = readD();
-            if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false, news: false };
+            if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false };
             dd.blockerCategories[cb.dataset.cat] = cb.checked;
             writeD(dd);
-
-            // Tell the news ticker to hide/show itself in real time
-            if (cb.dataset.cat === 'news') {
-                try {
-                    window.dispatchEvent(new CustomEvent('studyHubBlockerChanged', {
-                        detail: { cat: 'news', on: cb.checked }
-                    }));
-                } catch (e) {}
-            }
         });
     });
 
