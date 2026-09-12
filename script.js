@@ -6742,7 +6742,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 
-    function isBlockerOn() { return !!readD().blockerOn; }
+       // Blocker is permanently on. The optional console override lets you
+    // disable it for the current session only (resets on reload).
+    function isBlockerOn() {
+        if (window.__blockerEmergencyOff) return false;
+        return true;
+    }
 
     function logBlocked(domain, cat, source) {
         const d = readD();
