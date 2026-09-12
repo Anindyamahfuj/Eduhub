@@ -6976,12 +6976,18 @@ document.addEventListener('DOMContentLoaded', function() {
         news:     { label: '📰 News & Forums',      domains: ['cnn.com','bbc.com','nytimes.com','theguardian.com','foxnews.com','dailymail.co.uk','buzzfeed.com','boredpanda.com','distractify.com','ranker.com'] }
     };
 
+       // Categories that can NEVER be turned off
+    var LOCKED_CATS = { social: true, video: true, gaming: true };
+
     function buildBlockedSet() {
         const d = readD();
         const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false, news: false };
         const set = {};
         Object.keys(CATS).forEach(function (k) {
-            if (enabled[k]) CATS[k].domains.forEach(function (dom) { set[dom] = k; });
+            // Locked categories are ALWAYS on, regardless of stored value
+            if (LOCKED_CATS[k] || enabled[k]) {
+                CATS[k].domains.forEach(function (dom) { set[dom] = k; });
+            }
         });
         (d.blockerCustomBlocked || []).forEach(function (dom) {
             set[String(dom).toLowerCase().replace(/^www\./, '')] = 'custom';
