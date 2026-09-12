@@ -81,7 +81,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-    font-family: var(--font);
+    font-family: var(--font), var(--emoji);
     color: var(--ink);
     line-height: 1.6;
     min-height: 100vh;
@@ -94,11 +94,9 @@ body {
         linear-gradient(180deg, #050d17 0%, #040912 55%, #060e17 100%);
     transition: background var(--dur-slow) var(--ease);
     letter-spacing: -0.011em;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    /* font-smoothing removed — it forced emojis to monochrome */
     text-rendering: optimizeLegibility;
 }
-
 /* Ambient glow — pure radial gradients, NO blend modes */
 body::before {
     content: "";
