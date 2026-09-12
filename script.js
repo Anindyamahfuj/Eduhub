@@ -7633,57 +7633,72 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 })();
 // ================================================================
-// DAILY NEWS TICKER
-//  • Top bar that rotates through 10 daily headlines
-//  • Pulled from BBC / NPR / Al Jazeera RSS feeds
-//  • Cached in localStorage for 24h
-//  • Falls back to a static list if offline
+// WORLD NEWS TICKER  (v2 — real international news only)
+//  • Top bar that rotates through 10 daily world headlines
+//  • Sources: Reuters · AP · BBC World · Al Jazeera · DW · France24 · Guardian · NPR
+//  • Focus: wars, politics, disasters, economy, major events
+//  • Cached for 24h → refetches once per day automatically
+//  • Falls back to "no news available" message — never placeholder content
 //  • Auto-advances every 7s, pauses on hover
 // ================================================================
 (function () {
     'use strict';
 
-    var CACHE_KEY  = 'studyHubNewsCache_v1';
+    var CACHE_KEY  = 'studyHubWorldNews_v1';
     var HIDDEN_KEY = 'studyHubNewsHidden';
-    var CACHE_TTL  = 24 * 60 * 60 * 1000;   // 24h
-    var ROTATE_MS  = 7000;                  // 7s per headline
+    var CACHE_TTL  = 24 * 60 * 60 * 1000;   // 24h → refetch once per day
+    var ROTATE_MS  = 7000;
     var MAX_ITEMS  = 10;
 
-    // ---------- Sources (RSS 2.0) ----------
+    // ---------- Sources (RSS 2.0 · World / International) ----------
+    // Order matters — first successful fetch wins for a given story.
     var FEEDS = [
-        { name: 'BBC News',    url: 'http://feeds.bbci.co.uk/news/rss.xml' },
-        { name: 'NPR',         url: 'https://feeds.npr.org/1001/rss.xml' },
-        { name: 'Al Jazeera',  url: 'https://www.aljazeera.com/xml/rss/all.xml' },
-        { name: 'BBC Tech',    url: 'http://feeds.bbci.co.uk/news/technology/rss.xml' }
+        { name: 'BBC World',     url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+        { name: 'BBC News',      url: 'https://feeds.bbci.co.uk/news/rss.xml' },
+        { name: 'Al Jazeera',    url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+        { name: 'Guardian World',url: 'https://www.theguardian.com/world/rss' },
+        { name: 'NPR World',     url: 'https://feeds.npr.org/1004/rss.xml' },
+        { name: 'DW News',       url: 'https://rss.dw.com/rdf/rss-en-all' },
+        { name: 'France24',      url: 'https://www.france24.com/en/rss' },
+        { name: 'AP Top News',   url: 'https://rsshub.app/apnews/topics/apf-topnews' },
+        { name: 'Reuters World', url: 'https://rsshub.app/reuters/world' },
+        { name: 'CNN World',     url: 'http://rss.cnn.com/rss/edition_world.rss' }
     ];
 
-    // CORS proxies — try in order until one works
+    // CORS proxies — try each until one works (fetched fresh each request)
     var PROXIES = [
         'https://api.allorigins.win/raw?url=',
-        'https://api.codetabs.com/v1/proxy/?quest='
+        'https://api.codetabs.com/v1/proxy/?quest=',
+        'https://corsproxy.io/?'
     ];
 
-    // ---------- Offline fallback ----------
-    var FALLBACK = [
-        { title: 'Welcome to StudyHub — your distraction-free study hub', source: 'StudyHub', link: '#' },
-        { title: 'Tip: Use Focus Mode for a timed, distraction-free session', source: 'StudyHub', link: '#' },
-        { title: 'Try the AI Planner to build a weekly study schedule', source: 'StudyHub', link: '#' },
-        { title: 'Add your favourite study sites as shortcuts below search', source: 'StudyHub', link: '#' },
-        { title: 'Customise your theme with the 🎨 picker (bottom-right)', source: 'StudyHub', link: '#' },
-        { title: 'Track habits daily to build a study streak', source: 'StudyHub', link: '#' },
-        { title: 'The Blocker keeps social media out of your study space', source: 'StudyHub', link: '#' },
-        { title: 'Break reminder fires every 50 minutes — stretch!', source: 'StudyHub', link: '#' },
-        { title: 'Use the scientific calculator for advanced math', source: 'StudyHub', link: '#' },
-        { title: 'Save articles to your Reading List for later', source: 'StudyHub', link: '#' }
+    // Weighted keywords — bumped score = higher priority in the daily 10
+    var IMPORTANCE = [
+        { re: /\b(war|invasion|strike|missile|bomb|attack|troops|military|offensive)\b/i,        w: 3 },
+        { re: /\b(killed|dead|deaths|casualties|injured|massacre|mass\s+grave)\b/i,              w: 3 },
+        { re: /\b(gaza|ukraine|russia|israel|palestine|iran|china|taiwan|sudan|lebanon|syria)\b/i,w: 3 },
+        { re: /\b(president|prime\s+minister|election|coup|parliament|government)\b/i,           w: 2 },
+        { re: /\b(earthquake|flood|tsunami|hurricane|wildfire|disaster|evacuation)\b/i,          w: 3 },
+        { re: /\b(economy|inflation|recession|sanctions|tariff|market|crash)\b/i,                w: 2 },
+        { re: /\b(nuclear|chemical|biological|weapons)\b/i,                                      w: 3 },
+        { re: /\b(protest|riot|unrest|uprising|revolution|demonstration)\b/i,                    w: 2 },
+        { re: /\b(hostage|abduct|kidnap|prisoner|detained)\b/i,                                  w: 2 },
+        { re: /\b(ceasefire|peace|treaty|agreement|negotiation|summit)\b/i,                      w: 2 },
+        { re: /\b(breaking|urgent|just\s+in|major|historic)\b/i,                                 w: 2 },
+        { re: /\b(climate|emissions|heatwave|drought|famine)\b/i,                                w: 1 },
+        { re: /\b(AI|artificial\s+intelligence|tech|cyber)\b/i,                                  w: 1 },
+        // Penalties
+        { re: /\b(opinion|analysis|editorial|commentary)\b/i,                                    w: -2 },
+        { re: /\b(horoscope|quiz|recipe|celebrity|gossip)\b/i,                                   w: -5 }
     ];
 
     // ---------- State ----------
-    var currentIndex = 0;
     var items = [];
+    var currentIndex = 0;
     var rotateTimer = null;
     var bar = null;
 
-    // ---------- Cached news ----------
+    // ---------- Cache ----------
     function loadCache() {
         try {
             var raw = localStorage.getItem(CACHE_KEY);
@@ -7702,6 +7717,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }));
         } catch (e) {}
     }
+    function clearCache() {
+        try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+    }
+
+    // ---------- Score a headline (higher = more important) ----------
+    function scoreHeadline(title) {
+        var s = 0;
+        for (var i = 0; i < IMPORTANCE.length; i++) {
+            if (IMPORTANCE[i].re.test(title)) s += IMPORTANCE[i].w;
+        }
+        return s;
+    }
 
     // ---------- RSS parsing ----------
     function parseRSS(xmlText, sourceName) {
@@ -7710,46 +7737,70 @@ document.addEventListener('DOMContentLoaded', function() {
             if (doc.querySelector('parsererror')) return [];
             var nodes = doc.querySelectorAll('item');
             var out = [];
-            for (var i = 0; i < nodes.length && out.length < 6; i++) {
+            for (var i = 0; i < nodes.length; i++) {
                 var node = nodes[i];
                 var titleEl = node.querySelector('title');
                 var linkEl  = node.querySelector('link');
-                var dateEl  = node.querySelector('pubDate');
+                var dateEl  = node.querySelector('pubDate') || node.querySelector('dc\\:date');
                 var title = titleEl ? titleEl.textContent.trim() : '';
                 var link  = linkEl  ? linkEl.textContent.trim()  : '';
                 var pub   = dateEl  ? dateEl.textContent.trim()  : '';
-                // Clean CDATA / HTML entities
+
                 title = title.replace(/<!\[CDATA\[|\]\]>/g, '').trim();
-                title = title.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-                if (title && link && link.indexOf('http') === 0) {
-                    out.push({ title: title, link: link, source: sourceName, pubDate: pub });
-                }
+                title = title
+                    .replace(/&amp;/g, '&')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'")
+                    .replace(/&apos;/g, "'")
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/\s+/g, ' ').trim();
+
+                // Skip if no link, or link isn't a real URL
+                if (!title || !link || link.indexOf('http') !== 0) continue;
+                // Skip obvious junk
+                if (title.length < 15) continue;
+                if (/^(video|live|watch|photos|in pictures)/i.test(title)) continue;
+
+                out.push({
+                    title: title,
+                    link: link,
+                    source: sourceName,
+                    pubDate: pub,
+                    score: scoreHeadline(title)
+                });
             }
             return out;
         } catch (e) { return []; }
     }
 
-    // ---------- Fetch ----------
+    // ---------- Fetch one feed through proxies ----------
     function fetchOneFeed(feed, proxyIdx) {
         if (proxyIdx >= PROXIES.length) return Promise.reject(new Error('all proxies failed'));
         var proxy = PROXIES[proxyIdx];
         var fullUrl = proxy + encodeURIComponent(feed.url);
-        return fetch(fullUrl, { mode: 'cors' })
+        var controller = new AbortController();
+        var timeout = setTimeout(function () { controller.abort(); }, 8000);
+
+        return fetch(fullUrl, { mode: 'cors', signal: controller.signal })
             .then(function (r) {
+                clearTimeout(timeout);
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.text();
             })
             .then(function (txt) {
-                if (txt.indexOf('<rss') === -1 && txt.indexOf('<item') === -1) {
+                if (!txt || (txt.indexOf('<rss') === -1 && txt.indexOf('<item') === -1 && txt.indexOf('<feed') === -1)) {
                     throw new Error('not RSS');
                 }
                 return parseRSS(txt, feed.name);
             })
-            .catch(function (e) {
+            .catch(function () {
+                clearTimeout(timeout);
                 return fetchOneFeed(feed, proxyIdx + 1);
             });
     }
 
+    // ---------- Fetch all feeds in parallel ----------
     function fetchAllNews() {
         return Promise.allSettled(FEEDS.map(function (f) { return fetchOneFeed(f, 0); }))
             .then(function (results) {
@@ -7759,14 +7810,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         all = all.concat(r.value);
                     }
                 });
-                // De-dupe by title prefix, keep order, take MAX_ITEMS
-                var seen = {};
-                var picked = [];
-                for (var i = 0; i < all.length && picked.length < MAX_ITEMS; i++) {
-                    var key = all[i].title.toLowerCase().slice(0, 50);
-                    if (!seen[key]) { seen[key] = true; picked.push(all[i]); }
-                }
-                return picked;
+
+                // Filter stale (>3 days old)
+                var cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+                all = all.filter(function (n) {
+                    if (!n.pubDate) return true;
+                    var t = new Date(n.pubDate).getTime();
+                    return isNaN(t) || t > cutoff;
+                });
+
+                // Dedupe by shared word overlap in titles
+                var seen = [];
+                var unique = [];
+                all.forEach(function (n) {
+                    var key = n.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).slice(0, 6).join(' ');
+                    if (!seen[key]) { seen[key] = true; unique.push(n); }
+                });
+
+                // Sort by importance score, then newest
+                unique.sort(function (a, b) {
+                    if (b.score !== a.score) return b.score - a.score;
+                    var ta = new Date(a.pubDate || 0).getTime() || 0;
+                    var tb = new Date(b.pubDate || 0).getTime() || 0;
+                    return tb - ta;
+                });
+
+                return unique.slice(0, MAX_ITEMS);
             });
     }
 
@@ -7789,17 +7858,17 @@ document.addEventListener('DOMContentLoaded', function() {
         bar.className = 'news-bar loading';
         bar.id = 'newsBar';
         bar.innerHTML =
-            '<div class="news-badge"><span class="live-dot"></span><span>LIVE</span></div>' +
+            '<div class="news-badge"><span class="live-dot"></span><span>WORLD</span></div>' +
             '<button class="news-nav-btn" id="newsPrev" type="button" title="Previous">‹</button>' +
             '<div class="news-headline-wrap">' +
                 '<a class="news-headline" id="newsHeadline" href="#" target="_blank" rel="noopener">' +
-                    '<span class="news-title">Loading today\'s headlines</span>' +
+                    '<span class="news-title">Loading today\'s world headlines</span>' +
                 '</a>' +
             '</div>' +
             '<button class="news-nav-btn" id="newsNext" type="button" title="Next">›</button>' +
             '<span class="news-counter" id="newsCounter">—/—</span>' +
             '<span class="news-source-chip" id="newsSource">—</span>' +
-            '<button class="news-refresh-btn" id="newsRefresh" type="button" title="Refresh">↻</button>' +
+            '<button class="news-refresh-btn" id="newsRefresh" type="button" title="Refresh now">↻</button>' +
             '<button class="news-close-btn" id="newsClose" type="button" title="Hide for this session">✕</button>';
 
         document.body.insertBefore(bar, document.body.firstChild);
@@ -7817,17 +7886,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('newsRefresh').addEventListener('click', function () {
             var btn = this;
             btn.classList.add('loading');
+            clearCache();
             fetchAllNews().then(function (list) {
                 btn.classList.remove('loading');
-                if (list.length > 0) {
-                    items = list;
-                    saveCache(items);
-                    currentIndex = 0;
-                    paint();
-                    restartRotation();
-                }
+                items = (list && list.length) ? list : getFallback();
+                saveCache(items);
+                currentIndex = 0;
+                paint();
+                restartRotation();
             }).catch(function () {
                 btn.classList.remove('loading');
+                items = getFallback();
+                currentIndex = 0;
+                paint();
+                restartRotation();
             });
         });
 
@@ -7838,24 +7910,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // ---------- Fallback (never fake StudyHub content) ----------
+    function getFallback() {
+        var msg = '📡 World news is temporarily unavailable — will retry on next refresh. Click ↻ to fetch now.';
+        var list = [];
+        for (var i = 0; i < MAX_ITEMS; i++) {
+            list.push({
+                title: msg,
+                link: 'https://www.bbc.com/news/world',
+                source: 'Offline',
+                pubDate: '',
+                score: 0
+            });
+        }
+        return list;
+    }
+
     // ---------- Paint current headline ----------
     function paint() {
         if (!bar || items.length === 0) return;
         bar.classList.remove('loading');
         var item = items[currentIndex];
         var link = document.getElementById('newsHeadline');
-        var title = document.getElementById('newsTitle');
-        if (!title) {
-            // Rebuild inner span each time to retrigger the fade animation
-            link.innerHTML = '<span class="news-title">' + escapeHtml(item.title) + '</span>';
-        } else {
-            // Replace whole anchor to retrigger animation cleanly
-            var fresh = '<span class="news-title">' + escapeHtml(item.title) + '</span>';
-            link.innerHTML = fresh;
-        }
+        link.innerHTML = '<span class="news-title">' + escapeHtml(item.title) + '</span>';
         link.href = item.link || '#';
         link.style.animation = 'none';
-        void link.offsetWidth;             // force reflow
+        void link.offsetWidth;
         link.style.animation = '';
 
         var src = document.getElementById('newsSource');
@@ -7880,7 +7960,6 @@ document.addEventListener('DOMContentLoaded', function() {
         paint();
         restartRotation();
     }
-
     function restartRotation() {
         if (rotateTimer) clearInterval(rotateTimer);
         rotateTimer = setInterval(function () {
@@ -7888,23 +7967,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }, ROTATE_MS);
     }
 
-    // ---------- Boot ----------
-    function boot() {
-        // Respect session-hide
-        try { if (sessionStorage.getItem(HIDDEN_KEY) === '1') return; } catch (e) {}
+    // ---------- Daily refresh check ----------
+    // Runs once per page load. If the cache is >24h old, it refetches.
+    function shouldRefetch(cached) {
+        if (!cached) return true;
+        return (Date.now() - cached.fetchedAt) > CACHE_TTL;
+    }
 
-        buildBar();
-
-        var cached = loadCache();
-        if (cached) {
-            items = cached.items;
-            currentIndex = 0;
-            paint();
-            restartRotation();
-            // If cache is stale-ish (>20h) refetch in the background
-            if (Date.now() - cached.fetchedAt > 20 * 60 * 60 * 1000) {
+    // Also check periodically — if a user leaves a tab open past midnight,
+    // the news refreshes within 5 minutes without a reload.
+    function startDailyRefreshWatcher() {
+        setInterval(function () {
+            var cached = loadCache();
+            if (shouldRefetch(cached)) {
                 fetchAllNews().then(function (list) {
-                    if (list.length > 0) {
+                    if (list && list.length) {
                         items = list;
                         saveCache(items);
                         currentIndex = 0;
@@ -7913,22 +7990,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }).catch(function () {});
             }
+        }, 5 * 60 * 1000);   // every 5 min
+    }
+
+    // ---------- Boot ----------
+    function boot() {
+        try { if (sessionStorage.getItem(HIDDEN_KEY) === '1') return; } catch (e) {}
+
+        buildBar();
+
+        var cached = loadCache();
+        if (cached && !shouldRefetch(cached)) {
+            items = cached.items;
+            currentIndex = 0;
+            paint();
+            restartRotation();
+            startDailyRefreshWatcher();
             return;
         }
 
-        // No cache → fetch fresh
+        // No cache, or expired → fetch fresh
         fetchAllNews().then(function (list) {
-            if (list.length === 0) list = FALLBACK.slice();
-            items = list.slice(0, MAX_ITEMS);
+            items = (list && list.length) ? list : getFallback();
             saveCache(items);
             currentIndex = 0;
             paint();
             restartRotation();
+            startDailyRefreshWatcher();
         }).catch(function () {
-            items = FALLBACK.slice(0, MAX_ITEMS);
+            items = getFallback();
             currentIndex = 0;
             paint();
             restartRotation();
+            startDailyRefreshWatcher();
         });
     }
 
@@ -7944,12 +8038,11 @@ document.addEventListener('DOMContentLoaded', function() {
             var btn = document.getElementById('newsRefresh');
             if (btn) btn.click();
         },
-        clearCache: function () {
-            try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
-        },
+        clearCache: clearCache,
         show: function () {
             try { sessionStorage.removeItem(HIDDEN_KEY); } catch (e) {}
             boot();
-        }
+        },
+        getItems: function () { return items; }
     };
 })();
