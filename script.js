@@ -5323,102 +5323,436 @@ function openFile(fileId, mode) {
 // ================================================================
 // COMMAND PALETTE (Ctrl+K)
 // ================================================================
-var CP_COMMANDS = [
-    { label: '🚀 Go to Dashboard', action: function() { window.location.href = 'index.html'; } },
-    { label: '🤖 Go to AI Tools', action: function() { window.location.href = 'ai-tools.html'; } },
-    { label: '📂 Go to Files', action: function() { window.location.href = 'files.html'; } },
-    { label: '🔥 Go to Habits', action: function() { window.location.href = 'habits.html'; } },
-    { label: '📢 Go to Notice', action: function() { window.location.href = 'notice.html'; } },
-    { label: '✍️ Go to Notes', action: function() { window.location.href = 'notes.html'; } },
-    { label: '📋 Go to Assignments', action: function() { window.location.href = 'assignments.html'; } },
-    { label: '📅 Go to Planner', action: function() { window.location.href = 'planner.html'; } },
-    { label: '🃏 Go to Flashcards', action: function() { window.location.href = 'flashcards.html'; } },
-    { label: '📖 Go to Reading', action: function() { window.location.href = 'reading.html'; } },
-    { label: '▶ Start Pomodoro Timer', action: function() { var b = document.getElementById('pomoStart'); if (b) b.click(); } },
-    { label: '⏹ Stop Pomodoro Timer', action: function() { var b = document.getElementById('pomoStop'); if (b) b.click(); } },
-    { label: '▶ Start Deep Work', action: function() { var b = document.getElementById('dwStart'); if (b) b.click(); } },
-    { label: '⏸ Stop Deep Work', action: function() { var b = document.getElementById('dwStop'); if (b) b.click(); } },
-    { label: '➕ New Note', action: function() { window.location.href = 'notes.html'; setTimeout(function() { var i = document.getElementById('noteInput'); if (i) i.focus(); }, 400); } },
-    { label: '➕ New Habit', action: function() { window.location.href = 'habits.html'; setTimeout(function() { var i = document.getElementById('habitInput'); if (i) i.focus(); }, 400); } },
-    { label: '📅 Open Calendar', action: function() { var b = document.getElementById('calendarExpandBtn'); if (b) b.click(); } },
-    { label: '🗑️ Open Trash', action: function() { openTrashModal(); } },
-    { label: '🔓 Toggle Focus Mode', action: function() { var b = document.getElementById('focusToggle'); if (b) b.click(); } }
-];
+// ================================================================
+// COMMAND PALETTE v2 — Smart, fuzzy, contextual, keyboard-first
+// Ctrl+K to open · Esc to close · ↑↓ navigate · Enter run · Tab autocomplete
+// ================================================================
+(function () {
+    'use strict';
 
-var cpActive = false;
-var cpSelectedIdx = 0;
-var cpFiltered = [];
+    // ---------- Command registry ----------
+    // Each command has: id, label, hint, icon, group, keywords, action
+    // Groups: 'go' (navigate), 'do' (actions), 'make' (create), 'tool' (utilities), 'theme'
+    const CP_COMMANDS = [
+        // ---- Navigation (only the ones worth typing) ----
+        { id: 'go.dash',    group: 'go', icon: '🚀', label: 'Dashboard',         hint: 'home · overview · stats',    action: () => location.href = 'index.html' },
+        { id: 'go.notes',   group: 'go', icon: '✍️', label: 'Notes',             hint: 'jot · jotting · writing',   action: () => location.href = 'notes.html' },
+        { id: 'go.habits',  group: 'go', icon: '🔥', label: 'Habits',            hint: 'streak · routine · daily',  action: () => location.href = 'habits.html' },
+        { id: 'go.ai',      group: 'go', icon: '🤖', label: 'AI Tools',          hint: 'summarize · gpt · help',    action: () => location.href = 'ai-tools.html' },
+        { id: 'go.files',   group: 'go', icon: '📂', label: 'Files',             hint: 'upload · storage · docs',   action: () => location.href = 'files.html' },
+        { id: 'go.assign',  group: 'go', icon: '📋', label: 'Assignments',       hint: 'homework · deadline · due', action: () => location.href = 'assignments.html' },
+        { id: 'go.planner', group: 'go', icon: '📅', label: 'Planner',           hint: 'schedule · timetable',      action: () => location.href = 'planner.html' },
+        { id: 'go.flash',   group: 'go', icon: '🃏', label: 'Flashcards',        hint: 'cards · decks · review',    action: () => location.href = 'flashcards.html' },
+        { id: 'go.read',    group: 'go', icon: '📖', label: 'Reading',           hint: 'articles · links · read',   action: () => location.href = 'reading.html' },
+        { id: 'go.notice',  group: 'go', icon: '📢', label: 'Notice',            hint: 'pinboard · bulletin',       action: () => location.href = 'notice.html' },
 
-function initCommandPalette() {
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            openCommandPalette();
+        // ---- Do (frequent actions only) ----
+        { id: 'do.pomoStart', group: 'do', icon: '▶', label: 'Start Pomodoro',   hint: 'timer · focus 25',    keywords: ['pomo','timer','focus'], action: () => clickIfPresent('pomoStart') },
+        { id: 'do.pomoStop',  group: 'do', icon: '⏹', label: 'Stop Pomodoro',    hint: 'pause timer',         keywords: ['stop','pause','pomo'], action: () => clickIfPresent('pomoStop') },
+        { id: 'do.dwStart',   group: 'do', icon: '⏱', label: 'Start Deep Work',  hint: 'flow · long focus',   keywords: ['deepwork','deep','flow'], action: () => clickIfPresent('dwStart') },
+        { id: 'do.dwStop',    group: 'do', icon: '⏸', label: 'Stop Deep Work',   hint: 'end deep session',    keywords: ['deepwork','stop'], action: () => clickIfPresent('dwStop') },
+        { id: 'do.focusOn',   group: 'do', icon: '🔓', label: 'Toggle Focus Mode', hint: 'do not disturb · zen', keywords: ['focus','zen','distraction'], action: () => clickIfPresent('focusToggle') },
+        { id: 'do.blocker',   group: 'do', icon: '🛡️', label: 'Blocker Settings',  hint: 'block · distractions', keywords: ['block','shield','distraction'], action: () => { if (window.studyHubBlocker && window.studyHubBlocker.settings) window.studyHubBlocker.settings(); } },
+
+        // ---- Create ----
+        { id: 'make.note',  group: 'make', icon: '📝', label: 'New Note',   hint: 'create · jot',     action: () => goThenFocus('notes.html', 'noteInput') },
+        { id: 'make.habit', group: 'make', icon: '➕', label: 'New Habit',  hint: 'create · add',     action: () => goThenFocus('habits.html', 'habitInput') },
+        { id: 'make.notice',group: 'make', icon: '📌', label: 'New Notice', hint: 'pin · announce',   action: () => goThenFocus('notice.html', 'noticeInput') },
+
+        // ---- Tools ----
+        { id: 'tool.trash',    group: 'tool', icon: '🗑️', label: 'Open Trash',      hint: 'restore · deleted', action: () => { if (typeof openTrashModal === 'function') openTrashModal(); } },
+        { id: 'tool.calendar', group: 'tool', icon: '📅', label: 'Open Calendar',   hint: 'month · view',      action: () => clickIfPresent('calendarExpandBtn') },
+        { id: 'tool.calc',     group: 'tool', icon: '🧮', label: 'Jump to Calculator', hint: 'math',           action: () => { var el = document.querySelector('.calculator-widget'); if (el) el.scrollIntoView({behavior:'smooth', block:'center'}); } },
+
+        // ---- Theme ----
+        { id: 'theme.picker',  group: 'theme', icon: '🎨', label: 'Customize Theme', hint: 'colors · wallpaper', action: () => { var b = document.querySelector('.theme-picker-fab'); if (b) b.click(); } }
+    ];
+
+    // ---------- Helpers ----------
+    function clickIfPresent(id) {
+        var el = document.getElementById(id);
+        if (el) el.click();
+    }
+    function goThenFocus(url, inputId) {
+        location.href = url;
+        setTimeout(function () {
+            var inp = document.getElementById(id);
+            if (inp) inp.focus();
+        }, 400);
+    }
+
+    // ---------- Fuzzy match ----------
+    // Returns { score, hits } — higher score = better match.
+    // Also returns `hits`: array of [start, end] indices to highlight.
+    function fuzzyMatch(query, text) {
+        if (!query) return { score: 0, hits: [] };
+        const q = query.toLowerCase();
+        const t = text.toLowerCase();
+        let qi = 0, score = 0, hits = [], lastMatch = -1;
+        for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+            if (t[ti] === q[qi]) {
+                if (lastMatch === ti - 1) score += 4;
+                if (ti === 0) score += 6;
+                score += 2;
+                hits.push(ti);
+                lastMatch = ti;
+                qi++;
+            }
         }
-        if (e.key === 'Escape') closeCommandPalette();
-    });
-}
+        if (qi < q.length) return { score: -1, hits: [] };
+        // Bonus: shorter matches are better
+        score += Math.max(0, 12 - text.length / 4);
+        return { score: score, hits: hits };
+    }
 
-function openCommandPalette() {
-    if (cpActive) return;
-    cpActive = true;
-    cpFiltered = CP_COMMANDS.slice();
-    cpSelectedIdx = 0;
+    // ---------- Group definitions (order + display) ----------
+    const GROUP_ORDER = ['recent', 'go', 'do', 'make', 'tool', 'theme'];
+    const GROUP_META = {
+        recent: { label: 'Recently Used', icon: '🕘' },
+        go:     { label: 'Go To',         icon: '🧭' },
+        do:     { label: 'Actions',       icon: '⚡' },
+        make:   { label: 'Create',        icon: '✨' },
+        tool:   { label: 'Tools',         icon: '🧰' },
+        theme:  { label: 'Appearance',    icon: '🎨' }
+    };
 
-    var pal = document.createElement('div');
-    pal.className = 'command-palette';
-    pal.id = 'commandPalette';
-    pal.innerHTML = '<div class="cp-content">' +
-        '<input type="text" id="cpInput" placeholder="Type a command... (Ctrl+K toggle, Esc close)" autocomplete="off" />' +
-        '<div class="cp-results" id="cpResults"></div></div>';
-    document.body.appendChild(pal);
+    // ---------- Recent uses (persisted) ----------
+    const RECENT_KEY = 'studyHubCmdRecent';
+    function loadRecent() {
+        try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+        catch (e) { return []; }
+    }
+    function pushRecent(id) {
+        const list = loadRecent().filter(function (x) { return x !== id; });
+        list.unshift(id);
+        try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 4))); }
+        catch (e) {}
+    }
+    function clearRecent() {
+        try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    }
 
-    var input = document.getElementById('cpInput');
-    input.focus();
-    renderCpResults();
+    // ---------- Palette state ----------
+    let cpActive = false;
+    let cpSelectedIdx = 0;
+    let cpFiltered = [];      // array of { cmd, score, hits, group }
+    let cpInput = null;
+    let cpResultsEl = null;
+    let cpPreviewEl = null;
+    let cpEmptyEl = null;
 
-    input.addEventListener('input', function() {
-        var q = this.value.toLowerCase();
-        cpFiltered = CP_COMMANDS.filter(function(c) { return c.label.toLowerCase().indexOf(q) !== -1; });
+    // ---------- Public entry ----------
+    function initCommandPalette() {
+        document.addEventListener('keydown', function (e) {
+            // Ctrl+K / Cmd+K to open
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                cpActive ? closeCommandPalette() : openCommandPalette();
+                return;
+            }
+            if (!cpActive) return;
+
+            // Palette-specific keys
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeCommandPalette();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveSelection(1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveSelection(-1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                cpSelectedIdx = 0;
+                renderCpResults();
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                cpSelectedIdx = Math.max(0, cpFiltered.length - 1);
+                renderCpResults();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                runSelected();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                // Autocomplete the input with the top match's label
+                if (cpFiltered[cpSelectedIdx]) {
+                    cpInput.value = cpFiltered[cpSelectedIdx].cmd.label;
+                    onInput();
+                }
+            }
+        });
+    }
+
+    // ---------- Open / Close ----------
+    function openCommandPalette(initialQuery) {
+        if (cpActive) return;
+        cpActive = true;
+
+        const pal = document.createElement('div');
+        pal.className = 'command-palette';
+        pal.id = 'commandPalette';
+        pal.innerHTML = [
+            '<div class="cp-content" role="dialog" aria-label="Command palette">',
+                '<div class="cp-input-wrap">',
+                    '<span class="cp-prompt" aria-hidden="true">›</span>',
+                    '<input type="text" id="cpInput" placeholder="Type a command or search…" autocomplete="off" spellcheck="false" />',
+                    '<span class="cp-kbd-hint"><kbd>Esc</kbd></span>',
+                '</div>',
+                '<div class="cp-body">',
+                    '<div class="cp-results" id="cpResults"></div>',
+                    '<div class="cp-preview" id="cpPreview"></div>',
+                '</div>',
+                '<div class="cp-footer">',
+                    '<span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>',
+                    '<span><kbd>↵</kbd> run</span>',
+                    '<span><kbd>Tab</kbd> autocomplete</span>',
+                    '<span class="cp-footer-spacer"></span>',
+                    '<span id="cpCounter"></span>',
+                '</div>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(pal);
+
+        cpInput     = document.getElementById('cpInput');
+        cpResultsEl = document.getElementById('cpResults');
+        cpPreviewEl = document.getElementById('cpPreview');
+
+        cpInput.addEventListener('input', onInput);
+        pal.addEventListener('click', function (e) { if (e.target === pal) closeCommandPalette(); });
+
+        // Pre-fill query if provided
+        if (initialQuery) cpInput.value = initialQuery;
+
+        onInput();
+        requestAnimationFrame(function () { cpInput.focus(); });
+    }
+
+    function closeCommandPalette() {
+        if (!cpActive) return;
+        cpActive = false;
+        const pal = document.getElementById('commandPalette');
+        if (pal) pal.remove();
+        cpInput = cpResultsEl = cpPreviewEl = null;
+    }
+
+    // ---------- Input → filter ----------
+    function onInput() {
+        const raw = cpInput.value.trim();
+        const query = raw.replace(/^[>#@]\s*/, '').trim();
+
+        // Prefixes:
+        //   "> " → only actions (do + make)
+        //   "@ " → only go-to
+        //   "# " → only tools
+        let allowedGroups = null;
+        if (raw.startsWith('>')) allowedGroups = ['do', 'make'];
+        else if (raw.startsWith('@')) allowedGroups = ['go'];
+        else if (raw.startsWith('#')) allowedGroups = ['tool', 'theme'];
+
+        const recent = loadRecent();
+
+        const pool = CP_COMMANDS.filter(function (c) {
+            return !allowedGroups || allowedGroups.includes(c.group);
+        });
+
+        // Score each command
+        const scored = pool.map(function (cmd) {
+            const haystack = [cmd.label, cmd.hint || '', (cmd.keywords || []).join(' ')].join(' ');
+            const m = fuzzyMatch(query, haystack);
+            let score = m.score;
+
+            // Recent boost (only when no query)
+            if (!query && recent.includes(cmd.id)) {
+                score += 500 - recent.indexOf(cmd.id) * 10;
+            }
+            // Slight boost to group order for stability
+            score += (GROUP_ORDER.length - GROUP_ORDER.indexOf(cmd.group)) * 0.5;
+
+            return { cmd: cmd, score: score, hits: m.hits };
+        }).filter(function (x) { return x.score >= 0; });
+
+        scored.sort(function (a, b) { return b.score - a.score; });
+
+        // Build final list, injecting a "recent" duplicate group ONLY at the top when empty query
+        cpFiltered = [];
+        if (!query) {
+            // Show recent items first (up to 4)
+            recent.slice(0, 4).forEach(function (id) {
+                const found = scored.find(function (x) { return x.cmd.id === id; });
+                if (found) {
+                    cpFiltered.push({ cmd: found.cmd, score: found.score, hits: [], group: 'recent' });
+                }
+            });
+            // Then everything else
+            scored.forEach(function (x) {
+                if (!cpFiltered.some(function (y) { return y.cmd.id === x.cmd.id; })) {
+                    cpFiltered.push({ cmd: x.cmd, score: x.score, hits: x.hits, group: x.cmd.group });
+                }
+            });
+        } else {
+            cpFiltered = scored.map(function (x) {
+                return { cmd: x.cmd, score: x.score, hits: x.hits, group: x.cmd.group };
+            });
+        }
+
         cpSelectedIdx = 0;
         renderCpResults();
-    });
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'ArrowDown') { e.preventDefault(); cpSelectedIdx = Math.min(cpSelectedIdx + 1, cpFiltered.length - 1); renderCpResults(); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); cpSelectedIdx = Math.max(cpSelectedIdx - 1, 0); renderCpResults(); }
-        else if (e.key === 'Enter') { e.preventDefault(); if (cpFiltered[cpSelectedIdx]) { cpFiltered[cpSelectedIdx].action(); closeCommandPalette(); } }
-    });
-    pal.addEventListener('click', function(e) { if (e.target === pal) closeCommandPalette(); });
-}
-
-function renderCpResults() {
-    var results = document.getElementById('cpResults');
-    if (!results) return;
-    if (cpFiltered.length === 0) {
-        results.innerHTML = '<div class="cp-item" style="color:#64748b;">No commands found</div>';
-        return;
     }
-    results.innerHTML = cpFiltered.map(function(c, i) {
-        return '<div class="cp-item' + (i === cpSelectedIdx ? ' active' : '') + '" data-idx="' + i + '">' + c.label + '</div>';
-    }).join('');
-    results.querySelectorAll('.cp-item').forEach(function(el) {
-        el.addEventListener('click', function() {
-            var idx = parseInt(this.dataset.idx);
-            if (cpFiltered[idx]) { cpFiltered[idx].action(); closeCommandPalette(); }
-        });
-        el.addEventListener('mouseenter', function() {
-            cpSelectedIdx = parseInt(this.dataset.idx);
-            renderCpResults();
-        });
-    });
-}
 
-function closeCommandPalette() {
-    if (!cpActive) return;
-    cpActive = false;
-    var pal = document.getElementById('commandPalette');
-    if (pal) pal.remove();
-}
+    // ---------- Selection ----------
+    function moveSelection(delta) {
+        if (!cpFiltered.length) return;
+        cpSelectedIdx = (cpSelectedIdx + delta + cpFiltered.length) % cpFiltered.length;
+        renderCpResults();
+        // Scroll selected into view
+        const sel = cpResultsEl && cpResultsEl.querySelector('.cp-item.selected');
+        if (sel && sel.scrollIntoView) {
+            sel.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function runSelected() {
+        const item = cpFiltered[cpSelectedIdx];
+        if (!item) return;
+        runCommand(item.cmd);
+    }
+
+    function runCommand(cmd) {
+        pushRecent(cmd.id);
+        closeCommandPalette();
+        // Run async so closing animation doesn't block
+        setTimeout(function () {
+            try { cmd.action(); } catch (e) { console.error('[cmd]', cmd.id, e); }
+        }, 30);
+    }
+
+    // ---------- Render ----------
+    function renderCpResults() {
+        if (!cpResultsEl) return;
+
+        // Counter
+        const counter = document.getElementById('cpCounter');
+        if (counter) counter.textContent = cpFiltered.length + ' result' + (cpFiltered.length === 1 ? '' : 's');
+
+        if (!cpFiltered.length) {
+            cpResultsEl.innerHTML =
+                '<div class="cp-empty">' +
+                    '<div class="cp-empty-icon">🔍</div>' +
+                    '<div class="cp-empty-title">No commands match</div>' +
+                    '<div class="cp-empty-hint">Try a different word, or press <kbd>Esc</kbd> to close.</div>' +
+                '</div>';
+            if (cpPreviewEl) cpPreviewEl.innerHTML = '';
+            return;
+        }
+
+        // Group contiguous runs by `item.group`, keeping insertion order
+        const groups = [];
+        let current = null;
+        cpFiltered.forEach(function (item, idx) {
+            if (!current || current.key !== item.group) {
+                current = { key: item.group, items: [] };
+                groups.push(current);
+            }
+            current.items.push({ item: item, idx: idx });
+        });
+
+        const html = groups.map(function (g) {
+            const meta = GROUP_META[g.key] || { label: g.key, icon: '•' };
+            const rows = g.items.map(function (entry) {
+                const i = entry.idx;
+                const item = entry.item;
+                const selected = i === cpSelectedIdx;
+                const labelHtml = highlightLabel(item.cmd.label, item.hits);
+                return [
+                    '<div class="cp-item', selected ? ' selected' : '', '"',
+                        ' data-idx="', i, '"',
+                        ' role="option"',
+                        ' aria-selected="', selected ? 'true' : 'false', '">',
+                        '<span class="cp-icon" aria-hidden="true">', item.cmd.icon || '•', '</span>',
+                        '<span class="cp-label">', labelHtml, '</span>',
+                        '<span class="cp-hint">', item.cmd.hint || '', '</span>',
+                        '<span class="cp-enter" aria-hidden="true">↵</span>',
+                    '</div>'
+                ].join('');
+            }).join('');
+            return [
+                '<div class="cp-group">',
+                    '<div class="cp-group-title">',
+                        '<span class="cp-group-icon">', meta.icon, '</span>',
+                        '<span>', meta.label, '</span>',
+                    '</div>',
+                    rows,
+                '</div>'
+            ].join('');
+        }).join('');
+
+        cpResultsEl.innerHTML = html;
+
+        // Wire clicks
+        cpResultsEl.querySelectorAll('.cp-item').forEach(function (el) {
+            el.addEventListener('mousemove', function () {
+                const idx = parseInt(el.dataset.idx, 10);
+                if (idx !== cpSelectedIdx) {
+                    cpSelectedIdx = idx;
+                    renderCpResults();
+                }
+            });
+            el.addEventListener('click', function () {
+                const idx = parseInt(el.dataset.idx, 10);
+                cpSelectedIdx = idx;
+                runSelected();
+            });
+        });
+
+        renderPreview();
+    }
+
+    function highlightLabel(label, hits) {
+        if (!hits || !hits.length) return escapeHtml(label);
+        // hits are indices in the *combined haystack*, not just label.
+        // We only care about hits that land inside the label.
+        const set = new Set(hits);
+        let out = '';
+        for (let i = 0; i < label.length; i++) {
+            const ch = label[i];
+            out += set.has(i) ? '<mark>' + escapeHtml(ch) + '</mark>' : escapeHtml(ch);
+        }
+        return out;
+    }
+
+    function renderPreview() {
+        if (!cpPreviewEl) return;
+        const item = cpFiltered[cpSelectedIdx];
+        if (!item) { cpPreviewEl.innerHTML = ''; return; }
+
+        const c = item.cmd;
+        const meta = GROUP_META[c.group] || { label: c.group, icon: '•' };
+        cpPreviewEl.innerHTML = [
+            '<div class="cp-preview-icon">', c.icon || '•', '</div>',
+            '<div class="cp-preview-body">',
+                '<div class="cp-preview-label">', escapeHtml(c.label), '</div>',
+                c.hint ? '<div class="cp-preview-hint">' + escapeHtml(c.hint) + '</div>' : '',
+                '<div class="cp-preview-group">',
+                    '<span class="cp-preview-group-icon">', meta.icon, '</span>',
+                    '<span>', meta.label, '</span>',
+                '</div>',
+                '<div class="cp-preview-id">#', escapeHtml(c.id), '</div>',
+            '</div>'
+        ].join('');
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (ch) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+        });
+    }
+
+    // ---------- Expose ----------
+    window.initCommandPalette = initCommandPalette;
+    window.openCommandPalette = openCommandPalette;
+    window.closeCommandPalette = closeCommandPalette;
+})();
 
 // ================================================================
 // BREAK REMINDER — every 50 minutes, repeats forever
