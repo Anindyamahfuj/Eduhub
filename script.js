@@ -5913,24 +5913,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var autoFcBtn = document.getElementById('autoGenFlashcardsBtn');
     if (autoFcBtn) autoFcBtn.addEventListener('click', autoGenerateFlashcards);
 
-    // Override note & notice delete to use trash (soft delete)
-    setTimeout(function() {
-        if (typeof setupNotes === 'function') {
-            // Re-run setupNotes with trash integration by hooking the delete button after render
-            var noteList = document.getElementById('noteList');
-            if (noteList) {
-                new MutationObserver(function() {
-                    noteList.querySelectorAll('.delete-item-btn').forEach(function(btn) {
-                        if (btn.dataset.trashHooked) return;
-                        btn.dataset.trashHooked = '1';
-                        var originalOnClick = btn.onclick;
-                        // We'll just intercept the confirm and use trash. The original listener already attached.
-                        // Simpler: leave as is (permanent delete). Trash primarily covers files.
-                    });
-                }).observe(noteList, { childList: true, subtree: true });
-            }
-        }
-    }, 300);
+ 
 
     updateTrashCount();
 });
