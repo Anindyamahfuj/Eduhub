@@ -7847,12 +7847,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ---------- Fetch one feed through proxies ----------
-    function fetchOneFeed(feed, proxyIdx) {
+       function fetchOneFeed(feed, proxyIdx) {
         if (proxyIdx >= PROXIES.length) return Promise.reject(new Error('all proxies failed'));
         var proxy = PROXIES[proxyIdx];
-        var fullUrl = proxy + encodeURIComponent(feed.url);
+
+        // Some proxies take the URL raw, others need ?url= encoded
+        var fullUrl;
+        if (proxy === 'https://r.jina.ai/' || proxy === 'https://thingproxy.freeboard.io/fetch/') {
+            fullUrl = proxy + feed.url;
+        } else {
+            fullUrl = proxy + encodeURIComponent(feed.url);
+        }
+
         var controller = new AbortController();
-        var timeout = setTimeout(function () { controller.abort(); }, 8000);
+        var timeout = setTimeout(function () { controller.abort(); }, 10000);   // 10s
 
         return fetch(fullUrl, { mode: 'cors', signal: controller.signal })
             .then(function (r) {
@@ -7861,6 +7869,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return r.text();
             })
             .then(function (txt) {
+                // r.jina.ai wraps content in markdown — check for RSS markers anyway
                 if (!txt || (txt.indexOf('<rss') === -1 && txt.indexOf('<item') === -1 && txt.indexOf('<feed') === -1)) {
                     throw new Error('not RSS');
                 }
