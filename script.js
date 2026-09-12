@@ -7250,25 +7250,23 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function () { modal.remove(); }, 220);
             paintBlocker();
         }
-        modal.querySelector('.bs-close').addEventListener('click', close);
-        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-
-               modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
-            // Locked categories can't be changed, even if a script tries
-            if (LOCKED_CATS[cb.dataset.cat]) {
-                cb.checked = true;
-                cb.disabled = true;
-                cb.addEventListener('click', function (e) { e.preventDefault(); });
-                return;
-            }
+                modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 const dd = readD();
                 if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false, news: false };
                 dd.blockerCategories[cb.dataset.cat] = cb.checked;
                 writeD(dd);
+
+                // Tell the news ticker to hide/show itself in real time
+                if (cb.dataset.cat === 'news') {
+                    try {
+                        window.dispatchEvent(new CustomEvent('studyHubBlockerChanged', {
+                            detail: { cat: 'news', on: cb.checked }
+                        }));
+                    } catch (e) {}
+                }
             });
         });
-
         const addInp = modal.querySelector('#bsAddInput');
         function addCustom() {
             const raw = modal.querySelector('#bsAddInput').value.trim().toLowerCase();
