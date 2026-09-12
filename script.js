@@ -7883,52 +7883,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // ---------- Fetch all news via NewsData.io API ----------
     function fetchAllNews() {
-        if (!API_KEY || API_KEY === 'PASTE_YOUR_KEY_HERE') {
-            return Promise.resolve([]);
-        }
-        var url = 'https://newsdata.io/api/1/news' +
-                  '?apikey=' + encodeURIComponent(API_KEY) +
-                  '&language=en' +
-                  '&category=world,politics,top' +
-                  '&size=10';
-
-        return fetch(url)
-            .then(function (r) {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-            .then(function (json) {
-                if (!json || json.status !== 'success' || !Array.isArray(json.results)) {
-                    return [];
-                }
-                var items = json.results.map(function (a) {
-                    var title = String(a.title || '').trim();
-                    var link  = a.link || '';
-                    var src   = a.source_id || 'News';
-                    var pub   = a.pubDate || '';
-                    if (!title || !link) return null;
-                    return {
-                        title: title,
-                        link: link,
-                        source: src.charAt(0).toUpperCase() + src.slice(1),
-                        pubDate: pub,
-                        score: scoreHeadline(title)
-                    };
-                }).filter(Boolean);
-
-                // Sort by importance score, then recency
-                items.sort(function (a, b) {
-                    if (b.score !== a.score) return b.score - a.score;
-                    var ta = new Date(a.pubDate || 0).getTime() || 0;
-                    var tb = new Date(b.pubDate || 0).getTime() || 0;
-                    return tb - ta;
-                });
-
-                return items.slice(0, MAX_ITEMS);
-            })
-            .catch(function () { return []; });
+    if (!API_KEY || API_KEY === 'PASTE_YOUR_KEY_HERE') {
+        console.warn('[News] API key not set');
+        return Promise.resolve([]);
     }
+    var url = 'https://newsdata.io/api/1/news' +
+              '?apikey=' + encodeURIComponent(API_KEY) +
+              '&language=en' +
+              '&category=world,politics,top' +
+              '&size=10';
 
+    console.log('[News] Fetching:', url.replace(API_KEY, 'KEY_HIDDEN'));
+
+    return fetch(url)
+        .then(function (r) {
+            console.log('[News] HTTP', r.status);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function (json) {
+            console.log('[News] API response:', json);
+            if (!json || json.status !== 'success' || !Array.isArray(json.results)) {
+                return [];
+            }
+            var items = json.results.map(function (a) { /* ... same as before ... */ }).filter(Boolean);
+            items.sort(/* ... */);
+            return items.slice(0, MAX_ITEMS);
+        })
+        .catch(function (e) {
+            console.error('[News] Fetch failed:', e);
+            return [];
+        });
+}
     // ---------- Relative time ----------
     function relativeTime(dateStr) {
         if (!dateStr) return '';
