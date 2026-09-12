@@ -257,67 +257,59 @@ h1, h2, h3 {
     box-shadow: 0 0 22px rgba(94, 234, 212, 0.18);
 }
 
-/* ---------- Clock row ---------- */
-.clock-section {
+/* ---------- Clock container ---------- */
+.clock-wrap {
     display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 0.9rem 1.1rem;
-    background: var(--surface);
-    border-radius: 22px;
-    padding: 0.95rem 1.15rem;
-    margin-bottom: 1.35rem;
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
 }
-.clock-toggle {
-    background: rgba(94, 234, 212, 0.1);
-    border: 1px solid rgba(94, 234, 212, 0.4);
-    color: var(--accent);
-    padding: 0.38rem 1rem;
-    border-radius: 999px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.78rem;
-    font-family: inherit;
-    transition: all 0.25s;
+
+/* ---------- Hide both by default ---------- */
+#digitalClock,
+#analogClock {
+    display: none !important;
+    align-items: center;
+    justify-content: center;
 }
-.clock-toggle:hover {
-    background: rgba(94, 234, 212, 0.2);
-    box-shadow: 0 0 24px rgba(94, 234, 212, 0.18);
-}
-.clock-container { display: flex; align-items: center; gap: 1rem; }
-.digital-clock {
-    font-size: 2.15rem;
-    font-weight: 700;
-    font-family: var(--mono);
-    letter-spacing: 0.12em;
-    color: var(--accent);
-    text-shadow: 0 0 28px rgba(94, 234, 212, 0.35);
-    display: none;
+
+/* ---------- Digital view ---------- */
+#digitalClock.active {
+    display: flex !important;
     font-variant-numeric: tabular-nums;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--accent, #5eead4);
+    text-shadow: 0 0 12px rgba(94, 234, 212, 0.5);
 }
-.digital-clock.active { display: block; }
-.analog-clock { display: none; }
-.analog-clock.active { display: block; }
-.analog-clock canvas {
+
+/* ---------- Analog view ---------- */
+#analogClock.active {
+    display: flex !important;
+}
+
+#analogClock {
+    /* Guarantee a perfect square container */
+    aspect-ratio: 1 / 1;
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+}
+
+#analogCanvas {
+    /* Perfectly circular canvas — no squashing */
+    aspect-ratio: 1 / 1;
+    width: 140px !important;
+    height: 140px !important;
+    max-width: 140px !important;
+    max-height: 140px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: block;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.28);
-    box-shadow: 0 0 32px rgba(94, 234, 212, 0.16);
-    max-width: 120px;
-    height: auto;
+    flex: none;
 }
-.clock-date {
-    display: none;      /* hidden — the calendar pill already shows the date */
-}
-
-/* Push the calendar widget to the far right now that the date text is gone */
-.calendar-widget {
-    margin-left: auto;
-}
-.mini-clock .digital-clock { font-size: 1.55rem; }
-.mini-clock canvas { max-width: 100px; }
-
 /* ---------- Headers ---------- */
 .dash-header {
     display: flex;
@@ -3116,28 +3108,4 @@ body.focus-mode .focus-indicator-bar { display: flex; }
 .fbt-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .fbt-toast.ok { border-color: var(--ok); }
 
-#analogCanvas {
-    aspect-ratio: 1 / 1;
-    width: 120px !important;
-    height: 120px !important;
-    max-width: 120px !important;
-    max-height: 120px !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    display: block;
-    border-radius: 50%;   /* keeps the frame circular even if something stretches it */
-}
 
-#analogClock {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    aspect-ratio: 1 / 1;
-    width: auto;
-    height: auto;
-}
-
-#analogClock.active {
-    /* If you have a scale/transform here, keep it but don't stretch */
-    transform: none;
-}
