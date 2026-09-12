@@ -3116,3 +3116,28 @@ body.focus-mode .focus-indicator-bar { display: flex; }
 .fbt-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .fbt-toast.ok { border-color: var(--ok); }
 
+#analogCanvas {
+    aspect-ratio: 1 / 1;
+    width: 120px !important;
+    height: 120px !important;
+    max-width: 120px !important;
+    max-height: 120px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: block;
+    border-radius: 50%;   /* keeps the frame circular even if something stretches it */
+}
+
+#analogClock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1 / 1;
+    width: auto;
+    height: auto;
+}
+
+#analogClock.active {
+    /* If you have a scale/transform here, keep it but don't stretch */
+    transform: none;
+}
