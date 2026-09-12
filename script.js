@@ -4406,6 +4406,11 @@ function updateNavDate() {
 }
 
 function updateScrollGradient() {
+    // If the user has chosen a background via the picker, don't override it.
+    var savedBg = null;
+    try { savedBg = localStorage.getItem('studyHubBackground'); } catch (e) {}
+    if (savedBg) return;
+
     document.body.style.background =
         'radial-gradient(ellipse at top left, #0a1a3a, #050a18)';
 }
@@ -6117,67 +6122,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 })();
 
-// ================================================================
-// THEME TOGGLE — Dark / Light mode (self-contained, every page)
-// Styles live in style.css. This block only wires behaviour.
-// ================================================================
-(function () {
-    'use strict';
 
-    const THEME_KEY = 'studyHubTheme';
-
-    function getSaved() {
-        try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
-    }
-    function saveTheme(theme) {
-        try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
-    }
-
-    function applyTheme(theme) {
-        if (theme === 'light') document.body.classList.add('theme-light');
-        else document.body.classList.remove('theme-light');
-        const btn = document.getElementById('themeToggleBtn');
-        if (btn) {
-            btn.textContent = theme === 'light' ? '☀️ Light' : '🌙 Dark';
-            btn.title = theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
-        }
-    }
-
-    function wireButton() {
-        const btn = document.getElementById('themeToggleBtn');
-        if (!btn) return;
-        // Prevent double-binding if the script runs more than once
-        if (btn.dataset.themeBound === '1') return;
-        btn.dataset.themeBound = '1';
-
-        btn.addEventListener('click', function () {
-            const isLight = document.body.classList.contains('theme-light');
-            const next = isLight ? 'dark' : 'light';
-            saveTheme(next);
-            applyTheme(next);
-        });
-    }
-
-    function boot() {
-        const saved = getSaved() || 'dark';
-        applyTheme(saved);
-        wireButton();
-    }
-
-    // script.js is loaded at the end of <body>, so body already exists.
-    // Fallback to DOMContentLoaded only if it doesn't for some reason.
-    if (document.body) {
-        boot();
-    } else {
-        document.addEventListener('DOMContentLoaded', boot);
-    }
-
-    // Public API for other scripts
-    window.setStudyHubTheme = function (theme) {
-        saveTheme(theme);
-        applyTheme(theme);
-    };
-})();
 // ================================================================
 // THEME & WALLPAPER PICKER
 //  • Button + modal only appear on index.html (dashboard)
