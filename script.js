@@ -7253,7 +7253,14 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.querySelector('.bs-close').addEventListener('click', close);
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
 
-        modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
+               modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
+            // Locked categories can't be changed, even if a script tries
+            if (LOCKED_CATS[cb.dataset.cat]) {
+                cb.checked = true;
+                cb.disabled = true;
+                cb.addEventListener('click', function (e) { e.preventDefault(); });
+                return;
+            }
             cb.addEventListener('change', function () {
                 const dd = readD();
                 if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false, news: false };
