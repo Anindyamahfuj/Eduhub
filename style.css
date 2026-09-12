@@ -298,14 +298,7 @@ h1, h2, h3 {
     font-variant-numeric: tabular-nums;
 }
 .digital-clock.active { display: block; }
-.analog-clock { display: none; }
-.analog-clock.active { display: block; }
-.analog-clock canvas {
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.28);
-    box-shadow: 0 0 32px rgba(94, 234, 212, 0.16);
-    max-width: 120px;
-    height: auto;
+
 }
 .clock-date {
     display: none;      /* hidden — the calendar pill already shows the date */
