@@ -7347,3 +7347,4 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof showToast === 'function') showToast('Blocker disabled for this session.', 'ok');
         }
     };
+})();
