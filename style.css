@@ -2521,3 +2521,26 @@ body.theme-light .theme-swatch .swatch-name { color: #0f172a; }
     .search-section .search-box { flex-direction: column; }
     .search-section .search-box button { width: 100%; }
 }
+/* Edit button on shortcut tiles (top-left, next to delete on hover) */
+.shortcut-tile .sc-edit {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(94,234,212,0.2);
+    border: 1px solid rgba(94,234,212,0.45);
+    color: #5eead4;
+    font-size: 0.62rem;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    font-family: inherit;
+    z-index: 2;
+}
+.shortcut-tile:hover .sc-edit { display: flex; }
+.shortcut-tile .sc-edit:hover { background: rgba(94,234,212,0.4); }
