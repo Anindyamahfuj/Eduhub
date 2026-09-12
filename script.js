@@ -7330,13 +7330,34 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '</div>';
         }
         html += '</div>';
-        modal.innerHTML = html;
+             modal.innerHTML = html;
         document.body.appendChild(modal);
         requestAnimationFrame(function () { modal.classList.add('open'); });
-        function close() { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 220); }
-        modal.querySelector('.bs-close').addEventListener('click', close);
+
+        function close() {
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+        }
+
+        // ✅ Attach close handlers AFTER the modal is in the DOM
+        var logCloseBtn = modal.querySelector('.bs-close');
+        if (logCloseBtn) {
+            logCloseBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+            });
+        }
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-    }
+
+        // Also allow ESC to close
+        var logEscHandler = function (e) {
+            if (e.key === 'Escape') {
+                close();
+                document.removeEventListener('keydown', logEscHandler);
+            }
+        };
+        document.addEventListener('keydown', logEscHandler);
 
     // ---------- FOCUS MODE ----------
     let focusTick = null;
