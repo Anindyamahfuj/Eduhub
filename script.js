@@ -7881,43 +7881,52 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // ---------- Fetch all feeds in parallel ----------
+      // ---------- Fetch all news via NewsData.io API ----------
     function fetchAllNews() {
-        return Promise.allSettled(FEEDS.map(function (f) { return fetchOneFeed(f, 0); }))
-            .then(function (results) {
-                var all = [];
-                results.forEach(function (r) {
-                    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-                        all = all.concat(r.value);
-                    }
-                });
+        if (!API_KEY || API_KEY === 'PASTE_YOUR_KEY_HERE') {
+            return Promise.resolve([]);
+        }
+        var url = 'https://newsdata.io/api/1/news' +
+                  '?apikey=' + encodeURIComponent(API_KEY) +
+                  '&language=en' +
+                  '&category=world,politics,top' +
+                  '&size=10';
 
-                // Filter stale (>3 days old)
-                var cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
-                all = all.filter(function (n) {
-                    if (!n.pubDate) return true;
-                    var t = new Date(n.pubDate).getTime();
-                    return isNaN(t) || t > cutoff;
-                });
+        return fetch(url)
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (json) {
+                if (!json || json.status !== 'success' || !Array.isArray(json.results)) {
+                    return [];
+                }
+                var items = json.results.map(function (a) {
+                    var title = String(a.title || '').trim();
+                    var link  = a.link || '';
+                    var src   = a.source_id || 'News';
+                    var pub   = a.pubDate || '';
+                    if (!title || !link) return null;
+                    return {
+                        title: title,
+                        link: link,
+                        source: src.charAt(0).toUpperCase() + src.slice(1),
+                        pubDate: pub,
+                        score: scoreHeadline(title)
+                    };
+                }).filter(Boolean);
 
-                // Dedupe by shared word overlap in titles
-                var seen = [];
-                var unique = [];
-                all.forEach(function (n) {
-                    var key = n.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).slice(0, 6).join(' ');
-                    if (!seen[key]) { seen[key] = true; unique.push(n); }
-                });
-
-                // Sort by importance score, then newest
-                unique.sort(function (a, b) {
+                // Sort by importance score, then recency
+                items.sort(function (a, b) {
                     if (b.score !== a.score) return b.score - a.score;
                     var ta = new Date(a.pubDate || 0).getTime() || 0;
                     var tb = new Date(b.pubDate || 0).getTime() || 0;
                     return tb - ta;
                 });
 
-                return unique.slice(0, MAX_ITEMS);
-            });
+                return items.slice(0, MAX_ITEMS);
+            })
+            .catch(function () { return []; });
     }
 
     // ---------- Relative time ----------
