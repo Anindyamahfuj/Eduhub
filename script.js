@@ -8076,3 +8076,4 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         getItems: function () { return items; }
     };
+});
