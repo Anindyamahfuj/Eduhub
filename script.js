@@ -8050,6 +8050,19 @@ document.addEventListener('DOMContentLoaded', function() {
         boot();
     }
 
+    // Listen for blocker changes — hide/show the bar live
+    window.addEventListener('studyHubBlockerChanged', function (e) {
+        if (e && e.detail && e.detail.cat === 'news') {
+            showBarIfAllowed();
+        }
+    });
+
+    // Also re-check whenever the tab regains focus
+    // (in case the user changed the setting in another tab)
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) showBarIfAllowed();
+    });
+
     // Public API
     window.studyHubNews = {
         refresh: function () {
@@ -8063,4 +8076,3 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         getItems: function () { return items; }
     };
-})();
