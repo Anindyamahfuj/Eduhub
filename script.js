@@ -7389,7 +7389,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
         document.addEventListener('keydown', logEscHandler);
-
+      }
     // ---------- FOCUS MODE ----------
     let focusTick = null;
 
