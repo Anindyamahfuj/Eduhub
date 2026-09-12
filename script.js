@@ -3775,75 +3775,213 @@ function setupHabits() {
 // ================================================================
 // NOTICE
 // ================================================================
-function setupNotice() {
-    var input = document.getElementById('noticeInput');
-    var addBtn = document.getElementById('addNoticeBtn');
-    var list = document.getElementById('noticeList');
-    var delBtn = document.getElementById('deleteAllNoticesBtn');
-    var countEl = document.getElementById('noticeCount');
+// ================================================================
+// HABITS  (event-delegation — delete + complete work on every render)
+// ================================================================
+function setupHabits() {
+    var input          = document.getElementById('habitInput');
+    var addBtn         = document.getElementById('addHabitBtn');
+    var list           = document.getElementById('habitList');
+    var delBtn         = document.getElementById('deleteAllHabitsBtn');
+    var streakDisplay  = document.getElementById('streakDisplay');
 
-    function renderNotices() {
-        var data = loadData();
-        if (data.notices.length === 0) {
-            list.innerHTML = '<p class="empty-state">' + getTranslation('no_notices') + '</p>';
-        } else {
-            list.innerHTML = data.notices.map(function(n) {
-                return '<div class="notice-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
-            }).join('');
-        }
-        if (countEl) countEl.textContent = data.notices.length + ' ' + getTranslation('notices_count');
+    if (!list) return;
 
-        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.dataset.id;
-                if (confirm('Delete this notice? It will go to Trash for 24 hours.')) {
-                    var data = loadData();
-                    var item = data.notices.find(function(n) { return n.id === id; });
-                    if (item) pushToTrash(data, 'notice', item);
-                    data.notices = data.notices.filter(function(n) { return n.id !== id; });
-                    addActivity(data, 'delete', 'Moved notice to trash');
-                    saveData(data);
-                    renderNotices();
-                    updateTrashCount();
-                    if (document.getElementById('statTasks')) renderDashboard();
-                }
-            });
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
         });
     }
 
-    addBtn.addEventListener('click', function() {
-        var text = input.value.trim();
-        if (!text) return;
+    // ---------- RENDER ----------
+    function renderHabits() {
         var data = loadData();
-        data.notices.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            text: text,
-            date: new Date().toISOString()
-        });
-        addActivity(data, 'notice_add', 'Added notice: "' + text + '"');
-        saveData(data);
-        input.value = '';
-        renderNotices();
-        if (document.getElementById('statTasks')) renderDashboard();
-    });
 
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') addBtn.click();
-    });
-
-    delBtn.addEventListener('click', function() {
-        if (confirm('Move all notices to Trash? They will be recoverable for 24 hours.')) {
-            var data = loadData();
-            data.notices.forEach(function(n) { pushToTrash(data, 'notice', n); });
-            data.notices = [];
-            addActivity(data, 'delete', 'Moved all notices to trash');
-            saveData(data);
-            renderNotices();
-            updateTrashCount();
-            if (document.getElementById('statTasks')) renderDashboard();
+        if (data.habits.length === 0) {
+            list.innerHTML = '<p class="empty-state">' + getTranslation('no_habits') + '</p>';
+            updateStreak();
+            return;
         }
-    });
-    renderNotices();
+
+        var today = new Date().toISOString().slice(0, 10);
+
+        list.innerHTML = data.habits.map(function(h) {
+            var done = h.completedDates && h.completedDates.includes(today);
+            return '<div class="habit-item">' +
+                       '<span class="habit-text">' + escapeHtml(h.text) + (done ? ' ✅' : '') + '</span>' +
+                       '<div class="habit-actions">' +
+                           '<button class="complete-btn ' + (done ? 'done' : '') + '" ' +
+                                   'data-id="' + h.id + '" ' +
+                                   'data-action="complete-habit" ' +
+                                   'type="button">' +
+                               (done ? getTranslation('done') : getTranslation('complete')) +
+                           '</button>' +
+                           '<button class="delete-item-btn" ' +
+                                   'data-id="' + h.id + '" ' +
+                                   'data-action="delete-habit" ' +
+                                   'type="button" ' +
+                                   'title="Delete habit">✕</button>' +
+                       '</div>' +
+                   '</div>';
+        }).join('');
+
+        updateStreak();
+    }
+
+    // ---------- STREAK ----------
+    function updateStreak() {
+        var data = loadData();
+        var streak = 0;
+
+        if (data.habits.length > 0) {
+            var allDates = new Set();
+            data.habits.forEach(function(h) {
+                (h.completedDates || []).forEach(function(d) { allDates.add(d); });
+            });
+
+            var sorted = Array.from(allDates).sort();
+            if (sorted.length > 0) {
+                var current = 1;
+                var maxStreak = 1;
+                for (var i = 1; i < sorted.length; i++) {
+                    var prev = new Date(sorted[i - 1]);
+                    var curr = new Date(sorted[i]);
+                    var diff = (curr - prev) / (1000 * 60 * 60 * 24);
+                    if (diff === 1) {
+                        current++;
+                        maxStreak = Math.max(maxStreak, current);
+                    } else {
+                        current = 1;
+                    }
+                }
+                streak = maxStreak;
+            }
+        }
+
+        if (streakDisplay) streakDisplay.textContent = streak;
+    }
+
+    // ---------- ONE delegated listener on the container ----------
+    if (!list.dataset.habitsHooked) {
+        list.dataset.habitsHooked = '1';
+
+        list.addEventListener('click', function(e) {
+            var btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+
+            var action = btn.dataset.action;
+            var id     = btn.dataset.id;
+            if (!id) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // ---------- COMPLETE ----------
+            if (action === 'complete-habit') {
+                var data = loadData();
+                var habit = data.habits.find(function(h) { return h.id === id; });
+                if (!habit) return;
+
+                var today = new Date().toISOString().slice(0, 10);
+                if (!habit.completedDates) habit.completedDates = [];
+
+                if (!habit.completedDates.includes(today)) {
+                    habit.completedDates.push(today);
+                    if (typeof addActivity === 'function') {
+                        addActivity(data, 'habit_complete', 'Completed habit: "' + habit.text + '"');
+                    }
+                    saveData(data);
+                    renderHabits();
+                    if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                        renderDashboard();
+                    }
+                }
+                return;
+            }
+
+            // ---------- DELETE ----------
+            if (action === 'delete-habit') {
+                if (!confirm('Delete this habit? It will go to Trash for 24 hours.')) return;
+
+                var d2 = loadData();
+                var item = d2.habits.find(function(h) { return h.id === id; });
+                if (!item) return;
+
+                if (typeof pushToTrash === 'function') pushToTrash(d2, 'habit', item);
+                d2.habits = d2.habits.filter(function(h) { return h.id !== id; });
+
+                if (typeof addActivity === 'function') {
+                    addActivity(d2, 'delete', 'Moved habit to trash');
+                }
+                saveData(d2);
+
+                renderHabits();
+                if (typeof updateTrashCount === 'function') updateTrashCount();
+                if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                    renderDashboard();
+                }
+                return;
+            }
+        });
+    }
+
+    // ---------- ADD ----------
+    if (addBtn && !addBtn.dataset.habitsHooked) {
+        addBtn.dataset.habitsHooked = '1';
+        addBtn.addEventListener('click', function() {
+            var text = input.value.trim();
+            if (!text) return;
+            var data = loadData();
+            data.habits.push({
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                text: text,
+                completedDates: []
+            });
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'habit_add', 'Created habit: "' + text + '"');
+            }
+            saveData(data);
+            input.value = '';
+            renderHabits();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
+    if (input && !input.dataset.habitsHooked) {
+        input.dataset.habitsHooked = '1';
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addBtn.click();
+            }
+        });
+    }
+
+    // ---------- DELETE ALL ----------
+    if (delBtn && !delBtn.dataset.habitsHooked) {
+        delBtn.dataset.habitsHooked = '1';
+        delBtn.addEventListener('click', function() {
+            if (!confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) return;
+            var data = loadData();
+            data.habits.forEach(function(h) {
+                if (typeof pushToTrash === 'function') pushToTrash(data, 'habit', h);
+            });
+            data.habits = [];
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'delete', 'Moved all habits to trash');
+            }
+            saveData(data);
+            renderHabits();
+            if (typeof updateTrashCount === 'function') updateTrashCount();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
+    renderHabits();
 }
 
 // ================================================================
