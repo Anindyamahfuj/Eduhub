@@ -3122,7 +3122,7 @@ body.focus-mode .focus-indicator-bar { display: flex; }
 }
 
 #analogClock {
-    display: flex;
+    display: none;                    /* ← HIDDEN by default */
     align-items: center;
     justify-content: center;
     aspect-ratio: 1 / 1;
@@ -3131,6 +3131,6 @@ body.focus-mode .focus-indicator-bar { display: flex; }
 }
 
 #analogClock.active {
-    /* If you have a scale/transform here, keep it but don't stretch */
+    display: flex;                    /* ← only shown when .active */
     transform: none;
 }
