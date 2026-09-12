@@ -7689,16 +7689,16 @@ document.addEventListener('DOMContentLoaded', function() {
 //  • Focus: wars, politics, disasters, economy, major events
 //  • Cached for 24h → refetches once per day automatically
 //  • Falls back to "no news available" message — never placeholder content
-//  • Auto-advances every 7s, pauses on hover
+//  • Auto-advances every 7s, pauses on hover 
 // ================================================================
 (function () {
     'use strict';
 
-    var CACHE_KEY  = 'studyHubWorldNews_v1';
-    var HIDDEN_KEY = 'studyHubNewsHidden';
+       var CACHE_KEY  = 'studyHubWorldNews_v1';
     var CACHE_TTL  = 24 * 60 * 60 * 1000;   // 24h → refetch once per day
     var ROTATE_MS  = 7000;
     var MAX_ITEMS  = 10;
+    var API_KEY    = 'pub_1101b7e3433948c19d5dcdcc3cb37f8a';   // ← from newsdata.io
 
     // ---------- Sources (RSS 2.0 · World / International) ----------
     // Order matters — first successful fetch wins for a given story.
