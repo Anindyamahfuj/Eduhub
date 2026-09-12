@@ -6124,9 +6124,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 // ================================================================
-// THEME & WALLPAPER PICKER
-//  • Button + modal only appear on index.html (dashboard)
-//  • Chosen theme/background apply to EVERY page
+// THEME & WALLPAPER PICKER  (v2 — richer themes + 20 photos)
+//  • Button + modal only on index.html (dashboard)
+//  • Color theme tints the default body glow + accent colors
+//  • 30 backgrounds: 10 gradients + 20 photos
 //  • Choice persists in localStorage
 // ================================================================
 (function () {
@@ -6135,12 +6136,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const COLOR_KEY = 'studyHubColorTheme';
     const BG_KEY    = 'studyHubBackground';
 
-    // ---------- 10 COLOR THEMES ----------
+    // ---------- 10 COLOR THEMES (each also has a body-glow tint) ----------
     const COLOR_THEMES = {
         aurora:   { name: 'Aurora',   accent: '#5eead4', accent2: '#7dd3fc', brand: '#c4b5fd', brandHot: '#c084fc' },
-        sunset:   { name: 'Sunset',   accent: '#fdba74', accent2: '#fca5a5', brand: '#fb7185', brandHot: '#e11d48' },
-        ocean:    { name: 'Ocean',    accent: '#38bdf8', accent2: '#67e8f9', brand: '#818cf8', brandHot: '#6366f1' },
-        forest:   { name: 'Forest',   accent: '#6ee7b7', accent2: '#86efac', brand: '#34d399', brandHot: '#10b981' },
+        sunset:   { name: 'Sunset',   accent: '#fdba74', accent2: '#fb923c', brand: '#f472b6', brandHot: '#e11d48' },
+        ocean:    { name: 'Ocean',    accent: '#38bdf8', accent2: '#22d3ee', brand: '#818cf8', brandHot: '#6366f1' },
+        forest:   { name: 'Forest',   accent: '#6ee7b7', accent2: '#34d399', brand: '#10b981', brandHot: '#059669' },
         rose:     { name: 'Rose',     accent: '#f9a8d4', accent2: '#fda4af', brand: '#fb7185', brandHot: '#e11d48' },
         mono:     { name: 'Mono',     accent: '#cbd5e1', accent2: '#94a3b8', brand: '#e2e8f0', brandHot: '#f1f5f9' },
         midnight: { name: 'Midnight', accent: '#a78bfa', accent2: '#8b5cf6', brand: '#c4b5fd', brandHot: '#7c3aed' },
@@ -6149,31 +6150,50 @@ document.addEventListener('DOMContentLoaded', function() {
         lavender: { name: 'Lavender', accent: '#c4b5fd', accent2: '#ddd6fe', brand: '#a78bfa', brandHot: '#8b5cf6' }
     };
 
-    // ---------- 20 BACKGROUNDS (10 gradients + 10 photos) ----------
+    // ---------- 30 BACKGROUNDS (10 gradients + 20 photos) ----------
     const BACKGROUNDS = [
-        // Gradients (darkened so UI text stays readable)
-        { id: 'bg-default',  name: 'Default',    css: '' },
-        { id: 'bg-deepsea',  name: 'Deep Sea',   css: 'linear-gradient(135deg, #041418 0%, #0f766e 50%, #041418 100%)' },
-        { id: 'bg-twilight', name: 'Twilight',   css: 'linear-gradient(135deg, #0f0a1e 0%, #4c1d95 50%, #0f0a1e 100%)' },
-        { id: 'bg-ember',    name: 'Ember',      css: 'linear-gradient(135deg, #1a0707 0%, #b91c1c 50%, #1a0707 100%)' },
-        { id: 'bg-forest',   name: 'Forest',     css: 'linear-gradient(135deg, #051410 0%, #065f46 50%, #051410 100%)' },
-        { id: 'bg-sunset',   name: 'Sunset',     css: 'linear-gradient(135deg, #1a0a1a 0%, #9a3412 50%, #1a0a1a 100%)' },
-        { id: 'bg-cyber',    name: 'Cyber',      css: 'linear-gradient(135deg, #0a0014 0%, #7c3aed 40%, #06b6d4 100%)' },
-        { id: 'bg-arctic',   name: 'Arctic',     css: 'linear-gradient(135deg, #071825 0%, #0284c7 50%, #071825 100%)' },
-        { id: 'bg-gold',     name: 'Gold',       css: 'linear-gradient(135deg, #1a1000 0%, #b45309 50%, #1a1000 100%)' },
-        { id: 'bg-plum',     name: 'Plum',       css: 'linear-gradient(135deg, #130513 0%, #86198f 50%, #130513 100%)' },
+        // --- Default ---
+        { id: 'bg-default',  name: 'Default',     type: 'default',  css: '' },
 
-        // Photos (fixed picsum seeds — always return same image)
-        { id: 'bg-mountain', name: 'Mountain',   css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/mountain/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-ocean',    name: 'Ocean',      css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/ocean12/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-forest2',  name: 'Forest',     css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/forest7/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-city',     name: 'City',       css: 'linear-gradient(rgba(3,10,20,0.75), rgba(3,10,20,0.88)), url("https://picsum.photos/seed/city42/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-desert',   name: 'Desert',     css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/desert3/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-night',    name: 'Night Sky',  css: 'linear-gradient(rgba(3,10,20,0.75), rgba(3,10,20,0.88)), url("https://picsum.photos/seed/nightsky/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-aurora',   name: 'Aurora',     css: 'linear-gradient(rgba(3,10,20,0.70), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/aurora9/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-snow',     name: 'Snow',       css: 'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/snow5/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-sunset2',  name: 'Sunset Sky', css: 'linear-gradient(rgba(3,10,20,0.70), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/sunset8/1920/1080") center/cover no-repeat fixed' },
-        { id: 'bg-clouds',   name: 'Clouds',     css: 'linear-gradient(rgba(3,10,20,0.70), rgba(3,10,20,0.85)), url("https://picsum.photos/seed/clouds2/1920/1080") center/cover no-repeat fixed' }
+        // --- 10 GRADIENTS (darkened so UI stays readable) ---
+        { id: 'bg-deepsea',  name: 'Deep Sea',    type: 'gradient', css: 'linear-gradient(135deg, #041418 0%, #0f766e 50%, #041418 100%)' },
+        { id: 'bg-twilight', name: 'Twilight',    type: 'gradient', css: 'linear-gradient(135deg, #0f0a1e 0%, #4c1d95 50%, #0f0a1e 100%)' },
+        { id: 'bg-ember',    name: 'Ember',       type: 'gradient', css: 'linear-gradient(135deg, #1a0707 0%, #b91c1c 50%, #1a0707 100%)' },
+        { id: 'bg-forest-g', name: 'Forest',      type: 'gradient', css: 'linear-gradient(135deg, #051410 0%, #065f46 50%, #051410 100%)' },
+        { id: 'bg-sunset-g', name: 'Sunset',      type: 'gradient', css: 'linear-gradient(135deg, #1a0a1a 0%, #9a3412 50%, #1a0a1a 100%)' },
+        { id: 'bg-cyber-g',  name: 'Cyber',       type: 'gradient', css: 'linear-gradient(135deg, #0a0014 0%, #7c3aed 40%, #06b6d4 100%)' },
+        { id: 'bg-arctic',   name: 'Arctic',      type: 'gradient', css: 'linear-gradient(135deg, #071825 0%, #0284c7 50%, #071825 100%)' },
+        { id: 'bg-gold',     name: 'Gold',        type: 'gradient', css: 'linear-gradient(135deg, #1a1000 0%, #b45309 50%, #1a1000 100%)' },
+        { id: 'bg-plum',     name: 'Plum',        type: 'gradient', css: 'linear-gradient(135deg, #130513 0%, #86198f 50%, #130513 100%)' },
+        { id: 'bg-crimson',  name: 'Crimson',     type: 'gradient', css: 'linear-gradient(135deg, #1a0510 0%, #831843 50%, #1a0510 100%)' },
+
+        // --- 20 PHOTOS (picsum.photos — fixed IDs return the same image every time) ---
+        // Nature
+        { id: 'bg-mountain', name: 'Mountain',    type: 'photo', url: 'https://picsum.photos/id/1018/1920/1080' },
+        { id: 'bg-canyon',   name: 'Canyon',      type: 'photo', url: 'https://picsum.photos/id/1016/1920/1080' },
+        { id: 'bg-waterfall',name: 'Waterfall',   type: 'photo', url: 'https://picsum.photos/id/1039/1920/1080' },
+        { id: 'bg-lake',     name: 'Lake',        type: 'photo', url: 'https://picsum.photos/id/1019/1920/1080' },
+        { id: 'bg-forest-p', name: 'Forest Path', type: 'photo', url: 'https://picsum.photos/id/1043/1920/1080' },
+        { id: 'bg-meadow',   name: 'Meadow',      type: 'photo', url: 'https://picsum.photos/id/1044/1920/1080' },
+        { id: 'bg-river',    name: 'River',       type: 'photo', url: 'https://picsum.photos/id/1015/1920/1080' },
+        { id: 'bg-snow-p',   name: 'Snow Peaks',  type: 'photo', url: 'https://picsum.photos/id/1036/1920/1080' },
+        // Ocean & Beach
+        { id: 'bg-beach',    name: 'Beach',       type: 'photo', url: 'https://picsum.photos/id/1056/1920/1080' },
+        { id: 'bg-ocean-p',  name: 'Ocean Waves', type: 'photo', url: 'https://picsum.photos/id/1061/1920/1080' },
+        // Sky & Sunset
+        { id: 'bg-sunset-p', name: 'Sunset Sky',  type: 'photo', url: 'https://picsum.photos/id/1063/1920/1080' },
+        { id: 'bg-dusk',     name: 'Dusk',        type: 'photo', url: 'https://picsum.photos/id/1065/1920/1080' },
+        { id: 'bg-clouds-p', name: 'Clouds',      type: 'photo', url: 'https://picsum.photos/id/1066/1920/1080' },
+        { id: 'bg-aurora-p', name: 'Aurora',      type: 'photo', url: 'https://picsum.photos/id/1055/1920/1080' },
+        // Urban
+        { id: 'bg-city',     name: 'City Night',  type: 'photo', url: 'https://picsum.photos/id/1047/1920/1080' },
+        { id: 'bg-city2',    name: 'Skyline',     type: 'photo', url: 'https://picsum.photos/id/1050/1920/1080' },
+        // Desert & Warm
+        { id: 'bg-desert',   name: 'Desert',      type: 'photo', url: 'https://picsum.photos/id/1062/1920/1080' },
+        { id: 'bg-warmrock', name: 'Red Rocks',   type: 'photo', url: 'https://picsum.photos/id/1058/1920/1080' },
+        // Mist & Trees
+        { id: 'bg-mist',     name: 'Misty Forest',type: 'photo', url: 'https://picsum.photos/id/1088/1920/1080' },
+        { id: 'bg-lonepine', name: 'Lone Pine',   type: 'photo', url: 'https://picsum.photos/id/1069/1920/1080' }
     ];
 
     // ---------- Storage helpers ----------
@@ -6182,6 +6202,34 @@ document.addEventListener('DOMContentLoaded', function() {
     function setColor(id) { try { localStorage.setItem(COLOR_KEY, id); } catch (e) {} }
     function setBg(id)    { try { localStorage.setItem(BG_KEY, id); } catch (e) {} }
 
+    // Hex → rgba
+    function hexToRgba(hex, a) {
+        hex = hex.replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+        var r = parseInt(hex.substr(0, 2), 16);
+        var g = parseInt(hex.substr(2, 2), 16);
+        var b = parseInt(hex.substr(4, 2), 16);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    }
+
+    // Build the "Default" body background so it uses the current color theme's glow
+    function buildThemedBody(t) {
+        return [
+            'radial-gradient(1200px 600px at 8% -10%, ' + hexToRgba(t.accent, 0.16) + ', transparent 50%)',
+            'radial-gradient(900px 500px at 100% 0%, ' + hexToRgba(t.brand, 0.18) + ', transparent 48%)',
+            'linear-gradient(180deg, #07131d 0%, #050a14 55%, #071018 100%)'
+        ].join(', ');
+    }
+
+    // Build a photo body background (with dark overlay + theme tint)
+    function buildPhotoBody(url, t) {
+        return [
+            'linear-gradient(' + hexToRgba(t.accent, 0.06) + ', ' + hexToRgba(t.brand, 0.10) + ')',
+            'linear-gradient(rgba(3,10,20,0.72), rgba(3,10,20,0.85))',
+            'url("' + url + '") center/cover no-repeat fixed'
+        ].join(', ');
+    }
+
     // ---------- Apply color theme (every page) ----------
     function applyColorTheme(id) {
         const t = COLOR_THEMES[id] || COLOR_THEMES.aurora;
@@ -6189,21 +6237,21 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.setProperty('--accent-2', t.accent2);
         document.body.style.setProperty('--brand', t.brand);
         document.body.style.setProperty('--brand-hot', t.brandHot);
+        document.body.dataset.colorTheme = id;
     }
 
     // ---------- Apply background (every page) ----------
     function applyBackground(id) {
-        const bg = BACKGROUNDS.find(function (b) { return b.id === id; }) || BACKGROUNDS[0];
-        if (!bg.css) {
-            // Reset to stylesheet default
-            document.body.style.removeProperty('background');
-            document.body.style.removeProperty('background-image');
-            document.body.style.removeProperty('background-size');
-            document.body.style.removeProperty('background-position');
-            document.body.style.removeProperty('background-attachment');
-            document.body.style.removeProperty('background-repeat');
-        } else {
+        const bg  = BACKGROUNDS.find(function (b) { return b.id === id; }) || BACKGROUNDS[0];
+        const t   = COLOR_THEMES[getColor()] || COLOR_THEMES.aurora;
+
+        if (bg.type === 'default') {
+            // Use the color theme's glow — this is the "theme applies to the web" part
+            document.body.style.background = buildThemedBody(t);
+        } else if (bg.type === 'gradient') {
             document.body.style.background = bg.css;
+        } else if (bg.type === 'photo') {
+            document.body.style.background = buildPhotoBody(bg.url, t);
         }
     }
 
@@ -6218,14 +6266,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ---------- Only build the picker UI on index.html ----------
     function isDashboard() {
-        const p = window.location.pathname.split('/').pop() || 'index.html';
+        var p = window.location.pathname.split('/').pop() || 'index.html';
         return p === 'index.html' || p === '' || p === '/' || /index\.html?$/i.test(p);
     }
-
     if (!isDashboard()) return;
 
     // Build FAB
-    const fab = document.createElement('button');
+    var fab = document.createElement('button');
     fab.className = 'theme-picker-fab';
     fab.type = 'button';
     fab.title = 'Customize theme & background';
@@ -6233,7 +6280,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.appendChild(fab);
 
     // Build overlay + panel
-    const overlay = document.createElement('div');
+    var overlay = document.createElement('div');
     overlay.className = 'theme-picker-overlay';
     overlay.innerHTML = `
         <div class="theme-picker-panel" role="dialog" aria-label="Theme and background picker">
@@ -6265,11 +6312,11 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.body.appendChild(overlay);
 
-    // Swatches
-    const swatchGrid = overlay.querySelector('#themeSwatchGrid');
+    // Color swatches
+    var swatchGrid = overlay.querySelector('#themeSwatchGrid');
     Object.keys(COLOR_THEMES).forEach(function (key) {
-        const t = COLOR_THEMES[key];
-        const s = document.createElement('button');
+        var t = COLOR_THEMES[key];
+        var s = document.createElement('button');
         s.type = 'button';
         s.className = 'theme-swatch';
         s.dataset.theme = key;
@@ -6284,30 +6331,29 @@ document.addEventListener('DOMContentLoaded', function() {
         s.addEventListener('click', function () {
             setColor(key);
             applyColorTheme(key);
+            // Re-apply the background so the themed glow updates instantly
+            applyBackground(getBg());
             refreshSwatches();
         });
         swatchGrid.appendChild(s);
     });
 
-    // Backgrounds — split into gradients and photos
-    const bgGradientsEl = overlay.querySelector('#themeBgGradients');
-    const bgPhotosEl    = overlay.querySelector('#themeBgPhotos');
+    // Background thumbnails
+    var bgGradientsEl = overlay.querySelector('#themeBgGradients');
+    var bgPhotosEl    = overlay.querySelector('#themeBgPhotos');
+
     BACKGROUNDS.forEach(function (bg) {
-        const isPhoto = bg.css.indexOf('url(') !== -1;
-        const thumb = document.createElement('button');
+        if (bg.type === 'default') return; // skip default from thumbnails, reset button handles it
+
+        var thumb = document.createElement('button');
         thumb.type = 'button';
         thumb.className = 'theme-bg-thumb';
         thumb.dataset.bg = bg.id;
 
-        // Set a preview: for gradients, use the css directly; for photos, strip the gradient overlay
-        if (!bg.css) {
-            thumb.style.background = 'linear-gradient(135deg, #0a1824, #0f766e, #0a1824)';
-        } else if (isPhoto) {
-            // Extract just the url(...) part for the thumbnail
-            const m = bg.css.match(/url\([^)]+\)/);
-            thumb.style.background = (m ? m[0] : '') + ' center/cover no-repeat';
-        } else {
+        if (bg.type === 'gradient') {
             thumb.style.background = bg.css;
+        } else if (bg.type === 'photo') {
+            thumb.style.background = 'url("' + bg.url + '") center/cover no-repeat';
         }
 
         thumb.innerHTML =
@@ -6320,18 +6366,18 @@ document.addEventListener('DOMContentLoaded', function() {
             refreshBgThumbs();
         });
 
-        if (isPhoto) bgPhotosEl.appendChild(thumb);
+        if (bg.type === 'photo') bgPhotosEl.appendChild(thumb);
         else bgGradientsEl.appendChild(thumb);
     });
 
     function refreshSwatches() {
-        const current = getColor();
+        var current = getColor();
         swatchGrid.querySelectorAll('.theme-swatch').forEach(function (s) {
             s.classList.toggle('active', s.dataset.theme === current);
         });
     }
     function refreshBgThumbs() {
-        const current = getBg();
+        var current = getBg();
         overlay.querySelectorAll('.theme-bg-thumb').forEach(function (t) {
             t.classList.toggle('active', t.dataset.bg === current);
         });
@@ -6352,7 +6398,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open / close
     function openPicker()  { overlay.classList.add('open'); }
     function closePicker() { overlay.classList.remove('open'); }
-
     fab.addEventListener('click', openPicker);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closePicker(); });
     overlay.querySelector('.theme-picker-close').addEventListener('click', closePicker);
@@ -6373,6 +6418,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Public API
-    window.setStudyHubColorTheme = function (id) { setColor(id); applyColorTheme(id); refreshSwatches(); };
+    window.setStudyHubColorTheme = function (id) { setColor(id); applyColorTheme(id); applyBackground(getBg()); refreshSwatches(); };
     window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
 })();
