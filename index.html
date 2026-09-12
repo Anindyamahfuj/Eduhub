@@ -9,7 +9,7 @@
     <link rel="icon" type="image/x-icon" href="logoedu.png">
 </head>
 <body>
-        <nav class="navbar">
+    <nav class="navbar">
         <div class="nav-container">
             <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
@@ -44,16 +44,14 @@
                     <option value="sw">🇰🇪 Kiswahili</option>
                     <option value="tr">🇹🇷 Türkçe</option>
                 </select>
-    
                 <button id="trashBtn" class="focus-toggle">🗑️ Trash (0)</button>
-  
                 <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
             </div>
         </div>
     </nav>
 
     <main class="container">
-        <!-- Clock + Calendar + Calculator Row -->
+        <!-- ============ CLOCK + CALENDAR ROW ============ -->
         <section class="clock-section">
             <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
             <div class="clock-container">
@@ -61,8 +59,6 @@
                 <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="180" height="180"></canvas></div>
             </div>
             <div class="clock-date" id="clockDate"></div>
-
-            <!-- Calendar widget -->
             <div class="calendar-widget">
                 <div class="calendar-compact">
                     <div class="cal-day" id="calCompactDay">—</div>
@@ -71,8 +67,6 @@
                 </div>
                 <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar">📅</button>
             </div>
-
-          
         </section>
 
         <!-- Calendar Modal -->
@@ -90,56 +84,86 @@
             </div>
         </div>
 
-        <!-- Dashboard Header -->
+        <!-- ============ DASHBOARD HEADER ============ -->
         <header class="dash-header">
-            <div><h1><span class="hl-purple">◆</span> <span class="neon-text" data-i18n="dash_title">Dashboard</span></h1>
-            <p class="subtitle" data-i18n="dash_subtitle">Your study hub at a glance — today's progress &amp; all-time history.</p></div>
+            <div>
+                <h1><span class="hl-purple">◆</span> <span class="neon-text" data-i18n="dash_title">Dashboard</span></h1>
+                <p class="subtitle" data-i18n="dash_subtitle">Your study hub at a glance — today's progress &amp; all-time history.</p>
+            </div>
             <div class="dash-date-badge"><span id="todayBadge">📅 <span data-i18n="today">Today</span></span><span id="todayDate"></span></div>
         </header>
 
-        <!-- Blocker banner (hidden by default) -->
+        <!-- ============ BLOCKER BANNER ============ -->
         <div class="blocker-banner" id="blockerBanner" style="display:none;">
             🛡️ <strong>Distraction Blocker is ON.</strong> Stay focused — avoid opening social media & entertainment sites.
         </div>
 
-        <!-- Stats Grid -->
-        <section class="stats-grid">
-            <div class="stat-card"><div class="stat-icon">🔍</div><div class="stat-info"><span class="stat-label" data-i18n="stat_searches">Searches Today</span><span class="stat-number" id="statSearches">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">📄</div><div class="stat-info"><span class="stat-label" data-i18n="stat_files">Files Uploaded</span><span class="stat-number" id="statFiles">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-info"><span class="stat-label" data-i18n="stat_tasks">Tasks Done Today</span><span class="stat-number" id="statTasks">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-info"><span class="stat-label" data-i18n="stat_streak">Longest Streak</span><span class="stat-number" id="statStreak">0</span></div></div>
-            <div class="stat-card"><div class="stat-icon">🍅</div><div class="stat-info"><span class="stat-label" data-i18n="stat_pomodoros">Pomodoros Today</span><span class="stat-number" id="pomoCount">0</span></div></div>
-        </section>
-<!-- ===== Search ===== -->
-                <section class="search-section glass-card">
-            <div class="search-container">
-                <h3 style="margin-bottom:0.5rem;"><span class="hl-blue">🔍</span> <span data-i18n="quick_search">Quick Search</span></h3>
-                <div class="search-box">
-                    <div class="suggestions-container">
-                        <input type="text" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="What are you looking for?" autocomplete="off" />
-                        <div id="suggestionsList" class="suggestions-list"></div>
-                    </div>
-                    <button id="searchBtn"><span data-i18n="search_button">Search</span></button>
-                </div>
-                <button id="keyboardToggle" class="keyboard-toggle"><span data-i18n="show_keyboard">Show Keyboard</span></button>
-                <div id="keyboardContainer" class="keyboard-container"></div>
-                <div class="search-tip"><small data-i18n="search_tip">All searches are logged in your history.</small></div>
-
-                <!--  SHORTCUTS -->
-                <div class="shortcuts-block" id="shortcutsBlock">
-                    <div class="shortcuts-title">⚡ Shortcuts</div>
-                    <div class="shortcuts-grid" id="shortcutsGrid"></div>
-                    <div class="shortcuts-empty" id="shortcutsEmpty">No shortcuts yet — add your first one 👇</div>
-                </div>
+        <!-- ============ COMPACT STATS OVERVIEW ============ -->
+        <section class="overview-strip" aria-label="Today's overview">
+            <div class="ov-item">
+                <span class="ov-icon">🔍</span>
+                <span class="ov-value" id="statSearches">0</span>
+                <span class="ov-label" data-i18n="stat_searches">Searches</span>
+            </div>
+            <div class="ov-divider"></div>
+            <div class="ov-item">
+                <span class="ov-icon">✅</span>
+                <span class="ov-value" id="statTasks">0</span>
+                <span class="ov-label" data-i18n="stat_tasks">Tasks</span>
+            </div>
+            <div class="ov-divider"></div>
+            <div class="ov-item">
+                <span class="ov-icon">📄</span>
+                <span class="ov-value" id="statFiles">0</span>
+                <span class="ov-label" data-i18n="stat_files">Files</span>
+            </div>
+            <div class="ov-divider"></div>
+            <div class="ov-item">
+                <span class="ov-icon">🍅</span>
+                <span class="ov-value" id="pomoCount">0</span>
+                <span class="ov-label" data-i18n="stat_pomodoros">Pomodoros</span>
+            </div>
+            <div class="ov-divider"></div>
+            <div class="ov-item">
+                <span class="ov-icon">🔥</span>
+                <span class="ov-value"><span id="statStreak">0</span><small class="ov-unit">d</small></span>
+                <span class="ov-label" data-i18n="stat_streak">Streak</span>
             </div>
         </section>
 
-        <!-- Grid layout -->
-        <div class="dashboard-grid">
-            <div class="grid-left">
-                <div class="pomodoro-journal-wrapper">
+        <!-- ============ MAIN DASHBOARD GRID ============ -->
+        <div class="dashboard-layout">
+
+            <!-- LEFT: PRIMARY FEATURES -->
+            <div class="dash-main">
+
+                <!-- Quick Search -->
+                <section class="search-section glass-card">
+                    <div class="search-container">
+                        <h3 class="card-title"><span class="hl-blue">🔍</span> <span data-i18n="quick_search">Quick Search</span></h3>
+                        <div class="search-box">
+                            <div class="suggestions-container">
+                                <input type="text" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="What are you looking for?" autocomplete="off" />
+                                <div id="suggestionsList" class="suggestions-list"></div>
+                            </div>
+                            <button id="searchBtn"><span data-i18n="search_button">Search</span></button>
+                        </div>
+                        <button id="keyboardToggle" class="keyboard-toggle"><span data-i18n="show_keyboard">Show Keyboard</span></button>
+                        <div id="keyboardContainer" class="keyboard-container"></div>
+                        <div class="search-tip"><small data-i18n="search_tip">All searches are logged in your history.</small></div>
+
+                        <div class="shortcuts-block" id="shortcutsBlock">
+                            <div class="shortcuts-title">⚡ Shortcuts</div>
+                            <div class="shortcuts-grid" id="shortcutsGrid"></div>
+                            <div class="shortcuts-empty" id="shortcutsEmpty">No shortcuts yet — add your first one 👇</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Timers Row (Pomodoro + Deep Work side-by-side) -->
+                <div class="timers-row">
                     <section class="glass-card pomodoro-section">
-                        <h2><span class="hl-cyan">⏱️</span> <span data-i18n="task_timer">Task Timer</span></h2>
+                        <h2 class="card-title"><span class="hl-cyan">⏱️</span> <span data-i18n="task_timer">Task Timer</span></h2>
                         <div class="pomodoro-widget">
                             <div class="pomodoro-timer" id="pomoDisplay">25:00</div>
                             <div class="pomodoro-controls">
@@ -150,8 +174,8 @@
                                     <option value="white">📻 White Noise</option>
                                     <option value="lofi">🎵 Lo-Fi</option>
                                 </select>
-                                <input type="number" id="pomoDuration" value="25" min="1" max="120" style="width:60px; background:rgba(0,0,0,0.3); border:1px solid rgba(192,132,252,0.2); border-radius:8px; color:#e2e8f0; padding:0.3rem 0.5rem; text-align:center;">
-                                <span style="color:#94a3b8; font-size:0.8rem;">min</span>
+                                <input type="number" id="pomoDuration" value="25" min="1" max="120" class="pomo-duration-input">
+                                <span class="pomo-unit">min</span>
                                 <button id="pomoStart"><span data-i18n="start">Start</span></button>
                                 <button id="pomoStop"><span data-i18n="stop">Stop</span></button>
                                 <button id="pomoReset"><span data-i18n="reset">Reset</span></button>
@@ -160,34 +184,27 @@
                         </div>
                     </section>
 
-                    <section class="glass-card journal-section">
-                        <h2><span class="hl-orange">📓</span> <span data-i18n="daily_reflection">Daily Reflection</span></h2>
-                        <div class="journal-area">
-                            <textarea id="journalText" data-i18n-placeholder="journal_placeholder" placeholder="How did your study session go? What did you learn?"></textarea>
-                            <div id="journalPast" class="journal-past"></div>
+                    <section class="glass-card deepwork-section">
+                        <h2 class="card-title"><span class="hl-purple">🎯</span> Deep Work Timer</h2>
+                        <div class="deepwork-widget">
+                            <div class="deepwork-timer" id="deepworkDisplay">00:00:00</div>
+                            <div class="deepwork-controls">
+                                <button id="dwStart">▶ Start</button>
+                                <button id="dwStop">⏸ Pause</button>
+                                <button id="dwReset">⟳ Reset</button>
+                            </div>
+                            <div class="deepwork-stats">
+                                <span>Today: <b id="dwToday">0</b> min</span>
+                                <span class="dw-sep">·</span>
+                                <span>Total: <b id="dwTotal">0</b> min</span>
+                            </div>
                         </div>
                     </section>
                 </div>
 
-                <!-- Deep Work Timer (NEW) -->
-                <section class="glass-card deepwork-section">
-                    <h2><span class="hl-purple">🎯</span> Deep Work Timer</h2>
-                    <div class="deepwork-widget">
-                        <div class="deepwork-timer" id="deepworkDisplay">00:00:00</div>
-                        <div class="deepwork-controls">
-                            <button id="dwStart">▶ Start</button>
-                            <button id="dwStop">⏸ Pause</button>
-                            <button id="dwReset">⟳ Reset</button>
-                        </div>
-                        <div class="deepwork-stats">
-                            Today: <span id="dwToday">0</span> min &nbsp;·&nbsp; Total: <span id="dwTotal">0</span> min
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Priority Matrix (NEW) -->
+                <!-- Priority Matrix -->
                 <section class="glass-card priority-matrix-section">
-                    <h2><span class="hl-red">🎯</span> Priority Matrix (Eisenhower)</h2>
+                    <h2 class="card-title"><span class="hl-red">🎯</span> Priority Matrix (Eisenhower)</h2>
                     <div class="priority-input-row">
                         <input type="text" id="priorityInput" placeholder="Add a task..." />
                         <select id="priorityQuadrant">
@@ -206,10 +223,24 @@
                     </div>
                 </section>
 
+                <!-- Daily Reflection -->
+                <section class="glass-card journal-section">
+                    <h2 class="card-title"><span class="hl-orange">📓</span> <span data-i18n="daily_reflection">Daily Reflection</span></h2>
+                    <div class="journal-area">
+                        <textarea id="journalText" data-i18n-placeholder="journal_placeholder" placeholder="How did your study session go? What did you learn?"></textarea>
+                        <div id="journalPast" class="journal-past"></div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT: RECORDS SIDEBAR (aligned vertically) -->
+            <aside class="dash-sidebar">
+
                 <!-- Today's Activity -->
                 <section class="glass-card activity-section today-section">
                     <div class="section-header">
-                        <h2><span class="hl-cyan">📌</span> <span data-i18n="today_activity">Today's Activity</span></h2>
+                        <h2 class="card-title"><span class="hl-cyan">📌</span> <span data-i18n="today_activity">Today's Activity</span></h2>
                         <span class="section-badge" id="todayCount">0 <span data-i18n="entries">entries</span></span>
                     </div>
                     <div class="activity-list" id="todayActivity">
@@ -219,17 +250,17 @@
                         <button id="deleteTodayBtn" class="btn-danger-sm">🗑️ <span data-i18n="delete_today">Delete Today's Activity</span></button>
                     </div>
                 </section>
-            </div>
 
-            <div class="grid-right">
+                <!-- Upcoming Assignments -->
                 <section class="glass-card assignments-section">
-                    <h2><span class="hl-red">📌</span> <span data-i18n="upcoming_assignments">Upcoming Assignments</span></h2>
+                    <h2 class="card-title"><span class="hl-red">📌</span> <span data-i18n="upcoming_assignments">Upcoming Assignments</span></h2>
                     <div id="upcomingAssignments"><p class="empty-state" data-i18n="no_assignments">No pending assignments.</p></div>
                 </section>
 
+                <!-- All History -->
                 <section class="glass-card history-section all-history-section">
                     <div class="section-header">
-                        <h2><span class="hl-purple">📜</span> <span data-i18n="all_history">All History</span></h2>
+                        <h2 class="card-title"><span class="hl-purple">📜</span> <span data-i18n="all_history">All History</span></h2>
                         <span class="section-badge" id="historyCount">0 <span data-i18n="entries">entries</span></span>
                     </div>
                     <div class="activity-list" id="historyActivity">
@@ -239,7 +270,8 @@
                         <button id="deleteAllBtn" class="btn-danger-sm">🗑️ <span data-i18n="delete_all">Delete All History</span></button>
                     </div>
                 </section>
-            </div>
+
+            </aside>
         </div>
     </main>
 
