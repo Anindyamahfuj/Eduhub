@@ -1,30 +1,8 @@
 // ================================================================
-// STUDYHUB — UNIFIED SCRIPT
-// One file. All features. All 15 languages.
-// Storage key: 'studyHubData'  (unchanged — existing user data kept)
-//
-// CLEANUP NOTES (vs. the previous script.js):
-//  • Merged 4 separate DOMContentLoaded listeners into 1 (bottom of file)
-//  • Removed the duplicate trash IIFE; kept the pushToTrash/openTrashModal version
-//  • Removed dead data.blockerOn state; blocker is always-on by design
-//  • renderFileList declared once (was declared twice; second silently won)
-//  • initMelodyTimer now fires every 30 min (was setTimeout = fired once)
-//  • Planner analyze() no longer emits "Infinity" warnings for empty days
-//  • performSearch uses an <a target="_blank"> click instead of window.open,
-//    so the blocker's window.open hook can't intercept it
-//  • pomoCountStat (Pomodoro widget) now updates alongside pomoCount (stats grid)
-//  • Missing translation keys log console.warn instead of silent English fallback
-//  • localStorage writes wrapped in try/catch (Safari private mode safe)
-//  • All event listeners on lists use delegation — no re-binding on render
+// STUDYHUB – COMPLETE SCRIPT (ALL FEATURES + ALL 15 LANGUAGES)
 // ================================================================
 
-'use strict';
-
-// ================================================================
-// STORAGE
-// ================================================================
-var STORAGE_KEY = 'studyHubData';
-var TRASH_RETENTION_MS = 24 * 60 * 60 * 1000;
+const STORAGE_KEY = 'studyHubData';
 
 function getDefaultData() {
     return {
@@ -44,6 +22,7 @@ function getDefaultData() {
         planner: {},
         journal: {},
         subjects: ['General', 'Math', 'Science', 'Language'],
+        // ===== NEW FEATURE STORAGE =====
         priorityMatrix: {
             'urgent-important': [],
             'not-urgent-important': [],
@@ -51,41 +30,32 @@ function getDefaultData() {
             'not-urgent-not-important': []
         },
         deepWorkLogs: [],
+        blockerOn: false,
         trash: [],
-        fileAnnotations: []
+        fileAnnotations: {}
     };
 }
-
 function loadData() {
     try {
-        var raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-            var data = JSON.parse(raw);
-            var def = getDefaultData();
-            for (var key in def) {
+            const data = JSON.parse(raw);
+            const def = getDefaultData();
+            for (let key in def) {
                 if (!(key in data)) data[key] = def[key];
             }
-            // fileAnnotations migrated from {} to [] in older versions
-            if (!Array.isArray(data.fileAnnotations)) data.fileAnnotations = {};
-            if (!Array.isArray(data.trash)) data.trash = [];
             return data;
         }
-    } catch (e) {
-        console.warn('[StudyHub] Failed to load data, using defaults:', e);
-    }
+    } catch (e) { /* ignore */ }
     return getDefaultData();
 }
 
 function saveData(data) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-        console.warn('[StudyHub] Failed to save data:', e);
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 function resetDailyIfNeeded(data) {
-    var today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
     if (data.lastReset !== today) {
         data.lastReset = today;
         saveData(data);
@@ -93,7 +63,7 @@ function resetDailyIfNeeded(data) {
 }
 
 function addActivity(data, type, description) {
-    var now = new Date();
+    const now = new Date();
     data.history.push({
         type: type,
         description: description,
@@ -105,16 +75,8 @@ function addActivity(data, type, description) {
     return data;
 }
 
-function todayStr() {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
-
 // ================================================================
-// NAV — active link highlighting, burger menu, nav date
+// AUTO-HIGHLIGHT THE CORRECT NAV LINK (regardless of HTML)
 // ================================================================
 function setActiveNavLink() {
     var path = window.location.pathname.split('/').pop() || 'index.html';
@@ -123,93 +85,87 @@ function setActiveNavLink() {
     var links = document.querySelectorAll('.nav-links a');
     if (!links.length) return;
 
-    links.forEach(function (link) {
+    links.forEach(function(link) {
         link.classList.remove('active');
         var href = link.getAttribute('href');
+        // Match exact file name; support both "notes.html" and "./notes.html"
         if (href === path || href === './' + path) {
             link.classList.add('active');
         }
     });
 }
 
+// ================================================================
+// BURGER MENU
+// ================================================================
 function initBurger() {
-    var btn = document.getElementById('burgerBtn');
-    var links = document.querySelector('.nav-links');
-    if (!btn || !links) return;
-
-    btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        links.classList.toggle('open');
-    });
-
-    links.querySelectorAll('a').forEach(function (link) {
-        link.addEventListener('click', function () {
-            links.classList.remove('open');
+    const btn = document.getElementById('burgerBtn');
+    const links = document.querySelector('.nav-links');
+    if (btn && links) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            links.classList.toggle('open');
         });
-    });
-
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('.nav-container')) {
-            links.classList.remove('open');
-        }
-    });
-}
-
-function updateNavDate() {
-    var el = document.getElementById('navDate');
-    if (!el) return;
-    el.textContent = new Date().toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric'
-    });
+        links.querySelectorAll('a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                links.classList.remove('open');
+            });
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.nav-container')) {
+                links.classList.remove('open');
+            }
+        });
+    }
 }
 
 // ================================================================
-// CLOCK — digital + analog (canvas), DPI-aware
+// CLOCK
 // ================================================================
-var clockMode = 'digital';
-var clockInterval = null;
-var analogRafId = null;
+let clockMode = 'digital';
+let clockInterval = null;
+let analogRafId = null;
 
 function initClock() {
-    var digital = document.getElementById('digitalClock');
-    var analog = document.getElementById('analogClock');
-    var toggle = document.getElementById('clockToggleBtn');
-    var dateEl = document.getElementById('clockDate');
+    const digital = document.getElementById('digitalClock');
+    const analog = document.getElementById('analogClock');
+    const toggle = document.getElementById('clockToggleBtn');
+    const dateEl = document.getElementById('clockDate');
 
     if (!digital || !analog || !toggle) return;
 
-    var canvas = document.getElementById('analogCanvas');
-    var ctx = null;
-    var logicalSize = 120;
-
+    // --- DPI-aware canvas setup (runs once) ---
+    const canvas = document.getElementById('analogCanvas');
+    let ctx = null;
+    let logicalSize = 120;
     if (canvas) {
         logicalSize = parseInt(canvas.getAttribute('width'), 10) || 120;
-        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3 for perf
         canvas.width = logicalSize * dpr;
         canvas.height = logicalSize * dpr;
         canvas.style.width = logicalSize + 'px';
         canvas.style.height = logicalSize + 'px';
         ctx = canvas.getContext('2d');
-        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     digital.classList.add('active');
     analog.classList.remove('active');
     toggle.textContent = '⏰ Switch to Analog';
 
+    // ---------- ANALOG DRAW ----------
     function drawAnalog(now) {
         if (!ctx) return;
-        var w = logicalSize;
-        var hc = logicalSize;
-        var cx = w / 2;
-        var cy = hc / 2;
-        var radius = w / 2 - 6;
+        const w = logicalSize;
+        const hc = logicalSize;
+        const cx = w / 2;
+        const cy = hc / 2;
+        const radius = w / 2 - 6;
 
         ctx.clearRect(0, 0, w, hc);
 
-        var faceGrad = ctx.createRadialGradient(cx, cy - radius * 0.3, radius * 0.1, cx, cy, radius);
+        // -- Face background (radial gradient) --
+        const faceGrad = ctx.createRadialGradient(cx, cy - radius * 0.3, radius * 0.1, cx, cy, radius);
         faceGrad.addColorStop(0, 'rgba(15, 35, 55, 0.95)');
         faceGrad.addColorStop(0.7, 'rgba(6, 18, 30, 0.95)');
         faceGrad.addColorStop(1, 'rgba(2, 8, 14, 0.98)');
@@ -218,6 +174,7 @@ function initClock() {
         ctx.fillStyle = faceGrad;
         ctx.fill();
 
+        // -- Outer bezel ring --
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(94, 234, 212, 0.55)';
@@ -230,7 +187,8 @@ function initClock() {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        var glowGrad = ctx.createRadialGradient(cx, cy, radius * 0.75, cx, cy, radius);
+        // -- Inner rim glow --
+        const glowGrad = ctx.createRadialGradient(cx, cy, radius * 0.75, cx, cy, radius);
         glowGrad.addColorStop(0, 'rgba(94, 234, 212, 0)');
         glowGrad.addColorStop(1, 'rgba(94, 234, 212, 0.15)');
         ctx.beginPath();
@@ -238,11 +196,12 @@ function initClock() {
         ctx.fillStyle = glowGrad;
         ctx.fill();
 
-        for (var i = 0; i < 60; i++) {
+        // -- 60 minute ticks (thin, muted) --
+        for (let i = 0; i < 60; i++) {
             if (i % 5 === 0) continue;
-            var angle = (i * 6 - 90) * Math.PI / 180;
-            var outer = radius - 4;
-            var inner = radius - 8;
+            const angle = (i * 6 - 90) * Math.PI / 180;
+            const outer = radius - 4;
+            const inner = radius - 8;
             ctx.beginPath();
             ctx.moveTo(cx + outer * Math.cos(angle), cy + outer * Math.sin(angle));
             ctx.lineTo(cx + inner * Math.cos(angle), cy + inner * Math.sin(angle));
@@ -252,18 +211,19 @@ function initClock() {
             ctx.stroke();
         }
 
-        for (var j = 0; j < 12; j++) {
-            var a = (j * 30 - 90) * Math.PI / 180;
-            var o = radius - 4;
-            var n = radius - 12;
-            var x1 = cx + o * Math.cos(a);
-            var y1 = cy + o * Math.sin(a);
-            var x2 = cx + n * Math.cos(a);
-            var y2 = cy + n * Math.sin(a);
+        // -- 12 hour markers (bold, gradient) --
+        for (let i = 0; i < 12; i++) {
+            const angle = (i * 30 - 90) * Math.PI / 180;
+            const outer = radius - 4;
+            const inner = radius - 12;
+            const x1 = cx + outer * Math.cos(angle);
+            const y1 = cy + outer * Math.sin(angle);
+            const x2 = cx + inner * Math.cos(angle);
+            const y2 = cy + inner * Math.sin(angle);
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
-            var grad = ctx.createLinearGradient(x1, y1, x2, y2);
+            const grad = ctx.createLinearGradient(x1, y1, x2, y2);
             grad.addColorStop(0, '#5eead4');
             grad.addColorStop(1, '#7dd3fc');
             ctx.strokeStyle = grad;
@@ -272,25 +232,28 @@ function initClock() {
             ctx.stroke();
         }
 
+        // -- Hour numerals (12 / 3 / 6 / 9) --
         ctx.font = 'bold ' + Math.round(radius * 0.22) + 'px Inter, sans-serif';
         ctx.fillStyle = 'rgba(238, 244, 251, 0.85)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         [12, 3, 6, 9].forEach(function (num) {
-            var ang = (num * 30 - 90) * Math.PI / 180;
-            var r = radius - 22;
-            ctx.fillText(String(num), cx + r * Math.cos(ang), cy + r * Math.sin(ang));
+            const angle = (num * 30 - 90) * Math.PI / 180;
+            const r = radius - 22;
+            ctx.fillText(String(num), cx + r * Math.cos(angle), cy + r * Math.sin(angle));
         });
 
-        var sec = now.getSeconds();
-        var ms = now.getMilliseconds();
-        var min = now.getMinutes() + sec / 60;
-        var hr = (now.getHours() % 12) + min / 60;
+        // -- Compute angles (second hand uses ms for smooth sweep) --
+        const sec = now.getSeconds();
+        const ms  = now.getMilliseconds();
+        const min = now.getMinutes() + sec / 60;
+        const hr  = (now.getHours() % 12) + min / 60;
 
-        var secAngle = ((sec + ms / 1000) * 6 - 90) * Math.PI / 180;
-        var minAngle = (min * 6 - 90) * Math.PI / 180;
-        var hourAngle = (hr * 30 - 90) * Math.PI / 180;
+        const secAngle  = ((sec + ms / 1000) * 6 - 90) * Math.PI / 180;
+        const minAngle  = (min * 6 - 90) * Math.PI / 180;
+        const hourAngle = (hr * 30 - 90) * Math.PI / 180;
 
+        // -- Hand drawing helper --
         function drawHand(angle, length, tailLength, color, width, glowColor) {
             ctx.save();
             ctx.beginPath();
@@ -307,7 +270,8 @@ function initClock() {
             ctx.restore();
         }
 
-        var hourGrad = ctx.createLinearGradient(
+        // Hour hand — pink→purple gradient, thick
+        const hourGrad = ctx.createLinearGradient(
             cx, cy,
             cx + radius * 0.5 * Math.cos(hourAngle),
             cy + radius * 0.5 * Math.sin(hourAngle)
@@ -315,9 +279,14 @@ function initClock() {
         hourGrad.addColorStop(0, '#f472b6');
         hourGrad.addColorStop(1, '#c084fc');
         drawHand(hourAngle, radius * 0.5, radius * 0.12, hourGrad, Math.max(3, radius * 0.07), 'rgba(244, 114, 182, 0.6)');
+
+        // Minute hand — mint
         drawHand(minAngle, radius * 0.72, radius * 0.14, '#6ee7b7', Math.max(2, radius * 0.05), 'rgba(110, 231, 183, 0.5)');
+
+        // Second hand — cyan, thin, extra glow
         drawHand(secAngle, radius * 0.85, radius * 0.2, '#5eead4', Math.max(1, radius * 0.018), 'rgba(94, 234, 212, 0.9)');
 
+        // -- Center cap (three layers) --
         ctx.beginPath();
         ctx.arc(cx, cy, radius * 0.07, 0, Math.PI * 2);
         ctx.fillStyle = '#c084fc';
@@ -337,15 +306,18 @@ function initClock() {
         ctx.fill();
     }
 
+        // ---------- HIGH-LEVEL TICK ----------
     function updateClock() {
-        var now = new Date();
-        var h = now.getHours() % 12;
-        if (h === 0) h = 12;
-        var ampm = now.getHours() < 12 ? 'AM' : 'PM';
-        var m = String(now.getMinutes()).padStart(2, '0');
-        var s = String(now.getSeconds()).padStart(2, '0');
+        const now = new Date();
+
+        let h = now.getHours() % 12;
+        if (h === 0) h = 12;                                  // 0 → 12 (midnight/noon)
+        const ampm = now.getHours() < 12 ? 'AM' : 'PM';
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
         digital.textContent = h + ':' + m + ':' + s + ' ' + ampm;
 
+        // Only redraw analog when it's visible — avoids wasted work in digital mode
         if (analog.classList.contains('active')) drawAnalog(now);
 
         if (dateEl) {
@@ -358,6 +330,7 @@ function initClock() {
         }
     }
 
+    // ---------- SMOOTH SECOND HAND LOOP ----------
     function analogLoop() {
         if (!analog.classList.contains('active')) {
             analogRafId = null;
@@ -380,10 +353,12 @@ function initClock() {
         }
     }
 
+    // First paint
     updateClock();
     if (clockInterval) clearInterval(clockInterval);
     clockInterval = setInterval(updateClock, 1000);
 
+    // ---------- TOGGLE ----------
     toggle.addEventListener('click', function () {
         if (clockMode === 'digital') {
             clockMode = 'analog';
@@ -401,80 +376,65 @@ function initClock() {
         }
     });
 }
-
 // ================================================================
 // 30-MINUTE SOFT MELODY REMINDER
-// Now uses a single shared AudioContext (reused) + setInterval
-// so it fires every 30 minutes, forever, without leaking contexts.
 // ================================================================
-var _melodyCtx = null;
 function playSoftMelody() {
     try {
-        if (!_melodyCtx) {
-            var AC = window.AudioContext || window.webkitAudioContext;
-            if (!AC) return;
-            _melodyCtx = new AC();
-        }
-        var ctx = _melodyCtx;
-        if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523.25, 587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33];
+        const durations = [0.3, 0.3, 0.3, 0.4, 0.4, 0.3, 0.3, 0.5];
+        let time = audioCtx.currentTime + 0.1;
 
-        var notes = [523.25, 587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33];
-        var durations = [0.3, 0.3, 0.3, 0.4, 0.4, 0.3, 0.3, 0.5];
-        var time = ctx.currentTime + 0.1;
-
-        notes.forEach(function (freq, index) {
-            var osc = ctx.createOscillator();
-            var gain = ctx.createGain();
+        notes.forEach((freq, index) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             osc.type = 'sine';
             osc.frequency.value = freq;
             gain.gain.setValueAtTime(0, time);
             gain.gain.linearRampToValueAtTime(0.15, time + 0.05);
             gain.gain.exponentialRampToValueAtTime(0.001, time + durations[index] - 0.1);
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(audioCtx.destination);
             osc.start(time);
             osc.stop(time + durations[index]);
             time += durations[index] + 0.1;
         });
     } catch (e) {
-        // silent fail if audio context is blocked
+        // Silent fail if audio context is blocked
     }
 }
 
 function initMelodyTimer() {
-    var key = 'studyHubStartTime';
-    var interval = 30 * 60 * 1000; // 30 minutes
-
-    var startTime = parseInt(localStorage.getItem(key) || '0', 10);
-    var now = Date.now();
+    const key = 'studyHubStartTime';
+    const interval = 30 * 60 * 1000; // 30 minutes
+    let startTime = localStorage.getItem(key);
+    const now = Date.now();
 
     if (!startTime) {
-        try { localStorage.setItem(key, String(now)); } catch (e) {}
         startTime = now;
+        localStorage.setItem(key, startTime);
     }
 
-    var elapsed = now - startTime;
+    const elapsed = now - parseInt(startTime, 10);
+
     if (elapsed >= interval) {
         playSoftMelody();
-        try { localStorage.setItem(key, String(now)); } catch (e) {}
+        localStorage.setItem(key, now);
+    } else {
+        const remaining = interval - elapsed;
+        setTimeout(() => {
+            playSoftMelody();
+            localStorage.setItem(key, Date.now());
+        }, remaining);
     }
-
-    // Fire every 30 min. Persist the timestamp so a reload doesn't reset the phase.
-    setInterval(function () {
-        playSoftMelody();
-        try { localStorage.setItem(key, String(Date.now())); } catch (e) {}
-    }, interval);
 }
 
 // ================================================================
-// TRANSLATION ENGINE — functions only. Language data is in the
-// next block (Part 2 of this file).
+// TRANSLATION ENGINE (ALL 15 LANGUAGES – FULL)
 // ================================================================
-// ================================================================
-// PART 2 — LANGUAGE DATA
-// All 15 languages, all keys, pre-merged. No runtime auto-fill needed.
-// ================================================================
-var translations = {
+
+const translations = {
     en: {
         'dash_title': 'Dashboard',
         'dash_subtitle': 'Your study hub at a glance — today\'s progress & all-time history.',
@@ -511,6 +471,7 @@ var translations = {
         'add_habit': 'Add Habit',
         'add_note': 'Add Note',
         'add_notice': 'Add Notice',
+        'delete_all': 'Delete All',
         'complete': 'Complete',
         'done': 'Done',
         'ai_tools': 'AI Tools',
@@ -600,170 +561,7 @@ var translations = {
         'wolfram_desc': 'Computational STEM engine.',
         'canva_desc': 'AI-powered design for presentations, posters, and social media.',
         'youtube_desc': 'Educational videos, tutorials, and lectures.',
-
-        // ===== extended =====
-        'blocker_on': 'Blocker On', 'blocker_off': 'Blocker Off',
-        'blocked_alert_title': 'Blocked!',
-        'blocked_alert_msg': 'is on your distraction list. Turn the Blocker off to visit it.',
-        'trash_label': 'Trash', 'trash_empty_msg': 'Trash is empty.',
-        'restore_btn': 'Restore', 'delete_btn': 'Delete', 'empty_trash_btn': 'Empty Trash', 'close_btn': 'Close',
-        'switch_digital': 'Switch to Digital',
-        'ai_planner_title': 'StudyHub AI Planner',
-        'ai_planner_desc': 'Describe what you want — the AI will plan it for you. Try "make a routine by yourself", "easy weekend plan", "intense exam week", "math morning, physics evening", "3 hours today", or "focus on chemistry this week".',
-        'ai_planner_placeholder': 'Type your request here...',
-        'generate_plan_btn': 'Generate Plan',
-        'chip_auto': 'Auto routine', 'chip_easy': 'Easy', 'chip_exam': 'Exam week', 'chip_weekend': 'Weekend',
-        'chip_math_physics': 'Math + Physics', 'chip_surprise': 'Surprise', 'chip_3h': '3h today',
-        'understood': 'Understood', 'mode_easy': 'Easy / light', 'mode_balanced': 'Balanced', 'mode_intense': 'Intense',
-        'scope_full_week': 'Full week', 'scope_weekend_only': 'Weekend only', 'scope_weekdays_only': 'Weekdays only',
-        'scope_today_only': 'Today only', 'scope_tomorrow_only': 'Tomorrow only',
-        'time_any': 'any time of day', 'time_mornings': 'mornings', 'time_afternoons': 'afternoons', 'time_evenings': 'evenings',
-        'subjects_label': 'Subjects', 'total_sessions_label': 'Total sessions', 'across_label': 'across', 'days_label': 'day(s)',
-        'apply_merge_btn': 'Apply to Planner (merge)', 'replace_planner_btn': 'Replace Planner',
-        'retry_variation_btn': 'Retry (new variation)', 'reset_planner_btn': 'Reset Planner',
-        'reset_confirm': 'Reset the planner? This will clear every cell — this cannot be undone.',
-        'please_type_plan': 'Please type what you want to plan — or click one of the chips above.',
-        'today_minutes': 'Today', 'total_minutes': 'Total',
-        'pause_btn': 'Pause', 'sound_none': 'No Sound', 'sound_rain': 'Rain', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Quiz Generator', 'generate_quiz_btn': 'Generate Quiz from Notes', 'clear_quiz_btn': 'Clear Quiz',
-        'auto_flashcards_btn': 'Auto-Generate from Notes',
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar',
-        'cal_open': 'Open calendar',
-        'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month',
-        'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year',
-        'cal_next_year': 'Next year',
-        'cal_today': 'Today',
-        'calculator': 'Calculator',
-        'calc_clear': 'Clear',
-        'calc_backspace': 'Backspace',
-        'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix',
-        'priority_add': 'Add Task',
-        'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important',
-        'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important',
-        'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work',
-        'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today',
-        'dw_total': 'Total',
-        'dw_minutes': 'minutes',
-        'filter_all': 'All',
-        'filter_pending': 'Pending',
-        'filter_done': 'Done',
-        'sort_by': 'Sort by',
-        'sort_due': 'Due date',
-        'sort_priority': 'Priority',
-        'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?',
-        'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.',
-        'confirm_yes': 'Yes, continue',
-        'confirm_no': 'Cancel',
-        'edit': 'Edit',
-        'save': 'Save',
-        'cancel': 'Cancel',
-        'close': 'Close',
-        'confirm': 'Confirm',
-        'apply': 'Apply',
-        'clear': 'Clear',
-        'refresh': 'Refresh',
-        'back': 'Back',
-        'next': 'Next',
-        'previous': 'Previous',
-        'search': 'Search',
-        'filter': 'Filter',
-        'copy': 'Copy',
-        'copied': 'Copied!',
-        'download': 'Download',
-        'upload': 'Upload',
-        'loading': 'Loading...',
-        'error': 'Error',
-        'success': 'Success',
-        'warning': 'Warning',
-        'info': 'Info',
-        'unknown': 'Unknown',
-        'none': 'None',
-        'all': 'All',
-        'yes': 'Yes',
-        'no': 'No',
-        'ok': 'OK',
-        'minutes': 'minutes',
-        'seconds': 'seconds',
-        'hours': 'hours',
-        'today_word': 'today',
-        'tomorrow': 'Tomorrow',
-        'yesterday': 'Yesterday',
-        'this_week': 'This Week',
-        'this_month': 'This Month',
-        'this_year': 'This Year',
-        'good_morning': 'Good morning',
-        'good_afternoon': 'Good afternoon',
-        'good_evening': 'Good evening',
-        'file_open': 'Open',
-        'file_rename': 'Rename',
-        'file_notes': 'Notes',
-        'file_size': 'Size',
-        'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro',
-        'pomodoro_short_break': 'Short Break',
-        'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session',
-        'pomodoro_work': 'Focus',
-        'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette',
-        'cmd_placeholder': 'Type a command...',
-        'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash',
-        'trash_close': 'Close Trash',
-        'trash_restore': 'Restore',
-        'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash',
-        'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings',
-        'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!',
-        'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist',
-        'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain',
-        'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked',
-        'blocker_events': 'recent events',
-        'shortcut_add': 'Add',
-        'shortcut_edit': 'Edit shortcut',
-        'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL',
-        'shortcut_name': 'Display name',
-        'shortcut_save': 'Save shortcut',
-        'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete',
-        'session_duration': 'Duration',
-        'session_goal': 'Goal',
-        'session_distractions': 'Distractions',
-        'session_score': 'Score',
-        'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met',
-        'session_streak': 'day streak',
-        'session_today': 'min today',
-        'theme_customize': 'Customize',
-        'theme_color': 'Color Theme',
-        'theme_background': 'Background',
-        'theme_reset': 'Reset to default',
-        'theme_done': 'Done',
-        'theme_gradients': 'Gradients',
-        'theme_photos': 'Photos'
     },
-
     es: {
         'dash_title': 'Panel de Control',
         'dash_subtitle': 'Tu centro de estudio de un vistazo: progreso de hoy e historial completo.',
@@ -800,6 +598,7 @@ var translations = {
         'add_habit': 'Añadir Hábito',
         'add_note': 'Añadir Nota',
         'add_notice': 'Añadir Aviso',
+        'delete_all': 'Eliminar Todo',
         'complete': 'Completar',
         'done': 'Hecho',
         'ai_tools': 'Herramientas IA',
@@ -889,170 +688,7 @@ var translations = {
         'wolfram_desc': 'Motor computacional STEM.',
         'canva_desc': 'Diseño con IA para presentaciones, carteles y redes sociales.',
         'youtube_desc': 'Vídeos educativos, tutoriales y conferencias.',
-
-        'blocker_on': 'Bloqueador Activado', 'blocker_off': 'Bloqueador Desactivado',
-        'blocked_alert_title': '¡Bloqueado!',
-        'blocked_alert_msg': 'está en tu lista de distracciones. Desactiva el Bloqueador para visitarlo.',
-        'trash_label': 'Papelera', 'trash_empty_msg': 'La papelera está vacía.',
-        'restore_btn': 'Restaurar', 'delete_btn': 'Eliminar', 'empty_trash_btn': 'Vaciar Papelera', 'close_btn': 'Cerrar',
-        'switch_digital': 'Cambiar a Digital',
-        'ai_planner_title': 'Planificador IA de StudyHub',
-        'ai_planner_desc': 'Describe lo que quieres — la IA lo planificará. Prueba "haz una rutina tú mismo", "plan de fin de semana fácil", "semana de exámenes intensa", "matemáticas por la mañana, física por la tarde", "3 horas hoy" o "enfócate en química esta semana".',
-        'ai_planner_placeholder': 'Escribe tu solicitud aquí...',
-        'generate_plan_btn': 'Generar Plan',
-        'chip_auto': 'Rutina automática', 'chip_easy': 'Fácil', 'chip_exam': 'Semana de exámenes', 'chip_weekend': 'Fin de semana',
-        'chip_math_physics': 'Mate + Física', 'chip_surprise': 'Sorpréndeme', 'chip_3h': '3h hoy',
-        'understood': 'Entendido', 'mode_easy': 'Fácil / ligero', 'mode_balanced': 'Equilibrado', 'mode_intense': 'Intenso',
-        'scope_full_week': 'Semana completa', 'scope_weekend_only': 'Solo fin de semana', 'scope_weekdays_only': 'Solo días laborables',
-        'scope_today_only': 'Solo hoy', 'scope_tomorrow_only': 'Solo mañana',
-        'time_any': 'cualquier hora', 'time_mornings': 'mañanas', 'time_afternoons': 'tardes', 'time_evenings': 'noches',
-        'subjects_label': 'Asignaturas', 'total_sessions_label': 'Sesiones totales', 'across_label': 'en', 'days_label': 'día(s)',
-        'apply_merge_btn': 'Aplicar al Planificador (fusionar)', 'replace_planner_btn': 'Reemplazar Planificador',
-        'retry_variation_btn': 'Reintentar (nueva variación)', 'reset_planner_btn': 'Restablecer Planificador',
-        'reset_confirm': '¿Restablecer el planificador? Se borrarán todas las celdas — no se puede deshacer.',
-        'please_type_plan': 'Escribe lo que quieres planificar — o haz clic en un chip.',
-        'today_minutes': 'Hoy', 'total_minutes': 'Total',
-        'pause_btn': 'Pausar', 'sound_none': 'Sin Sonido', 'sound_rain': 'Lluvia', 'sound_white': 'Ruido Blanco', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Generador de Cuestionarios', 'generate_quiz_btn': 'Generar Cuestionario desde Notas', 'clear_quiz_btn': 'Borrar Cuestionario',
-        'auto_flashcards_btn': 'Auto-Generar desde Notas',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar',
-        'cal_open': 'Open calendar',
-        'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month',
-        'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year',
-        'cal_next_year': 'Next year',
-        'cal_today': 'Today',
-        'calculator': 'Calculator',
-        'calc_clear': 'Clear',
-        'calc_backspace': 'Backspace',
-        'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix',
-        'priority_add': 'Add Task',
-        'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important',
-        'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important',
-        'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work',
-        'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today',
-        'dw_total': 'Total',
-        'dw_minutes': 'minutes',
-        'filter_all': 'All',
-        'filter_pending': 'Pending',
-        'filter_done': 'Done',
-        'sort_by': 'Sort by',
-        'sort_due': 'Due date',
-        'sort_priority': 'Priority',
-        'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?',
-        'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.',
-        'confirm_yes': 'Yes, continue',
-        'confirm_no': 'Cancel',
-        'edit': 'Edit',
-        'save': 'Save',
-        'cancel': 'Cancel',
-        'close': 'Close',
-        'confirm': 'Confirm',
-        'apply': 'Apply',
-        'clear': 'Clear',
-        'refresh': 'Refresh',
-        'back': 'Back',
-        'next': 'Next',
-        'previous': 'Previous',
-        'search': 'Search',
-        'filter': 'Filter',
-        'copy': 'Copy',
-        'copied': 'Copied!',
-        'download': 'Download',
-        'upload': 'Upload',
-        'loading': 'Loading...',
-        'error': 'Error',
-        'success': 'Success',
-        'warning': 'Warning',
-        'info': 'Info',
-        'unknown': 'Unknown',
-        'none': 'None',
-        'all': 'All',
-        'yes': 'Yes',
-        'no': 'No',
-        'ok': 'OK',
-        'minutes': 'minutes',
-        'seconds': 'seconds',
-        'hours': 'hours',
-        'today_word': 'today',
-        'tomorrow': 'Tomorrow',
-        'yesterday': 'Yesterday',
-        'this_week': 'This Week',
-        'this_month': 'This Month',
-        'this_year': 'This Year',
-        'good_morning': 'Good morning',
-        'good_afternoon': 'Good afternoon',
-        'good_evening': 'Good evening',
-        'file_open': 'Open',
-        'file_rename': 'Rename',
-        'file_notes': 'Notes',
-        'file_size': 'Size',
-        'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro',
-        'pomodoro_short_break': 'Short Break',
-        'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session',
-        'pomodoro_work': 'Focus',
-        'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette',
-        'cmd_placeholder': 'Type a command...',
-        'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash',
-        'trash_close': 'Close Trash',
-        'trash_restore': 'Restore',
-        'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash',
-        'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings',
-        'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!',
-        'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist',
-        'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain',
-        'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked',
-        'blocker_events': 'recent events',
-        'shortcut_add': 'Add',
-        'shortcut_edit': 'Edit shortcut',
-        'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL',
-        'shortcut_name': 'Display name',
-        'shortcut_save': 'Save shortcut',
-        'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete',
-        'session_duration': 'Duration',
-        'session_goal': 'Goal',
-        'session_distractions': 'Distractions',
-        'session_score': 'Score',
-        'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met',
-        'session_streak': 'day streak',
-        'session_today': 'min today',
-        'theme_customize': 'Customize',
-        'theme_color': 'Color Theme',
-        'theme_background': 'Background',
-        'theme_reset': 'Reset to default',
-        'theme_done': 'Done',
-        'theme_gradients': 'Gradients',
-        'theme_photos': 'Photos'
     },
-
     zh: {
         'dash_title': '仪表盘',
         'dash_subtitle': '一站式学习中心 — 今日进度与全部历史记录。',
@@ -1089,6 +725,7 @@ var translations = {
         'add_habit': '添加习惯',
         'add_note': '添加笔记',
         'add_notice': '添加公告',
+        'delete_all': '全部删除',
         'complete': '完成',
         'done': '已完成',
         'ai_tools': 'AI 工具',
@@ -1178,170 +815,7 @@ var translations = {
         'wolfram_desc': 'STEM 计算引擎。',
         'canva_desc': 'AI 驱动的设计工具，用于演示文稿、海报和社交媒体。',
         'youtube_desc': '教育视频、教程和讲座。',
-
-        'blocker_on': '拦截器已开启', 'blocker_off': '拦截器已关闭',
-        'blocked_alert_title': '已拦截！',
-        'blocked_alert_msg': '在您的分心列表中。关闭拦截器以访问。',
-        'trash_label': '回收站', 'trash_empty_msg': '回收站为空。',
-        'restore_btn': '恢复', 'delete_btn': '删除', 'empty_trash_btn': '清空回收站', 'close_btn': '关闭',
-        'switch_digital': '切换到数字时钟',
-        'ai_planner_title': 'StudyHub AI 计划器',
-        'ai_planner_desc': '描述您的需求 — AI 会为您规划。试试"自己安排一个惯例"、"轻松的周末计划"、"紧张的考试周"、"早上数学，晚上物理"、"今天学习 3 小时"或"本周专注化学"。',
-        'ai_planner_placeholder': '在此输入您的请求...',
-        'generate_plan_btn': '生成计划',
-        'chip_auto': '自动惯例', 'chip_easy': '轻松', 'chip_exam': '考试周', 'chip_weekend': '周末',
-        'chip_math_physics': '数学 + 物理', 'chip_surprise': '随机', 'chip_3h': '今天 3 小时',
-        'understood': '已理解', 'mode_easy': '轻松', 'mode_balanced': '均衡', 'mode_intense': '紧张',
-        'scope_full_week': '整周', 'scope_weekend_only': '仅周末', 'scope_weekdays_only': '仅工作日',
-        'scope_today_only': '仅今天', 'scope_tomorrow_only': '仅明天',
-        'time_any': '任意时段', 'time_mornings': '上午', 'time_afternoons': '下午', 'time_evenings': '晚上',
-        'subjects_label': '科目', 'total_sessions_label': '总会话数', 'across_label': '共', 'days_label': '天',
-        'apply_merge_btn': '应用到计划器（合并）', 'replace_planner_btn': '替换计划器',
-        'retry_variation_btn': '重试（新变体）', 'reset_planner_btn': '重置计划器',
-        'reset_confirm': '重置计划器？将清空所有单元格 — 无法撤销。',
-        'please_type_plan': '请输入您想规划的内容 — 或点击上方标签。',
-        'today_minutes': '今天', 'total_minutes': '总计',
-        'pause_btn': '暂停', 'sound_none': '无声', 'sound_rain': '雨声', 'sound_white': '白噪音', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': '测验生成器', 'generate_quiz_btn': '从笔记生成测验', 'clear_quiz_btn': '清除测验',
-        'auto_flashcards_btn': '从笔记自动生成',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar',
-        'cal_open': 'Open calendar',
-        'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month',
-        'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year',
-        'cal_next_year': 'Next year',
-        'cal_today': 'Today',
-        'calculator': 'Calculator',
-        'calc_clear': 'Clear',
-        'calc_backspace': 'Backspace',
-        'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix',
-        'priority_add': 'Add Task',
-        'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important',
-        'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important',
-        'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work',
-        'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today',
-        'dw_total': 'Total',
-        'dw_minutes': 'minutes',
-        'filter_all': 'All',
-        'filter_pending': 'Pending',
-        'filter_done': 'Done',
-        'sort_by': 'Sort by',
-        'sort_due': 'Due date',
-        'sort_priority': 'Priority',
-        'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?',
-        'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.',
-        'confirm_yes': 'Yes, continue',
-        'confirm_no': 'Cancel',
-        'edit': 'Edit',
-        'save': 'Save',
-        'cancel': 'Cancel',
-        'close': 'Close',
-        'confirm': 'Confirm',
-        'apply': 'Apply',
-        'clear': 'Clear',
-        'refresh': 'Refresh',
-        'back': 'Back',
-        'next': 'Next',
-        'previous': 'Previous',
-        'search': 'Search',
-        'filter': 'Filter',
-        'copy': 'Copy',
-        'copied': 'Copied!',
-        'download': 'Download',
-        'upload': 'Upload',
-        'loading': 'Loading...',
-        'error': 'Error',
-        'success': 'Success',
-        'warning': 'Warning',
-        'info': 'Info',
-        'unknown': 'Unknown',
-        'none': 'None',
-        'all': 'All',
-        'yes': 'Yes',
-        'no': 'No',
-        'ok': 'OK',
-        'minutes': 'minutes',
-        'seconds': 'seconds',
-        'hours': 'hours',
-        'today_word': 'today',
-        'tomorrow': 'Tomorrow',
-        'yesterday': 'Yesterday',
-        'this_week': 'This Week',
-        'this_month': 'This Month',
-        'this_year': 'This Year',
-        'good_morning': 'Good morning',
-        'good_afternoon': 'Good afternoon',
-        'good_evening': 'Good evening',
-        'file_open': 'Open',
-        'file_rename': 'Rename',
-        'file_notes': 'Notes',
-        'file_size': 'Size',
-        'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro',
-        'pomodoro_short_break': 'Short Break',
-        'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session',
-        'pomodoro_work': 'Focus',
-        'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette',
-        'cmd_placeholder': 'Type a command...',
-        'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash',
-        'trash_close': 'Close Trash',
-        'trash_restore': 'Restore',
-        'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash',
-        'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings',
-        'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!',
-        'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist',
-        'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain',
-        'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked',
-        'blocker_events': 'recent events',
-        'shortcut_add': 'Add',
-        'shortcut_edit': 'Edit shortcut',
-        'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL',
-        'shortcut_name': 'Display name',
-        'shortcut_save': 'Save shortcut',
-        'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete',
-        'session_duration': 'Duration',
-        'session_goal': 'Goal',
-        'session_distractions': 'Distractions',
-        'session_score': 'Score',
-        'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met',
-        'session_streak': 'day streak',
-        'session_today': 'min today',
-        'theme_customize': 'Customize',
-        'theme_color': 'Color Theme',
-        'theme_background': 'Background',
-        'theme_reset': 'Reset to default',
-        'theme_done': 'Done',
-        'theme_gradients': 'Gradients',
-        'theme_photos': 'Photos'
     },
-
     hi: {
         'dash_title': 'डैशबोर्ड',
         'dash_subtitle': 'आपका अध्ययन केंद्र — आज की प्रगति और पूरी इतिहास।',
@@ -1378,6 +852,7 @@ var translations = {
         'add_habit': 'आदत जोड़ें',
         'add_note': 'नोट जोड़ें',
         'add_notice': 'सूचना जोड़ें',
+        'delete_all': 'सभी हटाएं',
         'complete': 'पूरा करें',
         'done': 'हो गया',
         'ai_tools': 'AI उपकरण',
@@ -1467,170 +942,7 @@ var translations = {
         'wolfram_desc': 'कम्प्यूटेशनल STEM इंजन।',
         'canva_desc': 'प्रस्तुतियों, पोस्टरों और सोशल मीडिया के लिए AI-संचालित डिज़ाइन।',
         'youtube_desc': 'शैक्षिक वीडियो, ट्यूटोरियल और व्याख्यान।',
-
-        'blocker_on': 'ब्लॉकर चालू', 'blocker_off': 'ब्लॉकर बंद',
-        'blocked_alert_title': 'ब्लॉक किया गया!',
-        'blocked_alert_msg': 'आपकी व्याकुलता सूची में है। इसे खोलने के लिए ब्लॉकर बंद करें।',
-        'trash_label': 'ट्रैश', 'trash_empty_msg': 'ट्रैश खाली है।',
-        'restore_btn': 'पुनर्स्थापित', 'delete_btn': 'हटाएं', 'empty_trash_btn': 'ट्रैश खाली करें', 'close_btn': 'बंद करें',
-        'switch_digital': 'डिजिटल पर स्विच करें',
-        'ai_planner_title': 'StudyHub AI प्लानर',
-        'ai_planner_desc': 'बताएं कि आप क्या चाहते हैं — AI आपके लिए योजना बनाएगा। आज़माएं "खुद एक दिनचर्या बनाओ", "आसान सप्ताहांत योजना", "गहन परीक्षा सप्ताह", "सुबह गणित, शाम भौतिकी", "आज 3 घंटे" या "इस सप्ताह रसायन पर ध्यान दें"।',
-        'ai_planner_placeholder': 'यहाँ अपनी request लिखें...',
-        'generate_plan_btn': 'योजना बनाएं',
-        'chip_auto': 'स्वतः दिनचर्या', 'chip_easy': 'आसान', 'chip_exam': 'परीक्षा सप्ताह', 'chip_weekend': 'सप्ताहांत',
-        'chip_math_physics': 'गणित + भौतिकी', 'chip_surprise': 'आश्चर्य', 'chip_3h': 'आज 3 घंटे',
-        'understood': 'समझ गया', 'mode_easy': 'आसान', 'mode_balanced': 'संतुलित', 'mode_intense': 'गहन',
-        'scope_full_week': 'पूरा सप्ताह', 'scope_weekend_only': 'केवल सप्ताहांत', 'scope_weekdays_only': 'केवल कार्यदिवस',
-        'scope_today_only': 'केवल आज', 'scope_tomorrow_only': 'केवल कल',
-        'time_any': 'किसी भी समय', 'time_mornings': 'सुबह', 'time_afternoons': 'दोपहर', 'time_evenings': 'शाम',
-        'subjects_label': 'विषय', 'total_sessions_label': 'कुल सत्र', 'across_label': 'में', 'days_label': 'दिन',
-        'apply_merge_btn': 'प्लानर में लागू करें (मर्ज)', 'replace_planner_btn': 'प्लानर बदलें',
-        'retry_variation_btn': 'पुनः प्रयास (नया)', 'reset_planner_btn': 'प्लानर रीसेट करें',
-        'reset_confirm': 'प्लानर रीसेट करें? सभी सेल साफ हो जाएंगे — इसे पूर्ववत नहीं किया जा सकता।',
-        'please_type_plan': 'जो योजना बनानी है वह लिखें — या ऊपर कोई चिप क्लिक करें।',
-        'today_minutes': 'आज', 'total_minutes': 'कुल',
-        'pause_btn': 'रोकें', 'sound_none': 'कोई ध्वनि नहीं', 'sound_rain': 'बारिश', 'sound_white': 'सफेद शोर', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'क्विज़ जनरेटर', 'generate_quiz_btn': 'नोट्स से क्विज़ बनाएं', 'clear_quiz_btn': 'क्विज़ साफ करें',
-        'auto_flashcards_btn': 'नोट्स से स्वतः बनाएं',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar',
-        'cal_open': 'Open calendar',
-        'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month',
-        'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year',
-        'cal_next_year': 'Next year',
-        'cal_today': 'Today',
-        'calculator': 'Calculator',
-        'calc_clear': 'Clear',
-        'calc_backspace': 'Backspace',
-        'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix',
-        'priority_add': 'Add Task',
-        'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important',
-        'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important',
-        'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work',
-        'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today',
-        'dw_total': 'Total',
-        'dw_minutes': 'minutes',
-        'filter_all': 'All',
-        'filter_pending': 'Pending',
-        'filter_done': 'Done',
-        'sort_by': 'Sort by',
-        'sort_due': 'Due date',
-        'sort_priority': 'Priority',
-        'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?',
-        'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.',
-        'confirm_yes': 'Yes, continue',
-        'confirm_no': 'Cancel',
-        'edit': 'Edit',
-        'save': 'Save',
-        'cancel': 'Cancel',
-        'close': 'Close',
-        'confirm': 'Confirm',
-        'apply': 'Apply',
-        'clear': 'Clear',
-        'refresh': 'Refresh',
-        'back': 'Back',
-        'next': 'Next',
-        'previous': 'Previous',
-        'search': 'Search',
-        'filter': 'Filter',
-        'copy': 'Copy',
-        'copied': 'Copied!',
-        'download': 'Download',
-        'upload': 'Upload',
-        'loading': 'Loading...',
-        'error': 'Error',
-        'success': 'Success',
-        'warning': 'Warning',
-        'info': 'Info',
-        'unknown': 'Unknown',
-        'none': 'None',
-        'all': 'All',
-        'yes': 'Yes',
-        'no': 'No',
-        'ok': 'OK',
-        'minutes': 'minutes',
-        'seconds': 'seconds',
-        'hours': 'hours',
-        'today_word': 'today',
-        'tomorrow': 'Tomorrow',
-        'yesterday': 'Yesterday',
-        'this_week': 'This Week',
-        'this_month': 'This Month',
-        'this_year': 'This Year',
-        'good_morning': 'Good morning',
-        'good_afternoon': 'Good afternoon',
-        'good_evening': 'Good evening',
-        'file_open': 'Open',
-        'file_rename': 'Rename',
-        'file_notes': 'Notes',
-        'file_size': 'Size',
-        'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro',
-        'pomodoro_short_break': 'Short Break',
-        'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session',
-        'pomodoro_work': 'Focus',
-        'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette',
-        'cmd_placeholder': 'Type a command...',
-        'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash',
-        'trash_close': 'Close Trash',
-        'trash_restore': 'Restore',
-        'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash',
-        'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings',
-        'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!',
-        'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist',
-        'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain',
-        'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked',
-        'blocker_events': 'recent events',
-        'shortcut_add': 'Add',
-        'shortcut_edit': 'Edit shortcut',
-        'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL',
-        'shortcut_name': 'Display name',
-        'shortcut_save': 'Save shortcut',
-        'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete',
-        'session_duration': 'Duration',
-        'session_goal': 'Goal',
-        'session_distractions': 'Distractions',
-        'session_score': 'Score',
-        'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met',
-        'session_streak': 'day streak',
-        'session_today': 'min today',
-        'theme_customize': 'Customize',
-        'theme_color': 'Color Theme',
-        'theme_background': 'Background',
-        'theme_reset': 'Reset to default',
-        'theme_done': 'Done',
-        'theme_gradients': 'Gradients',
-        'theme_photos': 'Photos'
     },
-
     ar: {
         'dash_title': 'لوحة التحكم',
         'dash_subtitle': 'مركز دراستك بنظرة سريعة — تقدم اليوم والتاريخ الكامل.',
@@ -1667,6 +979,7 @@ var translations = {
         'add_habit': 'إضافة عادة',
         'add_note': 'إضافة ملاحظة',
         'add_notice': 'إضافة إشعار',
+        'delete_all': 'حذف الكل',
         'complete': 'إكمال',
         'done': 'تم',
         'ai_tools': 'أدوات الذكاء الاصطناعي',
@@ -1756,81 +1069,7 @@ var translations = {
         'wolfram_desc': 'محرك حسابي STEM.',
         'canva_desc': 'تصميم مدعوم بالذكاء الاصطناعي للعروض التقديمية والملصقات ووسائل التواصل الاجتماعي.',
         'youtube_desc': 'فيديوهات تعليمية ودروس ومحاضرات.',
-
-        'blocker_on': 'الحاجب مُفعّل', 'blocker_off': 'الحاجب مُعطّل',
-        'blocked_alert_title': 'محجوب!',
-        'blocked_alert_msg': 'في قائمة المشتتات. أوقف الحاجب للوصول إليه.',
-        'trash_label': 'المهملات', 'trash_empty_msg': 'المهملات فارغة.',
-        'restore_btn': 'استعادة', 'delete_btn': 'حذف', 'empty_trash_btn': 'إفراغ المهملات', 'close_btn': 'إغلاق',
-        'switch_digital': 'التبديل إلى الرقمي',
-        'ai_planner_title': 'مخطط StudyHub AI',
-        'ai_planner_desc': 'صف ما تريده — سيقوم الذكاء الاصطناعي بالتخطيط. جرّب "اصنع روتينًا بنفسك"، "خطة عطلة نهاية أسبوع سهلة"، "أسبوع امتحانات مكثف"، "رياضيات صباحًا، فيزياء مساءً"، "3 ساعات اليوم" أو "التركيز على الكيمياء هذا الأسبوع".',
-        'ai_planner_placeholder': 'اكتب طلبك هنا...',
-        'generate_plan_btn': 'توليد خطة',
-        'chip_auto': 'روتين تلقائي', 'chip_easy': 'سهل', 'chip_exam': 'أسبوع الامتحانات', 'chip_weekend': 'عطلة نهاية الأسبوع',
-        'chip_math_physics': 'رياضيات + فيزياء', 'chip_surprise': 'مفاجئني', 'chip_3h': '3 ساعات اليوم',
-        'understood': 'تم الفهم', 'mode_easy': 'سهل', 'mode_balanced': 'متوازن', 'mode_intense': 'مكثف',
-        'scope_full_week': 'الأسبوع كامل', 'scope_weekend_only': 'عطلة نهاية الأسبوع فقط', 'scope_weekdays_only': 'أيام الأسبوع فقط',
-        'scope_today_only': 'اليوم فقط', 'scope_tomorrow_only': 'غدًا فقط',
-        'time_any': 'أي وقت', 'time_mornings': 'صباحًا', 'time_afternoons': 'بعد الظهر', 'time_evenings': 'مساءً',
-        'subjects_label': 'المواد', 'total_sessions_label': 'إجمالي الجلسات', 'across_label': 'خلال', 'days_label': 'يوم',
-        'apply_merge_btn': 'تطبيق على المخطط (دمج)', 'replace_planner_btn': 'استبدال المخطط',
-        'retry_variation_btn': 'إعادة المحاولة (تنويع جديد)', 'reset_planner_btn': 'إعادة تعيين المخطط',
-        'reset_confirm': 'إعادة تعيين المخطط؟ سيتم مسح كل الخلايا — لا يمكن التراجع.',
-        'please_type_plan': 'اكتب ما تريد تخطيطه — أو انقر على أحد الأزرار أعلاه.',
-        'today_minutes': 'اليوم', 'total_minutes': 'الإجمالي',
-        'pause_btn': 'إيقاف مؤقت', 'sound_none': 'بدون صوت', 'sound_rain': 'مطر', 'sound_white': 'ضجيج أبيض', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'منشئ الاختبارات', 'generate_quiz_btn': 'توليد اختبار من الملاحظات', 'clear_quiz_btn': 'مسح الاختبار',
-        'auto_flashcards_btn': 'توليد تلقائي من الملاحظات',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     fr: {
         'dash_title': 'Tableau de bord',
         'dash_subtitle': 'Votre centre d\'études en un coup d\'œil — progrès du jour et historique complet.',
@@ -1867,6 +1106,7 @@ var translations = {
         'add_habit': 'Ajouter une habitude',
         'add_note': 'Ajouter une note',
         'add_notice': 'Ajouter une notification',
+        'delete_all': 'Tout supprimer',
         'complete': 'Terminer',
         'done': 'Fait',
         'ai_tools': 'Outils IA',
@@ -1956,81 +1196,7 @@ var translations = {
         'wolfram_desc': 'Moteur de calcul STEM.',
         'canva_desc': 'Conception alimentée par l\'IA pour les présentations, affiches et réseaux sociaux.',
         'youtube_desc': 'Vidéos éducatives, tutoriels et conférences.',
-
-        'blocker_on': 'Bloqueur Activé', 'blocker_off': 'Bloqueur Désactivé',
-        'blocked_alert_title': 'Bloqué !',
-        'blocked_alert_msg': 'est dans votre liste de distractions. Désactivez le Bloqueur pour y accéder.',
-        'trash_label': 'Corbeille', 'trash_empty_msg': 'La corbeille est vide.',
-        'restore_btn': 'Restaurer', 'delete_btn': 'Supprimer', 'empty_trash_btn': 'Vider la corbeille', 'close_btn': 'Fermer',
-        'switch_digital': 'Passer au numérique',
-        'ai_planner_title': 'Planificateur IA StudyHub',
-        'ai_planner_desc': 'Décrivez ce que vous voulez — l\'IA le planifiera. Essayez "fais une routine toi-même", "plan week-end facile", "semaine d\'examens intense", "maths le matin, physique le soir", "3 heures aujourd\'hui" ou "concentre-toi sur la chimie cette semaine".',
-        'ai_planner_placeholder': 'Tapez votre demande ici...',
-        'generate_plan_btn': 'Générer le plan',
-        'chip_auto': 'Routine auto', 'chip_easy': 'Facile', 'chip_exam': 'Semaine d\'examens', 'chip_weekend': 'Week-end',
-        'chip_math_physics': 'Maths + Physique', 'chip_surprise': 'Surprends-moi', 'chip_3h': '3h aujourd\'hui',
-        'understood': 'Compris', 'mode_easy': 'Facile / léger', 'mode_balanced': 'Équilibré', 'mode_intense': 'Intense',
-        'scope_full_week': 'Semaine complète', 'scope_weekend_only': 'Week-end uniquement', 'scope_weekdays_only': 'Jours de semaine uniquement',
-        'scope_today_only': 'Aujourd\'hui seulement', 'scope_tomorrow_only': 'Demain seulement',
-        'time_any': 'n\'importe quand', 'time_mornings': 'matins', 'time_afternoons': 'après-midis', 'time_evenings': 'soirées',
-        'subjects_label': 'Matières', 'total_sessions_label': 'Sessions totales', 'across_label': 'sur', 'days_label': 'jour(s)',
-        'apply_merge_btn': 'Appliquer au planificateur (fusionner)', 'replace_planner_btn': 'Remplacer le planificateur',
-        'retry_variation_btn': 'Réessayer (nouvelle variation)', 'reset_planner_btn': 'Réinitialiser le planificateur',
-        'reset_confirm': 'Réinitialiser le planificateur ? Toutes les cellules seront effacées — action irréversible.',
-        'please_type_plan': 'Tapez ce que vous voulez planifier — ou cliquez sur un bouton ci-dessus.',
-        'today_minutes': 'Aujourd\'hui', 'total_minutes': 'Total',
-        'pause_btn': 'Pause', 'sound_none': 'Aucun son', 'sound_rain': 'Pluie', 'sound_white': 'Bruit blanc', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Générateur de Quiz', 'generate_quiz_btn': 'Générer un Quiz depuis les Notes', 'clear_quiz_btn': 'Effacer le Quiz',
-        'auto_flashcards_btn': 'Auto-générer depuis les Notes',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     ru: {
         'dash_title': 'Панель управления',
         'dash_subtitle': 'Ваш учебный центр — прогресс за сегодня и вся история.',
@@ -2067,6 +1233,7 @@ var translations = {
         'add_habit': 'Добавить привычку',
         'add_note': 'Добавить заметку',
         'add_notice': 'Добавить уведомление',
+        'delete_all': 'Удалить всё',
         'complete': 'Завершить',
         'done': 'Готово',
         'ai_tools': 'Инструменты ИИ',
@@ -2156,81 +1323,7 @@ var translations = {
         'wolfram_desc': 'Вычислительный движок STEM.',
         'canva_desc': 'Дизайн на основе ИИ для презентаций, плакатов и соцсетей.',
         'youtube_desc': 'Образовательные видео, уроки и лекции.',
-
-        'blocker_on': 'Блокировщик Вкл.', 'blocker_off': 'Блокировщик Выкл.',
-        'blocked_alert_title': 'Заблокировано!',
-        'blocked_alert_msg': 'находится в вашем списке отвлечений. Отключите блокировщик, чтобы открыть его.',
-        'trash_label': 'Корзина', 'trash_empty_msg': 'Корзина пуста.',
-        'restore_btn': 'Восстановить', 'delete_btn': 'Удалить', 'empty_trash_btn': 'Очистить корзину', 'close_btn': 'Закрыть',
-        'switch_digital': 'Переключиться на цифровые',
-        'ai_planner_title': 'ИИ-планировщик StudyHub',
-        'ai_planner_desc': 'Опишите, что вы хотите — ИИ спланирует это. Попробуйте "составь рутину сам", "лёгкий план на выходные", "интенсивная неделя экзаменов", "математика утром, физика вечером", "3 часа сегодня" или "фокус на химии на этой неделе".',
-        'ai_planner_placeholder': 'Введите ваш запрос...',
-        'generate_plan_btn': 'Создать план',
-        'chip_auto': 'Авто-рутина', 'chip_easy': 'Легко', 'chip_exam': 'Неделя экзаменов', 'chip_weekend': 'Выходные',
-        'chip_math_physics': 'Матем. + Физика', 'chip_surprise': 'Удиви меня', 'chip_3h': '3 ч сегодня',
-        'understood': 'Понято', 'mode_easy': 'Легко', 'mode_balanced': 'Сбалансированно', 'mode_intense': 'Интенсивно',
-        'scope_full_week': 'Вся неделя', 'scope_weekend_only': 'Только выходные', 'scope_weekdays_only': 'Только будни',
-        'scope_today_only': 'Только сегодня', 'scope_tomorrow_only': 'Только завтра',
-        'time_any': 'в любое время', 'time_mornings': 'утро', 'time_afternoons': 'день', 'time_evenings': 'вечер',
-        'subjects_label': 'Предметы', 'total_sessions_label': 'Всего сессий', 'across_label': 'в течение', 'days_label': 'дн.',
-        'apply_merge_btn': 'Применить к планировщику (слить)', 'replace_planner_btn': 'Заменить планировщик',
-        'retry_variation_btn': 'Повторить (новый вариант)', 'reset_planner_btn': 'Сбросить планировщик',
-        'reset_confirm': 'Сбросить планировщик? Все ячейки будут очищены — действие необратимо.',
-        'please_type_plan': 'Напишите, что хотите запланировать — или нажмите кнопку выше.',
-        'today_minutes': 'Сегодня', 'total_minutes': 'Всего',
-        'pause_btn': 'Пауза', 'sound_none': 'Без звука', 'sound_rain': 'Дождь', 'sound_white': 'Белый шум', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Генератор тестов', 'generate_quiz_btn': 'Создать тест из заметок', 'clear_quiz_btn': 'Очистить тест',
-        'auto_flashcards_btn': 'Автогенерация из заметок',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     pt: {
         'dash_title': 'Painel de Controle',
         'dash_subtitle': 'Seu centro de estudos num relance — progresso de hoje e histórico completo.',
@@ -2267,6 +1360,7 @@ var translations = {
         'add_habit': 'Adicionar Hábito',
         'add_note': 'Adicionar Nota',
         'add_notice': 'Adicionar Aviso',
+        'delete_all': 'Eliminar Tudo',
         'complete': 'Concluir',
         'done': 'Feito',
         'ai_tools': 'Ferramentas IA',
@@ -2356,81 +1450,7 @@ var translations = {
         'wolfram_desc': 'Motor computacional STEM.',
         'canva_desc': 'Design com IA para apresentações, pôsteres e redes sociais.',
         'youtube_desc': 'Vídeos educativos, tutoriais e palestras.',
-
-        'blocker_on': 'Bloqueador Ligado', 'blocker_off': 'Bloqueador Desligado',
-        'blocked_alert_title': 'Bloqueado!',
-        'blocked_alert_msg': 'está na sua lista de distrações. Desligue o Bloqueador para visitá-lo.',
-        'trash_label': 'Lixeira', 'trash_empty_msg': 'A lixeira está vazia.',
-        'restore_btn': 'Restaurar', 'delete_btn': 'Excluir', 'empty_trash_btn': 'Esvaziar Lixeira', 'close_btn': 'Fechar',
-        'switch_digital': 'Mudar para Digital',
-        'ai_planner_title': 'Planejador IA StudyHub',
-        'ai_planner_desc': 'Descreva o que você quer — a IA vai planejar. Tente "faça uma rotina você mesmo", "plano de fim de semana fácil", "semana de provas intensa", "matemática de manhã, física à noite", "3 horas hoje" ou "foco em química esta semana".',
-        'ai_planner_placeholder': 'Digite seu pedido aqui...',
-        'generate_plan_btn': 'Gerar Plano',
-        'chip_auto': 'Rotina auto', 'chip_easy': 'Fácil', 'chip_exam': 'Semana de provas', 'chip_weekend': 'Fim de semana',
-        'chip_math_physics': 'Mat + Física', 'chip_surprise': 'Surpreenda-me', 'chip_3h': '3h hoje',
-        'understood': 'Entendido', 'mode_easy': 'Fácil / leve', 'mode_balanced': 'Equilibrado', 'mode_intense': 'Intenso',
-        'scope_full_week': 'Semana completa', 'scope_weekend_only': 'Apenas fim de semana', 'scope_weekdays_only': 'Apenas dias úteis',
-        'scope_today_only': 'Apenas hoje', 'scope_tomorrow_only': 'Apenas amanhã',
-        'time_any': 'qualquer hora', 'time_mornings': 'manhãs', 'time_afternoons': 'tardes', 'time_evenings': 'noites',
-        'subjects_label': 'Disciplinas', 'total_sessions_label': 'Total de sessões', 'across_label': 'em', 'days_label': 'dia(s)',
-        'apply_merge_btn': 'Aplicar ao Planejador (mesclar)', 'replace_planner_btn': 'Substituir Planejador',
-        'retry_variation_btn': 'Tentar novamente (nova variação)', 'reset_planner_btn': 'Redefinir Planejador',
-        'reset_confirm': 'Redefinir o planejador? Todas as células serão apagadas — irreversível.',
-        'please_type_plan': 'Digite o que deseja planejar — ou clique em um chip acima.',
-        'today_minutes': 'Hoje', 'total_minutes': 'Total',
-        'pause_btn': 'Pausar', 'sound_none': 'Sem som', 'sound_rain': 'Chuva', 'sound_white': 'Ruído branco', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Gerador de Quiz', 'generate_quiz_btn': 'Gerar Quiz das Notas', 'clear_quiz_btn': 'Limpar Quiz',
-        'auto_flashcards_btn': 'Auto-gerar das Notas',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     bn: {
         'dash_title': 'ড্যাশবোর্ড',
         'dash_subtitle': 'আপনার স্টাডি হাব — আজকের অগ্রগতি ও সম্পূর্ণ ইতিহাস।',
@@ -2467,6 +1487,7 @@ var translations = {
         'add_habit': 'অভ্যাস যোগ করুন',
         'add_note': 'নোট যোগ করুন',
         'add_notice': 'নোটিশ যোগ করুন',
+        'delete_all': 'সব মুছুন',
         'complete': 'সম্পন্ন',
         'done': 'শেষ',
         'ai_tools': 'AI টুলস',
@@ -2556,81 +1577,7 @@ var translations = {
         'wolfram_desc': 'STEM কম্পিউটেশনাল ইঞ্জিন।',
         'canva_desc': 'প্রেজেন্টেশন, পোস্টার এবং সোশ্যাল মিডিয়ার জন্য AI-চালিত ডিজাইন।',
         'youtube_desc': 'শিক্ষামূলক ভিডিও, টিউটোরিয়াল এবং বক্তৃতা।',
-
-        'blocker_on': 'ব্লকার চালু', 'blocker_off': 'ব্লকার বন্ধ',
-        'blocked_alert_title': 'ব্লক করা হয়েছে!',
-        'blocked_alert_msg': 'আপনার বিভ্রান্তির তালিকায় আছে। এটি দেখতে ব্লকার বন্ধ করুন।',
-        'trash_label': 'ট্র্যাশ', 'trash_empty_msg': 'ট্র্যাশ খালি।',
-        'restore_btn': 'পুনরুদ্ধার', 'delete_btn': 'মুছুন', 'empty_trash_btn': 'ট্র্যাশ খালি করুন', 'close_btn': 'বন্ধ করুন',
-        'switch_digital': 'ডিজিটালে স্যুইচ করুন',
-        'ai_planner_title': 'StudyHub AI প্ল্যানার',
-        'ai_planner_desc': 'আপনি কী চান তা বর্ণনা করুন — AI আপনার জন্য পরিকল্পনা করবে। চেষ্টা করুন "নিজেই একটি রুটিন বানাও", "সহজ সাপ্তাহিক ছুটির পরিকল্পনা", "তীব্র পরীক্ষার সপ্তাহ", "সকালে গণিত, সন্ধ্যায় পদার্থবিদ্যা", "আজ 3 ঘন্টা" বা "এই সপ্তাহে রসায়নে মনোযোগ দিন"।',
-        'ai_planner_placeholder': 'এখানে আপনার অনুরোধ লিখুন...',
-        'generate_plan_btn': 'পরিকল্পনা তৈরি করুন',
-        'chip_auto': 'স্বয়ংক্রিয় রুটিন', 'chip_easy': 'সহজ', 'chip_exam': 'পরীক্ষার সপ্তাহ', 'chip_weekend': 'সাপ্তাহিক ছুটি',
-        'chip_math_physics': 'গণিত + পদার্থবিদ্যা', 'chip_surprise': 'আশ্চর্য করুন', 'chip_3h': 'আজ 3 ঘন্টা',
-        'understood': 'বুঝেছি', 'mode_easy': 'সহজ', 'mode_balanced': 'ভারসাম্যপূর্ণ', 'mode_intense': 'তীব্র',
-        'scope_full_week': 'পুরো সপ্তাহ', 'scope_weekend_only': 'শুধু সাপ্তাহিক ছুটি', 'scope_weekdays_only': 'শুধু কর্মদিবস',
-        'scope_today_only': 'শুধু আজ', 'scope_tomorrow_only': 'শুধু কাল',
-        'time_any': 'যেকোনো সময়', 'time_mornings': 'সকাল', 'time_afternoons': 'বিকেল', 'time_evenings': 'সন্ধ্যা',
-        'subjects_label': 'বিষয়', 'total_sessions_label': 'মোট সেশন', 'across_label': 'জুড়ে', 'days_label': 'দিন',
-        'apply_merge_btn': 'প্ল্যানারে প্রয়োগ করুন (মার্জ)', 'replace_planner_btn': 'প্ল্যানার প্রতিস্থাপন করুন',
-        'retry_variation_btn': 'আবার চেষ্টা করুন (নতুন)', 'reset_planner_btn': 'প্ল্যানার রিসেট করুন',
-        'reset_confirm': 'প্ল্যানার রিসেট করবেন? সব ঘর মুছে যাবে — এটি পূর্বাবস্থায় ফেরানো যাবে না।',
-        'please_type_plan': 'যা পরিকল্পনা করতে চান লিখুন — বা উপরের চিপে ক্লিক করুন।',
-        'today_minutes': 'আজ', 'total_minutes': 'মোট',
-        'pause_btn': 'বিরতি', 'sound_none': 'কোনো শব্দ নেই', 'sound_rain': 'বৃষ্টি', 'sound_white': 'সাদা শব্দ', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'কুইজ জেনারেটর', 'generate_quiz_btn': 'নোট থেকে কুইজ তৈরি করুন', 'clear_quiz_btn': 'কুইজ মুছুন',
-        'auto_flashcards_btn': 'নোট থেকে স্বয়ংক্রিয়',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     ur: {
         'dash_title': 'ڈیش بورڈ',
         'dash_subtitle': 'آپ کا اسٹڈی ہب — آج کی پیشرفت اور مکمل تاریخ۔',
@@ -2667,6 +1614,7 @@ var translations = {
         'add_habit': 'عادت شامل کریں',
         'add_note': 'نوٹ شامل کریں',
         'add_notice': 'نوٹس شامل کریں',
+        'delete_all': 'سب حذف کریں',
         'complete': 'مکمل کریں',
         'done': 'ہو گیا',
         'ai_tools': 'اے آئی ٹولز',
@@ -2756,81 +1704,7 @@ var translations = {
         'wolfram_desc': 'STEM کمپیوٹیشنل انجن۔',
         'canva_desc': 'پریزنٹیشنز، پوسٹرز اور سوشل میڈیا کے لیے AI سے چلنے والا ڈیزائن۔',
         'youtube_desc': 'تعلیمی ویڈیوز، ٹیوٹوریلز اور لیکچرز۔',
-
-        'blocker_on': 'بلاکر آن', 'blocker_off': 'بلاکر آف',
-        'blocked_alert_title': 'بلاک کر دیا گیا!',
-        'blocked_alert_msg': 'آپ کی خلل کی فہرست میں ہے۔ اسے کھولنے کے لیے بلاکر آف کریں۔',
-        'trash_label': 'ردی', 'trash_empty_msg': 'ردی خالی ہے۔',
-        'restore_btn': 'بحال کریں', 'delete_btn': 'حذف کریں', 'empty_trash_btn': 'ردی خالی کریں', 'close_btn': 'بند کریں',
-        'switch_digital': 'ڈیجیٹل پر سوئچ کریں',
-        'ai_planner_title': 'StudyHub AI پلانر',
-        'ai_planner_desc': 'بتائیں آپ کیا چاہتے ہیں — AI آپ کے لیے منصوبہ بنائے گا۔ آزمائیں "خود ایک معمول بنائیں"، "آسان ویک اینڈ پلان"، "شدید امتحان ہفتہ"، "صبح ریاضی، شام فزکس"، "آج 3 گھنٹے" یا "اس ہفتے کیمسٹری پر توجہ دیں"۔',
-        'ai_planner_placeholder': 'یہاں اپنی درخواست لکھیں...',
-        'generate_plan_btn': 'منصوبہ بنائیں',
-        'chip_auto': 'خودکار معمول', 'chip_easy': 'آسان', 'chip_exam': 'امتحان ہفتہ', 'chip_weekend': 'ویک اینڈ',
-        'chip_math_physics': 'ریاضی + فزکس', 'chip_surprise': 'حیران کریں', 'chip_3h': 'آج 3 گھنٹے',
-        'understood': 'سمجھ گیا', 'mode_easy': 'آسان', 'mode_balanced': 'متوازن', 'mode_intense': 'شدید',
-        'scope_full_week': 'پورا ہفتہ', 'scope_weekend_only': 'صرف ویک اینڈ', 'scope_weekdays_only': 'صرف کاروباری دن',
-        'scope_today_only': 'صرف آج', 'scope_tomorrow_only': 'صرف کل',
-        'time_any': 'کسی بھی وقت', 'time_mornings': 'صبح', 'time_afternoons': 'دوپہر', 'time_evenings': 'شام',
-        'subjects_label': 'مضامین', 'total_sessions_label': 'کل سیشن', 'across_label': 'میں', 'days_label': 'دن',
-        'apply_merge_btn': 'پلانر پر لاگو کریں (ضم)', 'replace_planner_btn': 'پلانر تبدیل کریں',
-        'retry_variation_btn': 'دوبارہ کوشش کریں (نیا)', 'reset_planner_btn': 'پلانر ری سیٹ کریں',
-        'reset_confirm': 'پلانر ری سیٹ کریں؟ تمام خلیے صاف ہو جائیں گے — اسے واپس نہیں کیا جا سکتا۔',
-        'please_type_plan': 'جو منصوبہ بنانا ہے لکھیں — یا اوپر کوئی چپ کلک کریں۔',
-        'today_minutes': 'آج', 'total_minutes': 'کل',
-        'pause_btn': 'وقفہ', 'sound_none': 'کوئی آواز نہیں', 'sound_rain': 'بارش', 'sound_white': 'سفید شور', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'کوئز جنریٹر', 'generate_quiz_btn': 'نوٹس سے کوئز بنائیں', 'clear_quiz_btn': 'کوئز صاف کریں',
-        'auto_flashcards_btn': 'نوٹس سے خودکار',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     id: {
         'dash_title': 'Dasbor',
         'dash_subtitle': 'Pusat studi Anda sekilas — kemajuan hari ini & riwayat semua waktu.',
@@ -2867,6 +1741,7 @@ var translations = {
         'add_habit': 'Tambah Kebiasaan',
         'add_note': 'Tambah Catatan',
         'add_notice': 'Tambah Pengumuman',
+        'delete_all': 'Hapus Semua',
         'complete': 'Selesaikan',
         'done': 'Selesai',
         'ai_tools': 'Alat AI',
@@ -2956,81 +1831,7 @@ var translations = {
         'wolfram_desc': 'Mesin komputasi STEM.',
         'canva_desc': 'Desain bertenaga AI untuk presentasi, poster, dan media sosial.',
         'youtube_desc': 'Video edukasi, tutorial, dan ceramah.',
-
-        'blocker_on': 'Blocker Aktif', 'blocker_off': 'Blocker Nonaktif',
-        'blocked_alert_title': 'Diblokir!',
-        'blocked_alert_msg': 'ada dalam daftar gangguan Anda. Matikan Blocker untuk mengunjunginya.',
-        'trash_label': 'Sampah', 'trash_empty_msg': 'Sampah kosong.',
-        'restore_btn': 'Pulihkan', 'delete_btn': 'Hapus', 'empty_trash_btn': 'Kosongkan Sampah', 'close_btn': 'Tutup',
-        'switch_digital': 'Beralih ke Digital',
-        'ai_planner_title': 'Perencana AI StudyHub',
-        'ai_planner_desc': 'Jelaskan apa yang Anda inginkan — AI akan merencanakannya. Coba "buat rutinitas sendiri", "rencana akhir pekan santai", "minggu ujian intens", "matematika pagi, fisika malam", "3 jam hari ini" atau "fokus kimia minggu ini".',
-        'ai_planner_placeholder': 'Ketik permintaan Anda di sini...',
-        'generate_plan_btn': 'Buat Rencana',
-        'chip_auto': 'Rutinitas otomatis', 'chip_easy': 'Santai', 'chip_exam': 'Minggu ujian', 'chip_weekend': 'Akhir pekan',
-        'chip_math_physics': 'Mat + Fisika', 'chip_surprise': 'Kejutkan saya', 'chip_3h': '3 jam hari ini',
-        'understood': 'Dipahami', 'mode_easy': 'Santai', 'mode_balanced': 'Seimbang', 'mode_intense': 'Intens',
-        'scope_full_week': 'Seminggu penuh', 'scope_weekend_only': 'Hanya akhir pekan', 'scope_weekdays_only': 'Hanya hari kerja',
-        'scope_today_only': 'Hanya hari ini', 'scope_tomorrow_only': 'Hanya besok',
-        'time_any': 'kapan saja', 'time_mornings': 'pagi', 'time_afternoons': 'siang', 'time_evenings': 'malam',
-        'subjects_label': 'Mata Pelajaran', 'total_sessions_label': 'Total sesi', 'across_label': 'dalam', 'days_label': 'hari',
-        'apply_merge_btn': 'Terapkan ke Perencana (gabung)', 'replace_planner_btn': 'Ganti Perencana',
-        'retry_variation_btn': 'Coba lagi (variasi baru)', 'reset_planner_btn': 'Atur Ulang Perencana',
-        'reset_confirm': 'Atur ulang perencana? Semua sel akan dihapus — tidak dapat dibatalkan.',
-        'please_type_plan': 'Ketik apa yang ingin Anda rencanakan — atau klik chip di atas.',
-        'today_minutes': 'Hari ini', 'total_minutes': 'Total',
-        'pause_btn': 'Jeda', 'sound_none': 'Tanpa Suara', 'sound_rain': 'Hujan', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Pembuat Kuis', 'generate_quiz_btn': 'Buat Kuis dari Catatan', 'clear_quiz_btn': 'Hapus Kuis',
-        'auto_flashcards_btn': 'Otomatis dari Catatan',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     de: {
         'dash_title': 'Dashboard',
         'dash_subtitle': 'Ihr Studien-Hub auf einen Blick — heutiger Fortschritt & gesamte Historie.',
@@ -3067,6 +1868,7 @@ var translations = {
         'add_habit': 'Gewohnheit hinzufügen',
         'add_note': 'Notiz hinzufügen',
         'add_notice': 'Notiz hinzufügen',
+        'delete_all': 'Alle löschen',
         'complete': 'Abschließen',
         'done': 'Erledigt',
         'ai_tools': 'KI-Tools',
@@ -3156,81 +1958,7 @@ var translations = {
         'wolfram_desc': 'Computational STEM-Engine.',
         'canva_desc': 'KI-gestütztes Design für Präsentationen, Poster und soziale Medien.',
         'youtube_desc': 'Bildungsvideos, Tutorials und Vorträge.',
-
-        'blocker_on': 'Blocker An', 'blocker_off': 'Blocker Aus',
-        'blocked_alert_title': 'Blockiert!',
-        'blocked_alert_msg': 'steht auf Ihrer Ablenkungsliste. Schalten Sie den Blocker aus, um es zu besuchen.',
-        'trash_label': 'Papierkorb', 'trash_empty_msg': 'Papierkorb ist leer.',
-        'restore_btn': 'Wiederherstellen', 'delete_btn': 'Löschen', 'empty_trash_btn': 'Papierkorb leeren', 'close_btn': 'Schließen',
-        'switch_digital': 'Auf Digital umschalten',
-        'ai_planner_title': 'StudyHub KI-Planer',
-        'ai_planner_desc': 'Beschreiben Sie, was Sie möchten — die KI plant es für Sie. Probieren Sie "mach selbst eine Routine", "einfacher Wochenendplan", "intensive Prüfungswoche", "Mathe morgens, Physik abends", "3 Stunden heute" oder "Fokus auf Chemie diese Woche".',
-        'ai_planner_placeholder': 'Geben Sie hier Ihre Anfrage ein...',
-        'generate_plan_btn': 'Plan erstellen',
-        'chip_auto': 'Auto-Routine', 'chip_easy': 'Einfach', 'chip_exam': 'Prüfungswoche', 'chip_weekend': 'Wochenende',
-        'chip_math_physics': 'Mathe + Physik', 'chip_surprise': 'Überrasch mich', 'chip_3h': '3 Std heute',
-        'understood': 'Verstanden', 'mode_easy': 'Einfach', 'mode_balanced': 'Ausgewogen', 'mode_intense': 'Intensiv',
-        'scope_full_week': 'Ganze Woche', 'scope_weekend_only': 'Nur Wochenende', 'scope_weekdays_only': 'Nur Werktage',
-        'scope_today_only': 'Nur heute', 'scope_tomorrow_only': 'Nur morgen',
-        'time_any': 'jederzeit', 'time_mornings': 'morgens', 'time_afternoons': 'nachmittags', 'time_evenings': 'abends',
-        'subjects_label': 'Fächer', 'total_sessions_label': 'Sitzungen gesamt', 'across_label': 'über', 'days_label': 'Tag(e)',
-        'apply_merge_btn': 'Auf Planer anwenden (zusammenführen)', 'replace_planner_btn': 'Planer ersetzen',
-        'retry_variation_btn': 'Erneut versuchen (neue Variante)', 'reset_planner_btn': 'Planer zurücksetzen',
-        'reset_confirm': 'Planer zurücksetzen? Alle Zellen werden gelöscht — nicht rückgängig zu machen.',
-        'please_type_plan': 'Geben Sie ein, was Sie planen möchten — oder klicken Sie oben auf einen Chip.',
-        'today_minutes': 'Heute', 'total_minutes': 'Gesamt',
-        'pause_btn': 'Pause', 'sound_none': 'Kein Ton', 'sound_rain': 'Regen', 'sound_white': 'Weißes Rauschen', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Quiz-Generator', 'generate_quiz_btn': 'Quiz aus Notizen erstellen', 'clear_quiz_btn': 'Quiz löschen',
-        'auto_flashcards_btn': 'Automatisch aus Notizen',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     ja: {
         'dash_title': 'ダッシュボード',
         'dash_subtitle': 'あなたの学習ハブ — 今日の進捗と全履歴。',
@@ -3267,6 +1995,7 @@ var translations = {
         'add_habit': '習慣を追加',
         'add_note': 'ノートを追加',
         'add_notice': '通知を追加',
+        'delete_all': 'すべて削除',
         'complete': '完了',
         'done': '完了',
         'ai_tools': 'AIツール',
@@ -3356,81 +2085,7 @@ var translations = {
         'wolfram_desc': 'STEM計算エンジン。',
         'canva_desc': 'プレゼンテーション、ポスター、ソーシャルメディア向けのAI駆動デザイン。',
         'youtube_desc': '教育ビデオ、チュートリアル、講義。',
-
-        'blocker_on': 'ブロッカー オン', 'blocker_off': 'ブロッカー オフ',
-        'blocked_alert_title': 'ブロックされました！',
-        'blocked_alert_msg': 'はあなたの気晴らしリストにあります。ブロッカーをオフにしてアクセスしてください。',
-        'trash_label': 'ゴミ箱', 'trash_empty_msg': 'ゴミ箱は空です。',
-        'restore_btn': '復元', 'delete_btn': '削除', 'empty_trash_btn': 'ゴミ箱を空にする', 'close_btn': '閉じる',
-        'switch_digital': 'デジタルに切り替え',
-        'ai_planner_title': 'StudyHub AIプランナー',
-        'ai_planner_desc': '何をしたいか説明してください — AIが計画します。「自分でルーチンを作って」「簡単な週末プラン」「集中的な試験週間」「朝は数学、夜は物理」「今日3時間」「今週は化学に集中」などを試してみてください。',
-        'ai_planner_placeholder': 'ここにリクエストを入力...',
-        'generate_plan_btn': 'プランを生成',
-        'chip_auto': '自動ルーチン', 'chip_easy': '簡単', 'chip_exam': '試験週間', 'chip_weekend': '週末',
-        'chip_math_physics': '数学 + 物理', 'chip_surprise': 'おまかせ', 'chip_3h': '今日3時間',
-        'understood': '理解しました', 'mode_easy': '簡単', 'mode_balanced': 'バランス', 'mode_intense': '集中的',
-        'scope_full_week': '一週間', 'scope_weekend_only': '週末のみ', 'scope_weekdays_only': '平日のみ',
-        'scope_today_only': '今日のみ', 'scope_tomorrow_only': '明日のみ',
-        'time_any': 'いつでも', 'time_mornings': '朝', 'time_afternoons': '午後', 'time_evenings': '夜',
-        'subjects_label': '科目', 'total_sessions_label': '合計セッション', 'across_label': '全体', 'days_label': '日',
-        'apply_merge_btn': 'プランナーに適用（マージ）', 'replace_planner_btn': 'プランナーを置換',
-        'retry_variation_btn': '再試行（新しいバリエーション）', 'reset_planner_btn': 'プランナーをリセット',
-        'reset_confirm': 'プランナーをリセットしますか？すべてのセルが消去されます — 元に戻せません。',
-        'please_type_plan': '計画したいことを入力するか、上のチップをクリックしてください。',
-        'today_minutes': '今日', 'total_minutes': '合計',
-        'pause_btn': '一時停止', 'sound_none': '無音', 'sound_rain': '雨', 'sound_white': 'ホワイトノイズ', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'クイズジェネレーター', 'generate_quiz_btn': 'ノートからクイズを生成', 'clear_quiz_btn': 'クイズをクリア',
-        'auto_flashcards_btn': 'ノートから自動生成',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     sw: {
         'dash_title': 'Dashibodi',
         'dash_subtitle': 'Kituo chako cha kujifunza kwa mtazamo mmoja — maendeleo ya leo na historia yote.',
@@ -3467,6 +2122,7 @@ var translations = {
         'add_habit': 'Ongeza Zoezi',
         'add_note': 'Ongeza Maelezo',
         'add_notice': 'Ongeza Tangazo',
+        'delete_all': 'Futa Yote',
         'complete': 'Kamilisha',
         'done': 'Imefanywa',
         'ai_tools': 'Zana za AI',
@@ -3556,81 +2212,7 @@ var translations = {
         'wolfram_desc': 'Injini ya kukokotoa STEM.',
         'canva_desc': 'Ubunifu unaoendeshwa na AI kwa mawasilisho, mabango, na mitandao ya kijamii.',
         'youtube_desc': 'Video za elimu, mafunzo, na mihadhara.',
-
-        'blocker_on': 'Kizuizi Kimewashwa', 'blocker_off': 'Kizuizi Kimezimwa',
-        'blocked_alert_title': 'Imezuiwa!',
-        'blocked_alert_msg': 'iko kwenye orodha yako ya vurugu. Zima kizuizi ili kuitembelea.',
-        'trash_label': 'Takataka', 'trash_empty_msg': 'Takataka ni tupu.',
-        'restore_btn': 'Rejesha', 'delete_btn': 'Futa', 'empty_trash_btn': 'Ondoa Takataka Zote', 'close_btn': 'Funga',
-        'switch_digital': 'Badilisha hadi Dijitali',
-        'ai_planner_title': 'Mpangaji AI wa StudyHub',
-        'ai_planner_desc': 'Eleza unachotaka — AI itapanga. Jaribu "tengeneza ratiba mwenyewe", "mpango rahisi wa wikendi", "wiki ngumu ya mitihani", "hisabati asubuhi, fizikia jioni", "saa 3 leo" au "zingatia kemia wiki hii".',
-        'ai_planner_placeholder': 'Andika ombi lako hapa...',
-        'generate_plan_btn': 'Tengeneza Mpango',
-        'chip_auto': 'Ratiba otomatiki', 'chip_easy': 'Rahisi', 'chip_exam': 'Wiki ya mitihani', 'chip_weekend': 'Wikendi',
-        'chip_math_physics': 'Hisabati + Fizikia', 'chip_surprise': 'Nishangae', 'chip_3h': 'Saa 3 leo',
-        'understood': 'Nimeelewa', 'mode_easy': 'Rahisi', 'mode_balanced': 'Wastani', 'mode_intense': 'Ngumu',
-        'scope_full_week': 'Wiki kamili', 'scope_weekend_only': 'Wikendi pekee', 'scope_weekdays_only': 'Siku za kazi pekee',
-        'scope_today_only': 'Leo pekee', 'scope_tomorrow_only': 'Kesho pekee',
-        'time_any': 'wakati wowote', 'time_mornings': 'asubuhi', 'time_afternoons': 'mchana', 'time_evenings': 'jioni',
-        'subjects_label': 'Masomo', 'total_sessions_label': 'Vipindi jumla', 'across_label': 'katika', 'days_label': 'siku',
-        'apply_merge_btn': 'Tumia kwa Mpangaji (unganisha)', 'replace_planner_btn': 'Badilisha Mpangaji',
-        'retry_variation_btn': 'Jaribu tena (tofauti mpya)', 'reset_planner_btn': 'Weka upya Mpangaji',
-        'reset_confirm': 'Weka upya mpangaji? Seli zote zitafutwa — haiwezi kutenduliwa.',
-        'please_type_plan': 'Andika unachotaka kupanga — au bofya chip hapo juu.',
-        'today_minutes': 'Leo', 'total_minutes': 'Jumla',
-        'pause_btn': 'Sitisha', 'sound_none': 'Hakuna Sauti', 'sound_rain': 'Mvua', 'sound_white': 'Kelele Nyeupe', 'sound_lofi': 'Lo-Fi',
-        'quiz_generator': 'Kitengeneza Maswali', 'generate_quiz_btn': 'Tengeneza Maswali kutoka Vidokezo', 'clear_quiz_btn': 'Futa Maswali',
-        'auto_flashcards_btn': 'Otomatiki kutoka Vidokezo',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
     },
-
     tr: {
         'dash_title': 'Kontrol Paneli',
         'dash_subtitle': 'Çalışma merkeziniz — bugünün ilerlemesi ve tüm zamanların geçmişi.',
@@ -3667,6 +2249,7 @@ var translations = {
         'add_habit': 'Alışkanlık Ekle',
         'add_note': 'Not Ekle',
         'add_notice': 'Duyuru Ekle',
+        'delete_all': 'Tümünü Sil',
         'complete': 'Tamamla',
         'done': 'Bitti',
         'ai_tools': 'AI Araçları',
@@ -3756,7 +2339,551 @@ var translations = {
         'wolfram_desc': 'Hesaplamalı STEM motoru.',
         'canva_desc': 'Sunumlar, posterler ve sosyal medya için AI destekli tasarım.',
         'youtube_desc': 'Eğitim videoları, eğitimler ve dersler.',
+        },
+  };
 
+
+
+        
+
+// ================================================================
+// EXTENDED TRANSLATIONS (for new features)
+// ================================================================
+var extraTranslations = {
+    en: {
+        'blocker_on': 'Blocker On', 'blocker_off': 'Blocker Off',
+        'blocked_alert_title': 'Blocked!',
+        'blocked_alert_msg': 'is on your distraction list. Turn the Blocker off to visit it.',
+        'trash_label': 'Trash', 'trash_empty_msg': 'Trash is empty.',
+        'restore_btn': 'Restore', 'delete_btn': 'Delete', 'empty_trash_btn': 'Empty Trash', 'close_btn': 'Close',
+        'switch_digital': 'Switch to Digital',
+        'ai_planner_title': 'StudyHub AI Planner',
+        'ai_planner_desc': 'Describe what you want — the AI will plan it for you. Try "make a routine by yourself", "easy weekend plan", "intense exam week", "math morning, physics evening", "3 hours today", or "focus on chemistry this week".',
+        'ai_planner_placeholder': 'Type your request here...',
+        'generate_plan_btn': 'Generate Plan',
+        'chip_auto': 'Auto routine', 'chip_easy': 'Easy', 'chip_exam': 'Exam week', 'chip_weekend': 'Weekend',
+        'chip_math_physics': 'Math + Physics', 'chip_surprise': 'Surprise', 'chip_3h': '3h today',
+        'understood': 'Understood', 'mode_easy': 'Easy / light', 'mode_balanced': 'Balanced', 'mode_intense': 'Intense',
+        'scope_full_week': 'Full week', 'scope_weekend_only': 'Weekend only', 'scope_weekdays_only': 'Weekdays only',
+        'scope_today_only': 'Today only', 'scope_tomorrow_only': 'Tomorrow only',
+        'time_any': 'any time of day', 'time_mornings': 'mornings', 'time_afternoons': 'afternoons', 'time_evenings': 'evenings',
+        'subjects_label': 'Subjects', 'total_sessions_label': 'Total sessions', 'across_label': 'across', 'days_label': 'day(s)',
+        'apply_merge_btn': 'Apply to Planner (merge)', 'replace_planner_btn': 'Replace Planner',
+        'retry_variation_btn': 'Retry (new variation)', 'reset_planner_btn': 'Reset Planner',
+        'reset_confirm': 'Reset the planner? This will clear every cell — this cannot be undone.',
+        'please_type_plan': 'Please type what you want to plan — or click one of the chips above.',
+        'today_minutes': 'Today', 'total_minutes': 'Total',
+        'pause_btn': 'Pause', 'sound_none': 'No Sound', 'sound_rain': 'Rain', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Quiz Generator', 'generate_quiz_btn': 'Generate Quiz from Notes', 'clear_quiz_btn': 'Clear Quiz',
+        'auto_flashcards_btn': 'Auto-Generate from Notes',
+
+        // ===== v3 additions =====
+        'ai_summary_empty': 'Paste some text above to see a summary.',
+        'ai_summary_log': 'Generated an AI summary',
+        'ai_empty_query': 'Type what you\'re working on first.',
+        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
+        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
+        // Calendar
+        'calendar': 'Calendar',
+        'cal_open': 'Open calendar',
+        'cal_close': 'Close calendar',
+        'cal_prev_month': 'Previous month',
+        'cal_next_month': 'Next month',
+        'cal_prev_year': 'Previous year',
+        'cal_next_year': 'Next year',
+        'cal_today': 'Today',
+        // Calculator
+        'calculator': 'Calculator',
+        'calc_clear': 'Clear',
+        'calc_backspace': 'Backspace',
+        'calc_equals': 'Equals',
+        // Priority matrix
+        'priority_matrix': 'Priority Matrix',
+        'priority_add': 'Add Task',
+        'priority_placeholder': 'Add a task...',
+        'pq_urgent_important': 'Urgent & Important',
+        'pq_not_urgent_important': 'Not Urgent & Important',
+        'pq_urgent_not_important': 'Urgent & Not Important',
+        'pq_not_urgent_not_important': 'Not Urgent & Not Important',
+        'pq_empty': 'Empty',
+        // Deep work
+        'deep_work': 'Deep Work',
+        'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
+        'dw_today': 'Today',
+        'dw_total': 'Total',
+        'dw_minutes': 'minutes',
+        // Priority / filters
+        'filter_all': 'All',
+        'filter_pending': 'Pending',
+        'filter_done': 'Done',
+        'sort_by': 'Sort by',
+        'sort_due': 'Due date',
+        'sort_priority': 'Priority',
+        'sort_created': 'Created',
+        // Confirmation dialogs
+        'confirm_delete': 'Delete this item?',
+        'confirm_delete_all': 'Delete all items? This cannot be undone.',
+        'confirm_reset': 'Reset? This cannot be undone.',
+        'confirm_yes': 'Yes, continue',
+        'confirm_no': 'Cancel',
+        // Common actions
+        'edit': 'Edit',
+        'save': 'Save',
+        'cancel': 'Cancel',
+        'close': 'Close',
+        'confirm': 'Confirm',
+        'apply': 'Apply',
+        'clear': 'Clear',
+        'refresh': 'Refresh',
+        'back': 'Back',
+        'next': 'Next',
+        'previous': 'Previous',
+        'search': 'Search',
+        'filter': 'Filter',
+        'copy': 'Copy',
+        'copied': 'Copied!',
+        'download': 'Download',
+        'upload': 'Upload',
+        'loading': 'Loading...',
+        'error': 'Error',
+        'success': 'Success',
+        'warning': 'Warning',
+        'info': 'Info',
+        'unknown': 'Unknown',
+        'none': 'None',
+        'all': 'All',
+        'yes': 'Yes',
+        'no': 'No',
+        'ok': 'OK',
+        // Time-related
+        'minutes': 'minutes',
+        'seconds': 'seconds',
+        'hours': 'hours',
+        'today_word': 'today',
+        'tomorrow': 'Tomorrow',
+        'yesterday': 'Yesterday',
+        'this_week': 'This Week',
+        'this_month': 'This Month',
+        'this_year': 'This Year',
+        // Greetings
+        'good_morning': 'Good morning',
+        'good_afternoon': 'Good afternoon',
+        'good_evening': 'Good evening',
+        // File
+        'file_open': 'Open',
+        'file_rename': 'Rename',
+        'file_notes': 'Notes',
+        'file_size': 'Size',
+        'file_uploaded': 'Uploaded',
+        // Pomodoro extra
+        'pomodoro': 'Pomodoro',
+        'pomodoro_short_break': 'Short Break',
+        'pomodoro_long_break': 'Long Break',
+        'pomodoro_session': 'Session',
+        'pomodoro_work': 'Focus',
+        'pomodoro_complete': 'Pomodoro complete!',
+        // Command palette
+        'cmd_palette': 'Command Palette',
+        'cmd_placeholder': 'Type a command...',
+        'cmd_no_results': 'No commands found',
+        // Trash
+        'trash_open': 'Open Trash',
+        'trash_close': 'Close Trash',
+        'trash_restore': 'Restore',
+        'trash_empty': 'Empty Trash',
+        'trash_item_deleted': 'Moved to trash',
+        'trash_item_restored': 'Restored from trash',
+        // Blocker
+        'blocker_settings': 'Blocker Settings',
+        'blocker_log': 'Blocked attempts',
+        'blocker_no_log': 'No blocked attempts yet. Keep it up!',
+        'blocker_category': 'Categories',
+        'blocker_custom': 'Custom blocklist',
+        'blocker_allowed': 'Always allowed',
+        'blocker_add_domain': 'Add domain',
+        'blocker_stats': 'Statistics',
+        'blocker_total': 'total blocked',
+        'blocker_events': 'recent events',
+        // Shortcuts
+        'shortcut_add': 'Add',
+        'shortcut_edit': 'Edit shortcut',
+        'shortcut_remove': 'Remove shortcut',
+        'shortcut_url': 'Website URL',
+        'shortcut_name': 'Display name',
+        'shortcut_save': 'Save shortcut',
+        'shortcut_cancel': 'Cancel',
+        // Session results
+        'session_complete': 'Session Complete',
+        'session_duration': 'Duration',
+        'session_goal': 'Goal',
+        'session_distractions': 'Distractions',
+        'session_score': 'Score',
+        'session_goal_met': 'Goal met',
+        'session_goal_not_met': 'Goal not met',
+        'session_streak': 'day streak',
+        'session_today': 'min today',
+        // Themes
+        'theme_customize': 'Customize',
+        'theme_color': 'Color Theme',
+        'theme_background': 'Background',
+        'theme_reset': 'Reset to default',
+        'theme_done': 'Done',
+        'theme_gradients': 'Gradients',
+        'theme_photos': 'Photos'
+    
+    },
+    es: {
+        'blocker_on': 'Bloqueador Activado', 'blocker_off': 'Bloqueador Desactivado',
+        'blocked_alert_title': '¡Bloqueado!',
+        'blocked_alert_msg': 'está en tu lista de distracciones. Desactiva el Bloqueador para visitarlo.',
+        'trash_label': 'Papelera', 'trash_empty_msg': 'La papelera está vacía.',
+        'restore_btn': 'Restaurar', 'delete_btn': 'Eliminar', 'empty_trash_btn': 'Vaciar Papelera', 'close_btn': 'Cerrar',
+        'switch_digital': 'Cambiar a Digital',
+        'ai_planner_title': 'Planificador IA de StudyHub',
+        'ai_planner_desc': 'Describe lo que quieres — la IA lo planificará. Prueba "haz una rutina tú mismo", "plan de fin de semana fácil", "semana de exámenes intensa", "matemáticas por la mañana, física por la tarde", "3 horas hoy" o "enfócate en química esta semana".',
+        'ai_planner_placeholder': 'Escribe tu solicitud aquí...',
+        'generate_plan_btn': 'Generar Plan',
+        'chip_auto': 'Rutina automática', 'chip_easy': 'Fácil', 'chip_exam': 'Semana de exámenes', 'chip_weekend': 'Fin de semana',
+        'chip_math_physics': 'Mate + Física', 'chip_surprise': 'Sorpréndeme', 'chip_3h': '3h hoy',
+        'understood': 'Entendido', 'mode_easy': 'Fácil / ligero', 'mode_balanced': 'Equilibrado', 'mode_intense': 'Intenso',
+        'scope_full_week': 'Semana completa', 'scope_weekend_only': 'Solo fin de semana', 'scope_weekdays_only': 'Solo días laborables',
+        'scope_today_only': 'Solo hoy', 'scope_tomorrow_only': 'Solo mañana',
+        'time_any': 'cualquier hora', 'time_mornings': 'mañanas', 'time_afternoons': 'tardes', 'time_evenings': 'noches',
+        'subjects_label': 'Asignaturas', 'total_sessions_label': 'Sesiones totales', 'across_label': 'en', 'days_label': 'día(s)',
+        'apply_merge_btn': 'Aplicar al Planificador (fusionar)', 'replace_planner_btn': 'Reemplazar Planificador',
+        'retry_variation_btn': 'Reintentar (nueva variación)', 'reset_planner_btn': 'Restablecer Planificador',
+        'reset_confirm': '¿Restablecer el planificador? Se borrarán todas las celdas — no se puede deshacer.',
+        'please_type_plan': 'Escribe lo que quieres planificar — o haz clic en un chip.',
+        'today_minutes': 'Hoy', 'total_minutes': 'Total',
+        'pause_btn': 'Pausar', 'sound_none': 'Sin Sonido', 'sound_rain': 'Lluvia', 'sound_white': 'Ruido Blanco', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Generador de Cuestionarios', 'generate_quiz_btn': 'Generar Cuestionario desde Notas', 'clear_quiz_btn': 'Borrar Cuestionario',
+        'auto_flashcards_btn': 'Auto-Generar desde Notas'
+    },
+    zh: {
+        'blocker_on': '拦截器已开启', 'blocker_off': '拦截器已关闭',
+        'blocked_alert_title': '已拦截！',
+        'blocked_alert_msg': '在您的分心列表中。关闭拦截器以访问。',
+        'trash_label': '回收站', 'trash_empty_msg': '回收站为空。',
+        'restore_btn': '恢复', 'delete_btn': '删除', 'empty_trash_btn': '清空回收站', 'close_btn': '关闭',
+        'switch_digital': '切换到数字时钟',
+        'ai_planner_title': 'StudyHub AI 计划器',
+        'ai_planner_desc': '描述您的需求 — AI 会为您规划。试试"自己安排一个惯例"、"轻松的周末计划"、"紧张的考试周"、"早上数学，晚上物理"、"今天学习 3 小时"或"本周专注化学"。',
+        'ai_planner_placeholder': '在此输入您的请求...',
+        'generate_plan_btn': '生成计划',
+        'chip_auto': '自动惯例', 'chip_easy': '轻松', 'chip_exam': '考试周', 'chip_weekend': '周末',
+        'chip_math_physics': '数学 + 物理', 'chip_surprise': '随机', 'chip_3h': '今天 3 小时',
+        'understood': '已理解', 'mode_easy': '轻松', 'mode_balanced': '均衡', 'mode_intense': '紧张',
+        'scope_full_week': '整周', 'scope_weekend_only': '仅周末', 'scope_weekdays_only': '仅工作日',
+        'scope_today_only': '仅今天', 'scope_tomorrow_only': '仅明天',
+        'time_any': '任意时段', 'time_mornings': '上午', 'time_afternoons': '下午', 'time_evenings': '晚上',
+        'subjects_label': '科目', 'total_sessions_label': '总会话数', 'across_label': '共', 'days_label': '天',
+        'apply_merge_btn': '应用到计划器（合并）', 'replace_planner_btn': '替换计划器',
+        'retry_variation_btn': '重试（新变体）', 'reset_planner_btn': '重置计划器',
+        'reset_confirm': '重置计划器？将清空所有单元格 — 无法撤销。',
+        'please_type_plan': '请输入您想规划的内容 — 或点击上方标签。',
+        'today_minutes': '今天', 'total_minutes': '总计',
+        'pause_btn': '暂停', 'sound_none': '无声', 'sound_rain': '雨声', 'sound_white': '白噪音', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': '测验生成器', 'generate_quiz_btn': '从笔记生成测验', 'clear_quiz_btn': '清除测验',
+        'auto_flashcards_btn': '从笔记自动生成'
+    },
+    hi: {
+        'blocker_on': 'ब्लॉकर चालू', 'blocker_off': 'ब्लॉकर बंद',
+        'blocked_alert_title': 'ब्लॉक किया गया!',
+        'blocked_alert_msg': 'आपकी व्याकुलता सूची में है। इसे खोलने के लिए ब्लॉकर बंद करें।',
+        'trash_label': 'ट्रैश', 'trash_empty_msg': 'ट्रैश खाली है।',
+        'restore_btn': 'पुनर्स्थापित', 'delete_btn': 'हटाएं', 'empty_trash_btn': 'ट्रैश खाली करें', 'close_btn': 'बंद करें',
+        'switch_digital': 'डिजिटल पर स्विच करें',
+        'ai_planner_title': 'StudyHub AI प्लानर',
+        'ai_planner_desc': 'बताएं कि आप क्या चाहते हैं — AI आपके लिए योजना बनाएगा। आज़माएं "खुद एक दिनचर्या बनाओ", "आसान सप्ताहांत योजना", "गहन परीक्षा सप्ताह", "सुबह गणित, शाम भौतिकी", "आज 3 घंटे" या "इस सप्ताह रसायन पर ध्यान दें"।',
+        'ai_planner_placeholder': 'यहाँ अपनी request लिखें...',
+        'generate_plan_btn': 'योजना बनाएं',
+        'chip_auto': 'स्वतः दिनचर्या', 'chip_easy': 'आसान', 'chip_exam': 'परीक्षा सप्ताह', 'chip_weekend': 'सप्ताहांत',
+        'chip_math_physics': 'गणित + भौतिकी', 'chip_surprise': 'आश्चर्य', 'chip_3h': 'आज 3 घंटे',
+        'understood': 'समझ गया', 'mode_easy': 'आसान', 'mode_balanced': 'संतुलित', 'mode_intense': 'गहन',
+        'scope_full_week': 'पूरा सप्ताह', 'scope_weekend_only': 'केवल सप्ताहांत', 'scope_weekdays_only': 'केवल कार्यदिवस',
+        'scope_today_only': 'केवल आज', 'scope_tomorrow_only': 'केवल कल',
+        'time_any': 'किसी भी समय', 'time_mornings': 'सुबह', 'time_afternoons': 'दोपहर', 'time_evenings': 'शाम',
+        'subjects_label': 'विषय', 'total_sessions_label': 'कुल सत्र', 'across_label': 'में', 'days_label': 'दिन',
+        'apply_merge_btn': 'प्लानर में लागू करें (मर्ज)', 'replace_planner_btn': 'प्लानर बदलें',
+        'retry_variation_btn': 'पुनः प्रयास (नया)', 'reset_planner_btn': 'प्लानर रीसेट करें',
+        'reset_confirm': 'प्लानर रीसेट करें? सभी सेल साफ हो जाएंगे — इसे पूर्ववत नहीं किया जा सकता।',
+        'please_type_plan': 'जो योजना बनानी है वह लिखें — या ऊपर कोई चिप क्लिक करें।',
+        'today_minutes': 'आज', 'total_minutes': 'कुल',
+        'pause_btn': 'रोकें', 'sound_none': 'कोई ध्वनि नहीं', 'sound_rain': 'बारिश', 'sound_white': 'सफेद शोर', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'क्विज़ जनरेटर', 'generate_quiz_btn': 'नोट्स से क्विज़ बनाएं', 'clear_quiz_btn': 'क्विज़ साफ करें',
+        'auto_flashcards_btn': 'नोट्स से स्वतः बनाएं'
+    },
+    ar: {
+        'blocker_on': 'الحاجب مُفعّل', 'blocker_off': 'الحاجب مُعطّل',
+        'blocked_alert_title': 'محجوب!',
+        'blocked_alert_msg': 'في قائمة المشتتات. أوقف الحاجب للوصول إليه.',
+        'trash_label': 'المهملات', 'trash_empty_msg': 'المهملات فارغة.',
+        'restore_btn': 'استعادة', 'delete_btn': 'حذف', 'empty_trash_btn': 'إفراغ المهملات', 'close_btn': 'إغلاق',
+        'switch_digital': 'التبديل إلى الرقمي',
+        'ai_planner_title': 'مخطط StudyHub AI',
+        'ai_planner_desc': 'صف ما تريده — سيقوم الذكاء الاصطناعي بالتخطيط. جرّب "اصنع روتينًا بنفسك"، "خطة عطلة نهاية أسبوع سهلة"، "أسبوع امتحانات مكثف"، "رياضيات صباحًا، فيزياء مساءً"، "3 ساعات اليوم" أو "التركيز على الكيمياء هذا الأسبوع".',
+        'ai_planner_placeholder': 'اكتب طلبك هنا...',
+        'generate_plan_btn': 'توليد خطة',
+        'chip_auto': 'روتين تلقائي', 'chip_easy': 'سهل', 'chip_exam': 'أسبوع الامتحانات', 'chip_weekend': 'عطلة نهاية الأسبوع',
+        'chip_math_physics': 'رياضيات + فيزياء', 'chip_surprise': 'مفاجئني', 'chip_3h': '3 ساعات اليوم',
+        'understood': 'تم الفهم', 'mode_easy': 'سهل', 'mode_balanced': 'متوازن', 'mode_intense': 'مكثف',
+        'scope_full_week': 'الأسبوع كامل', 'scope_weekend_only': 'عطلة نهاية الأسبوع فقط', 'scope_weekdays_only': 'أيام الأسبوع فقط',
+        'scope_today_only': 'اليوم فقط', 'scope_tomorrow_only': 'غدًا فقط',
+        'time_any': 'أي وقت', 'time_mornings': 'صباحًا', 'time_afternoons': 'بعد الظهر', 'time_evenings': 'مساءً',
+        'subjects_label': 'المواد', 'total_sessions_label': 'إجمالي الجلسات', 'across_label': 'خلال', 'days_label': 'يوم',
+        'apply_merge_btn': 'تطبيق على المخطط (دمج)', 'replace_planner_btn': 'استبدال المخطط',
+        'retry_variation_btn': 'إعادة المحاولة (تنويع جديد)', 'reset_planner_btn': 'إعادة تعيين المخطط',
+        'reset_confirm': 'إعادة تعيين المخطط؟ سيتم مسح كل الخلايا — لا يمكن التراجع.',
+        'please_type_plan': 'اكتب ما تريد تخطيطه — أو انقر على أحد الأزرار أعلاه.',
+        'today_minutes': 'اليوم', 'total_minutes': 'الإجمالي',
+        'pause_btn': 'إيقاف مؤقت', 'sound_none': 'بدون صوت', 'sound_rain': 'مطر', 'sound_white': 'ضجيج أبيض', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'منشئ الاختبارات', 'generate_quiz_btn': 'توليد اختبار من الملاحظات', 'clear_quiz_btn': 'مسح الاختبار',
+        'auto_flashcards_btn': 'توليد تلقائي من الملاحظات'
+    },
+    fr: {
+        'blocker_on': 'Bloqueur Activé', 'blocker_off': 'Bloqueur Désactivé',
+        'blocked_alert_title': 'Bloqué !',
+        'blocked_alert_msg': 'est dans votre liste de distractions. Désactivez le Bloqueur pour y accéder.',
+        'trash_label': 'Corbeille', 'trash_empty_msg': 'La corbeille est vide.',
+        'restore_btn': 'Restaurer', 'delete_btn': 'Supprimer', 'empty_trash_btn': 'Vider la corbeille', 'close_btn': 'Fermer',
+        'switch_digital': 'Passer au numérique',
+        'ai_planner_title': 'Planificateur IA StudyHub',
+        'ai_planner_desc': 'Décrivez ce que vous voulez — l\'IA le planifiera. Essayez "fais une routine toi-même", "plan week-end facile", "semaine d\'examens intense", "maths le matin, physique le soir", "3 heures aujourd\'hui" ou "concentre-toi sur la chimie cette semaine".',
+        'ai_planner_placeholder': 'Tapez votre demande ici...',
+        'generate_plan_btn': 'Générer le plan',
+        'chip_auto': 'Routine auto', 'chip_easy': 'Facile', 'chip_exam': 'Semaine d\'examens', 'chip_weekend': 'Week-end',
+        'chip_math_physics': 'Maths + Physique', 'chip_surprise': 'Surprends-moi', 'chip_3h': '3h aujourd\'hui',
+        'understood': 'Compris', 'mode_easy': 'Facile / léger', 'mode_balanced': 'Équilibré', 'mode_intense': 'Intense',
+        'scope_full_week': 'Semaine complète', 'scope_weekend_only': 'Week-end uniquement', 'scope_weekdays_only': 'Jours de semaine uniquement',
+        'scope_today_only': 'Aujourd\'hui seulement', 'scope_tomorrow_only': 'Demain seulement',
+        'time_any': 'n\'importe quand', 'time_mornings': 'matins', 'time_afternoons': 'après-midis', 'time_evenings': 'soirées',
+        'subjects_label': 'Matières', 'total_sessions_label': 'Sessions totales', 'across_label': 'sur', 'days_label': 'jour(s)',
+        'apply_merge_btn': 'Appliquer au planificateur (fusionner)', 'replace_planner_btn': 'Remplacer le planificateur',
+        'retry_variation_btn': 'Réessayer (nouvelle variation)', 'reset_planner_btn': 'Réinitialiser le planificateur',
+        'reset_confirm': 'Réinitialiser le planificateur ? Toutes les cellules seront effacées — action irréversible.',
+        'please_type_plan': 'Tapez ce que vous voulez planifier — ou cliquez sur un bouton ci-dessus.',
+        'today_minutes': 'Aujourd\'hui', 'total_minutes': 'Total',
+        'pause_btn': 'Pause', 'sound_none': 'Aucun son', 'sound_rain': 'Pluie', 'sound_white': 'Bruit blanc', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Générateur de Quiz', 'generate_quiz_btn': 'Générer un Quiz depuis les Notes', 'clear_quiz_btn': 'Effacer le Quiz',
+        'auto_flashcards_btn': 'Auto-générer depuis les Notes'
+    },
+    ru: {
+        'blocker_on': 'Блокировщик Вкл.', 'blocker_off': 'Блокировщик Выкл.',
+        'blocked_alert_title': 'Заблокировано!',
+        'blocked_alert_msg': 'находится в вашем списке отвлечений. Отключите блокировщик, чтобы открыть его.',
+        'trash_label': 'Корзина', 'trash_empty_msg': 'Корзина пуста.',
+        'restore_btn': 'Восстановить', 'delete_btn': 'Удалить', 'empty_trash_btn': 'Очистить корзину', 'close_btn': 'Закрыть',
+        'switch_digital': 'Переключиться на цифровые',
+        'ai_planner_title': 'ИИ-планировщик StudyHub',
+        'ai_planner_desc': 'Опишите, что вы хотите — ИИ спланирует это. Попробуйте "составь рутину сам", "лёгкий план на выходные", "интенсивная неделя экзаменов", "математика утром, физика вечером", "3 часа сегодня" или "фокус на химии на этой неделе".',
+        'ai_planner_placeholder': 'Введите ваш запрос...',
+        'generate_plan_btn': 'Создать план',
+        'chip_auto': 'Авто-рутина', 'chip_easy': 'Легко', 'chip_exam': 'Неделя экзаменов', 'chip_weekend': 'Выходные',
+        'chip_math_physics': 'Матем. + Физика', 'chip_surprise': 'Удиви меня', 'chip_3h': '3 ч сегодня',
+        'understood': 'Понято', 'mode_easy': 'Легко', 'mode_balanced': 'Сбалансированно', 'mode_intense': 'Интенсивно',
+        'scope_full_week': 'Вся неделя', 'scope_weekend_only': 'Только выходные', 'scope_weekdays_only': 'Только будни',
+        'scope_today_only': 'Только сегодня', 'scope_tomorrow_only': 'Только завтра',
+        'time_any': 'в любое время', 'time_mornings': 'утро', 'time_afternoons': 'день', 'time_evenings': 'вечер',
+        'subjects_label': 'Предметы', 'total_sessions_label': 'Всего сессий', 'across_label': 'в течение', 'days_label': 'дн.',
+        'apply_merge_btn': 'Применить к планировщику (слить)', 'replace_planner_btn': 'Заменить планировщик',
+        'retry_variation_btn': 'Повторить (новый вариант)', 'reset_planner_btn': 'Сбросить планировщик',
+        'reset_confirm': 'Сбросить планировщик? Все ячейки будут очищены — действие необратимо.',
+        'please_type_plan': 'Напишите, что хотите запланировать — или нажмите кнопку выше.',
+        'today_minutes': 'Сегодня', 'total_minutes': 'Всего',
+        'pause_btn': 'Пауза', 'sound_none': 'Без звука', 'sound_rain': 'Дождь', 'sound_white': 'Белый шум', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Генератор тестов', 'generate_quiz_btn': 'Создать тест из заметок', 'clear_quiz_btn': 'Очистить тест',
+        'auto_flashcards_btn': 'Автогенерация из заметок'
+    },
+    pt: {
+        'blocker_on': 'Bloqueador Ligado', 'blocker_off': 'Bloqueador Desligado',
+        'blocked_alert_title': 'Bloqueado!',
+        'blocked_alert_msg': 'está na sua lista de distrações. Desligue o Bloqueador para visitá-lo.',
+        'trash_label': 'Lixeira', 'trash_empty_msg': 'A lixeira está vazia.',
+        'restore_btn': 'Restaurar', 'delete_btn': 'Excluir', 'empty_trash_btn': 'Esvaziar Lixeira', 'close_btn': 'Fechar',
+        'switch_digital': 'Mudar para Digital',
+        'ai_planner_title': 'Planejador IA StudyHub',
+        'ai_planner_desc': 'Descreva o que você quer — a IA vai planejar. Tente "faça uma rotina você mesmo", "plano de fim de semana fácil", "semana de provas intensa", "matemática de manhã, física à noite", "3 horas hoje" ou "foco em química esta semana".',
+        'ai_planner_placeholder': 'Digite seu pedido aqui...',
+        'generate_plan_btn': 'Gerar Plano',
+        'chip_auto': 'Rotina auto', 'chip_easy': 'Fácil', 'chip_exam': 'Semana de provas', 'chip_weekend': 'Fim de semana',
+        'chip_math_physics': 'Mat + Física', 'chip_surprise': 'Surpreenda-me', 'chip_3h': '3h hoje',
+        'understood': 'Entendido', 'mode_easy': 'Fácil / leve', 'mode_balanced': 'Equilibrado', 'mode_intense': 'Intenso',
+        'scope_full_week': 'Semana completa', 'scope_weekend_only': 'Apenas fim de semana', 'scope_weekdays_only': 'Apenas dias úteis',
+        'scope_today_only': 'Apenas hoje', 'scope_tomorrow_only': 'Apenas amanhã',
+        'time_any': 'qualquer hora', 'time_mornings': 'manhãs', 'time_afternoons': 'tardes', 'time_evenings': 'noites',
+        'subjects_label': 'Disciplinas', 'total_sessions_label': 'Total de sessões', 'across_label': 'em', 'days_label': 'dia(s)',
+        'apply_merge_btn': 'Aplicar ao Planejador (mesclar)', 'replace_planner_btn': 'Substituir Planejador',
+        'retry_variation_btn': 'Tentar novamente (nova variação)', 'reset_planner_btn': 'Redefinir Planejador',
+        'reset_confirm': 'Redefinir o planejador? Todas as células serão apagadas — irreversível.',
+        'please_type_plan': 'Digite o que deseja planejar — ou clique em um chip acima.',
+        'today_minutes': 'Hoje', 'total_minutes': 'Total',
+        'pause_btn': 'Pausar', 'sound_none': 'Sem som', 'sound_rain': 'Chuva', 'sound_white': 'Ruído branco', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Gerador de Quiz', 'generate_quiz_btn': 'Gerar Quiz das Notas', 'clear_quiz_btn': 'Limpar Quiz',
+        'auto_flashcards_btn': 'Auto-gerar das Notas'
+    },
+    bn: {
+        'blocker_on': 'ব্লকার চালু', 'blocker_off': 'ব্লকার বন্ধ',
+        'blocked_alert_title': 'ব্লক করা হয়েছে!',
+        'blocked_alert_msg': 'আপনার বিভ্রান্তির তালিকায় আছে। এটি দেখতে ব্লকার বন্ধ করুন।',
+        'trash_label': 'ট্র্যাশ', 'trash_empty_msg': 'ট্র্যাশ খালি।',
+        'restore_btn': 'পুনরুদ্ধার', 'delete_btn': 'মুছুন', 'empty_trash_btn': 'ট্র্যাশ খালি করুন', 'close_btn': 'বন্ধ করুন',
+        'switch_digital': 'ডিজিটালে স্যুইচ করুন',
+        'ai_planner_title': 'StudyHub AI প্ল্যানার',
+        'ai_planner_desc': 'আপনি কী চান তা বর্ণনা করুন — AI আপনার জন্য পরিকল্পনা করবে। চেষ্টা করুন "নিজেই একটি রুটিন বানাও", "সহজ সাপ্তাহিক ছুটির পরিকল্পনা", "তীব্র পরীক্ষার সপ্তাহ", "সকালে গণিত, সন্ধ্যায় পদার্থবিদ্যা", "আজ 3 ঘন্টা" বা "এই সপ্তাহে রসায়নে মনোযোগ দিন"।',
+        'ai_planner_placeholder': 'এখানে আপনার অনুরোধ লিখুন...',
+        'generate_plan_btn': 'পরিকল্পনা তৈরি করুন',
+        'chip_auto': 'স্বয়ংক্রিয় রুটিন', 'chip_easy': 'সহজ', 'chip_exam': 'পরীক্ষার সপ্তাহ', 'chip_weekend': 'সাপ্তাহিক ছুটি',
+        'chip_math_physics': 'গণিত + পদার্থবিদ্যা', 'chip_surprise': 'আশ্চর্য করুন', 'chip_3h': 'আজ 3 ঘন্টা',
+        'understood': 'বুঝেছি', 'mode_easy': 'সহজ', 'mode_balanced': 'ভারসাম্যপূর্ণ', 'mode_intense': 'তীব্র',
+        'scope_full_week': 'পুরো সপ্তাহ', 'scope_weekend_only': 'শুধু সাপ্তাহিক ছুটি', 'scope_weekdays_only': 'শুধু কর্মদিবস',
+        'scope_today_only': 'শুধু আজ', 'scope_tomorrow_only': 'শুধু কাল',
+        'time_any': 'যেকোনো সময়', 'time_mornings': 'সকাল', 'time_afternoons': 'বিকেল', 'time_evenings': 'সন্ধ্যা',
+        'subjects_label': 'বিষয়', 'total_sessions_label': 'মোট সেশন', 'across_label': 'জুড়ে', 'days_label': 'দিন',
+        'apply_merge_btn': 'প্ল্যানারে প্রয়োগ করুন (মার্জ)', 'replace_planner_btn': 'প্ল্যানার প্রতিস্থাপন করুন',
+        'retry_variation_btn': 'আবার চেষ্টা করুন (নতুন)', 'reset_planner_btn': 'প্ল্যানার রিসেট করুন',
+        'reset_confirm': 'প্ল্যানার রিসেট করবেন? সব ঘর মুছে যাবে — এটি পূর্বাবস্থায় ফেরানো যাবে না।',
+        'please_type_plan': 'যা পরিকল্পনা করতে চান লিখুন — বা উপরের চিপে ক্লিক করুন।',
+        'today_minutes': 'আজ', 'total_minutes': 'মোট',
+        'pause_btn': 'বিরতি', 'sound_none': 'কোনো শব্দ নেই', 'sound_rain': 'বৃষ্টি', 'sound_white': 'সাদা শব্দ', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'কুইজ জেনারেটর', 'generate_quiz_btn': 'নোট থেকে কুইজ তৈরি করুন', 'clear_quiz_btn': 'কুইজ মুছুন',
+        'auto_flashcards_btn': 'নোট থেকে স্বয়ংক্রিয়'
+    },
+    ur: {
+        'blocker_on': 'بلاکر آن', 'blocker_off': 'بلاکر آف',
+        'blocked_alert_title': 'بلاک کر دیا گیا!',
+        'blocked_alert_msg': 'آپ کی خلل کی فہرست میں ہے۔ اسے کھولنے کے لیے بلاکر آف کریں۔',
+        'trash_label': 'ردی', 'trash_empty_msg': 'ردی خالی ہے۔',
+        'restore_btn': 'بحال کریں', 'delete_btn': 'حذف کریں', 'empty_trash_btn': 'ردی خالی کریں', 'close_btn': 'بند کریں',
+        'switch_digital': 'ڈیجیٹل پر سوئچ کریں',
+        'ai_planner_title': 'StudyHub AI پلانر',
+        'ai_planner_desc': 'بتائیں آپ کیا چاہتے ہیں — AI آپ کے لیے منصوبہ بنائے گا۔ آزمائیں "خود ایک معمول بنائیں"، "آسان ویک اینڈ پلان"، "شدید امتحان ہفتہ"، "صبح ریاضی، شام فزکس"، "آج 3 گھنٹے" یا "اس ہفتے کیمسٹری پر توجہ دیں"۔',
+        'ai_planner_placeholder': 'یہاں اپنی درخواست لکھیں...',
+        'generate_plan_btn': 'منصوبہ بنائیں',
+        'chip_auto': 'خودکار معمول', 'chip_easy': 'آسان', 'chip_exam': 'امتحان ہفتہ', 'chip_weekend': 'ویک اینڈ',
+        'chip_math_physics': 'ریاضی + فزکس', 'chip_surprise': 'حیران کریں', 'chip_3h': 'آج 3 گھنٹے',
+        'understood': 'سمجھ گیا', 'mode_easy': 'آسان', 'mode_balanced': 'متوازن', 'mode_intense': 'شدید',
+        'scope_full_week': 'پورا ہفتہ', 'scope_weekend_only': 'صرف ویک اینڈ', 'scope_weekdays_only': 'صرف کاروباری دن',
+        'scope_today_only': 'صرف آج', 'scope_tomorrow_only': 'صرف کل',
+        'time_any': 'کسی بھی وقت', 'time_mornings': 'صبح', 'time_afternoons': 'دوپہر', 'time_evenings': 'شام',
+        'subjects_label': 'مضامین', 'total_sessions_label': 'کل سیشن', 'across_label': 'میں', 'days_label': 'دن',
+        'apply_merge_btn': 'پلانر پر لاگو کریں (ضم)', 'replace_planner_btn': 'پلانر تبدیل کریں',
+        'retry_variation_btn': 'دوبارہ کوشش کریں (نیا)', 'reset_planner_btn': 'پلانر ری سیٹ کریں',
+        'reset_confirm': 'پلانر ری سیٹ کریں؟ تمام خلیے صاف ہو جائیں گے — اسے واپس نہیں کیا جا سکتا۔',
+        'please_type_plan': 'جو منصوبہ بنانا ہے لکھیں — یا اوپر کوئی چپ کلک کریں۔',
+        'today_minutes': 'آج', 'total_minutes': 'کل',
+        'pause_btn': 'وقفہ', 'sound_none': 'کوئی آواز نہیں', 'sound_rain': 'بارش', 'sound_white': 'سفید شور', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'کوئز جنریٹر', 'generate_quiz_btn': 'نوٹس سے کوئز بنائیں', 'clear_quiz_btn': 'کوئز صاف کریں',
+        'auto_flashcards_btn': 'نوٹس سے خودکار'
+    },
+    id: {
+        'blocker_on': 'Blocker Aktif', 'blocker_off': 'Blocker Nonaktif',
+        'blocked_alert_title': 'Diblokir!',
+        'blocked_alert_msg': 'ada dalam daftar gangguan Anda. Matikan Blocker untuk mengunjunginya.',
+        'trash_label': 'Sampah', 'trash_empty_msg': 'Sampah kosong.',
+        'restore_btn': 'Pulihkan', 'delete_btn': 'Hapus', 'empty_trash_btn': 'Kosongkan Sampah', 'close_btn': 'Tutup',
+        'switch_digital': 'Beralih ke Digital',
+        'ai_planner_title': 'Perencana AI StudyHub',
+        'ai_planner_desc': 'Jelaskan apa yang Anda inginkan — AI akan merencanakannya. Coba "buat rutinitas sendiri", "rencana akhir pekan santai", "minggu ujian intens", "matematika pagi, fisika malam", "3 jam hari ini" atau "fokus kimia minggu ini".',
+        'ai_planner_placeholder': 'Ketik permintaan Anda di sini...',
+        'generate_plan_btn': 'Buat Rencana',
+        'chip_auto': 'Rutinitas otomatis', 'chip_easy': 'Santai', 'chip_exam': 'Minggu ujian', 'chip_weekend': 'Akhir pekan',
+        'chip_math_physics': 'Mat + Fisika', 'chip_surprise': 'Kejutkan saya', 'chip_3h': '3 jam hari ini',
+        'understood': 'Dipahami', 'mode_easy': 'Santai', 'mode_balanced': 'Seimbang', 'mode_intense': 'Intens',
+        'scope_full_week': 'Seminggu penuh', 'scope_weekend_only': 'Hanya akhir pekan', 'scope_weekdays_only': 'Hanya hari kerja',
+        'scope_today_only': 'Hanya hari ini', 'scope_tomorrow_only': 'Hanya besok',
+        'time_any': 'kapan saja', 'time_mornings': 'pagi', 'time_afternoons': 'siang', 'time_evenings': 'malam',
+        'subjects_label': 'Mata Pelajaran', 'total_sessions_label': 'Total sesi', 'across_label': 'dalam', 'days_label': 'hari',
+        'apply_merge_btn': 'Terapkan ke Perencana (gabung)', 'replace_planner_btn': 'Ganti Perencana',
+        'retry_variation_btn': 'Coba lagi (variasi baru)', 'reset_planner_btn': 'Atur Ulang Perencana',
+        'reset_confirm': 'Atur ulang perencana? Semua sel akan dihapus — tidak dapat dibatalkan.',
+        'please_type_plan': 'Ketik apa yang ingin Anda rencanakan — atau klik chip di atas.',
+        'today_minutes': 'Hari ini', 'total_minutes': 'Total',
+        'pause_btn': 'Jeda', 'sound_none': 'Tanpa Suara', 'sound_rain': 'Hujan', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Pembuat Kuis', 'generate_quiz_btn': 'Buat Kuis dari Catatan', 'clear_quiz_btn': 'Hapus Kuis',
+        'auto_flashcards_btn': 'Otomatis dari Catatan'
+    },
+    de: {
+        'blocker_on': 'Blocker An', 'blocker_off': 'Blocker Aus',
+        'blocked_alert_title': 'Blockiert!',
+        'blocked_alert_msg': 'steht auf Ihrer Ablenkungsliste. Schalten Sie den Blocker aus, um es zu besuchen.',
+        'trash_label': 'Papierkorb', 'trash_empty_msg': 'Papierkorb ist leer.',
+        'restore_btn': 'Wiederherstellen', 'delete_btn': 'Löschen', 'empty_trash_btn': 'Papierkorb leeren', 'close_btn': 'Schließen',
+        'switch_digital': 'Auf Digital umschalten',
+        'ai_planner_title': 'StudyHub KI-Planer',
+        'ai_planner_desc': 'Beschreiben Sie, was Sie möchten — die KI plant es für Sie. Probieren Sie "mach selbst eine Routine", "einfacher Wochenendplan", "intensive Prüfungswoche", "Mathe morgens, Physik abends", "3 Stunden heute" oder "Fokus auf Chemie diese Woche".',
+        'ai_planner_placeholder': 'Geben Sie hier Ihre Anfrage ein...',
+        'generate_plan_btn': 'Plan erstellen',
+        'chip_auto': 'Auto-Routine', 'chip_easy': 'Einfach', 'chip_exam': 'Prüfungswoche', 'chip_weekend': 'Wochenende',
+        'chip_math_physics': 'Mathe + Physik', 'chip_surprise': 'Überrasch mich', 'chip_3h': '3 Std heute',
+        'understood': 'Verstanden', 'mode_easy': 'Einfach', 'mode_balanced': 'Ausgewogen', 'mode_intense': 'Intensiv',
+        'scope_full_week': 'Ganze Woche', 'scope_weekend_only': 'Nur Wochenende', 'scope_weekdays_only': 'Nur Werktage',
+        'scope_today_only': 'Nur heute', 'scope_tomorrow_only': 'Nur morgen',
+        'time_any': 'jederzeit', 'time_mornings': 'morgens', 'time_afternoons': 'nachmittags', 'time_evenings': 'abends',
+        'subjects_label': 'Fächer', 'total_sessions_label': 'Sitzungen gesamt', 'across_label': 'über', 'days_label': 'Tag(e)',
+        'apply_merge_btn': 'Auf Planer anwenden (zusammenführen)', 'replace_planner_btn': 'Planer ersetzen',
+        'retry_variation_btn': 'Erneut versuchen (neue Variante)', 'reset_planner_btn': 'Planer zurücksetzen',
+        'reset_confirm': 'Planer zurücksetzen? Alle Zellen werden gelöscht — nicht rückgängig zu machen.',
+        'please_type_plan': 'Geben Sie ein, was Sie planen möchten — oder klicken Sie oben auf einen Chip.',
+        'today_minutes': 'Heute', 'total_minutes': 'Gesamt',
+        'pause_btn': 'Pause', 'sound_none': 'Kein Ton', 'sound_rain': 'Regen', 'sound_white': 'Weißes Rauschen', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Quiz-Generator', 'generate_quiz_btn': 'Quiz aus Notizen erstellen', 'clear_quiz_btn': 'Quiz löschen',
+        'auto_flashcards_btn': 'Automatisch aus Notizen'
+    },
+    ja: {
+        'blocker_on': 'ブロッカー オン', 'blocker_off': 'ブロッカー オフ',
+        'blocked_alert_title': 'ブロックされました！',
+        'blocked_alert_msg': 'はあなたの気晴らしリストにあります。ブロッカーをオフにしてアクセスしてください。',
+        'trash_label': 'ゴミ箱', 'trash_empty_msg': 'ゴミ箱は空です。',
+        'restore_btn': '復元', 'delete_btn': '削除', 'empty_trash_btn': 'ゴミ箱を空にする', 'close_btn': '閉じる',
+        'switch_digital': 'デジタルに切り替え',
+        'ai_planner_title': 'StudyHub AIプランナー',
+        'ai_planner_desc': '何をしたいか説明してください — AIが計画します。「自分でルーチンを作って」「簡単な週末プラン」「集中的な試験週間」「朝は数学、夜は物理」「今日3時間」「今週は化学に集中」などを試してみてください。',
+        'ai_planner_placeholder': 'ここにリクエストを入力...',
+        'generate_plan_btn': 'プランを生成',
+        'chip_auto': '自動ルーチン', 'chip_easy': '簡単', 'chip_exam': '試験週間', 'chip_weekend': '週末',
+        'chip_math_physics': '数学 + 物理', 'chip_surprise': 'おまかせ', 'chip_3h': '今日3時間',
+        'understood': '理解しました', 'mode_easy': '簡単', 'mode_balanced': 'バランス', 'mode_intense': '集中的',
+        'scope_full_week': '一週間', 'scope_weekend_only': '週末のみ', 'scope_weekdays_only': '平日のみ',
+        'scope_today_only': '今日のみ', 'scope_tomorrow_only': '明日のみ',
+        'time_any': 'いつでも', 'time_mornings': '朝', 'time_afternoons': '午後', 'time_evenings': '夜',
+        'subjects_label': '科目', 'total_sessions_label': '合計セッション', 'across_label': '全体', 'days_label': '日',
+        'apply_merge_btn': 'プランナーに適用（マージ）', 'replace_planner_btn': 'プランナーを置換',
+        'retry_variation_btn': '再試行（新しいバリエーション）', 'reset_planner_btn': 'プランナーをリセット',
+        'reset_confirm': 'プランナーをリセットしますか？すべてのセルが消去されます — 元に戻せません。',
+        'please_type_plan': '計画したいことを入力するか、上のチップをクリックしてください。',
+        'today_minutes': '今日', 'total_minutes': '合計',
+        'pause_btn': '一時停止', 'sound_none': '無音', 'sound_rain': '雨', 'sound_white': 'ホワイトノイズ', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'クイズジェネレーター', 'generate_quiz_btn': 'ノートからクイズを生成', 'clear_quiz_btn': 'クイズをクリア',
+        'auto_flashcards_btn': 'ノートから自動生成'
+    },
+    sw: {
+        'blocker_on': 'Kizuizi Kimewashwa', 'blocker_off': 'Kizuizi Kimezimwa',
+        'blocked_alert_title': 'Imezuiwa!',
+        'blocked_alert_msg': 'iko kwenye orodha yako ya vurugu. Zima kizuizi ili kuitembelea.',
+        'trash_label': 'Takataka', 'trash_empty_msg': 'Takataka ni tupu.',
+        'restore_btn': 'Rejesha', 'delete_btn': 'Futa', 'empty_trash_btn': 'Ondoa Takataka Zote', 'close_btn': 'Funga',
+        'switch_digital': 'Badilisha hadi Dijitali',
+        'ai_planner_title': 'Mpangaji AI wa StudyHub',
+        'ai_planner_desc': 'Eleza unachotaka — AI itapanga. Jaribu "tengeneza ratiba mwenyewe", "mpango rahisi wa wikendi", "wiki ngumu ya mitihani", "hisabati asubuhi, fizikia jioni", "saa 3 leo" au "zingatia kemia wiki hii".',
+        'ai_planner_placeholder': 'Andika ombi lako hapa...',
+        'generate_plan_btn': 'Tengeneza Mpango',
+        'chip_auto': 'Ratiba otomatiki', 'chip_easy': 'Rahisi', 'chip_exam': 'Wiki ya mitihani', 'chip_weekend': 'Wikendi',
+        'chip_math_physics': 'Hisabati + Fizikia', 'chip_surprise': 'Nishangae', 'chip_3h': 'Saa 3 leo',
+        'understood': 'Nimeelewa', 'mode_easy': 'Rahisi', 'mode_balanced': 'Wastani', 'mode_intense': 'Ngumu',
+        'scope_full_week': 'Wiki kamili', 'scope_weekend_only': 'Wikendi pekee', 'scope_weekdays_only': 'Siku za kazi pekee',
+        'scope_today_only': 'Leo pekee', 'scope_tomorrow_only': 'Kesho pekee',
+        'time_any': 'wakati wowote', 'time_mornings': 'asubuhi', 'time_afternoons': 'mchana', 'time_evenings': 'jioni',
+        'subjects_label': 'Masomo', 'total_sessions_label': 'Vipindi jumla', 'across_label': 'katika', 'days_label': 'siku',
+        'apply_merge_btn': 'Tumia kwa Mpangaji (unganisha)', 'replace_planner_btn': 'Badilisha Mpangaji',
+        'retry_variation_btn': 'Jaribu tena (tofauti mpya)', 'reset_planner_btn': 'Weka upya Mpangaji',
+        'reset_confirm': 'Weka upya mpangaji? Seli zote zitafutwa — haiwezi kutenduliwa.',
+        'please_type_plan': 'Andika unachotaka kupanga — au bofya chip hapo juu.',
+        'today_minutes': 'Leo', 'total_minutes': 'Jumla',
+        'pause_btn': 'Sitisha', 'sound_none': 'Hakuna Sauti', 'sound_rain': 'Mvua', 'sound_white': 'Kelele Nyeupe', 'sound_lofi': 'Lo-Fi',
+        'quiz_generator': 'Kitengeneza Maswali', 'generate_quiz_btn': 'Tengeneza Maswali kutoka Vidokezo', 'clear_quiz_btn': 'Futa Maswali',
+        'auto_flashcards_btn': 'Otomatiki kutoka Vidokezo'
+    },
+    tr: {
         'blocker_on': 'Engelleyici Açık', 'blocker_off': 'Engelleyici Kapalı',
         'blocked_alert_title': 'Engellendi!',
         'blocked_alert_msg': 'dikkat dağıtıcı listenizde. Ziyaret etmek için Engelleyiciyi kapatın.',
@@ -3781,134 +2908,78 @@ var translations = {
         'today_minutes': 'Bugün', 'total_minutes': 'Toplam',
         'pause_btn': 'Duraklat', 'sound_none': 'Ses Yok', 'sound_rain': 'Yağmur', 'sound_white': 'Beyaz Gürültü', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Test Oluşturucu', 'generate_quiz_btn': 'Notlardan Test Oluştur', 'clear_quiz_btn': 'Testi Temizle',
-        'auto_flashcards_btn': 'Notlardan Otomatik Oluştur',
-
-        'ai_summary_empty': 'Paste some text above to see a summary.',
-        'ai_summary_log': 'Generated an AI summary',
-        'ai_empty_query': 'Type what you\'re working on first.',
-        'ai_fallback': 'Could you be more specific? Try mentioning a subject, task, or keyword (e.g. "solve calculus", "write an essay", "analyze data").',
-        'act_ai_recommend': 'Asked AI for a recommendation: "{q}"',
-        'calendar': 'Calendar', 'cal_open': 'Open calendar', 'cal_close': 'Close calendar',
-        'cal_prev_month': 'Previous month', 'cal_next_month': 'Next month',
-        'cal_prev_year': 'Previous year', 'cal_next_year': 'Next year', 'cal_today': 'Today',
-        'calculator': 'Calculator', 'calc_clear': 'Clear', 'calc_backspace': 'Backspace', 'calc_equals': 'Equals',
-        'priority_matrix': 'Priority Matrix', 'priority_add': 'Add Task', 'priority_placeholder': 'Add a task...',
-        'pq_urgent_important': 'Urgent & Important', 'pq_not_urgent_important': 'Not Urgent & Important',
-        'pq_urgent_not_important': 'Urgent & Not Important', 'pq_not_urgent_not_important': 'Not Urgent & Not Important',
-        'pq_empty': 'Empty',
-        'deep_work': 'Deep Work', 'deep_work_desc': 'Track uninterrupted focus time. Stop to save your session.',
-        'dw_today': 'Today', 'dw_total': 'Total', 'dw_minutes': 'minutes',
-        'filter_all': 'All', 'filter_pending': 'Pending', 'filter_done': 'Done',
-        'sort_by': 'Sort by', 'sort_due': 'Due date', 'sort_priority': 'Priority', 'sort_created': 'Created',
-        'confirm_delete': 'Delete this item?', 'confirm_delete_all': 'Delete all items? This cannot be undone.',
-        'confirm_reset': 'Reset? This cannot be undone.', 'confirm_yes': 'Yes, continue', 'confirm_no': 'Cancel',
-        'edit': 'Edit', 'save': 'Save', 'cancel': 'Cancel', 'close': 'Close', 'confirm': 'Confirm',
-        'apply': 'Apply', 'clear': 'Clear', 'refresh': 'Refresh', 'back': 'Back', 'next': 'Next', 'previous': 'Previous',
-        'search': 'Search', 'filter': 'Filter', 'copy': 'Copy', 'copied': 'Copied!', 'download': 'Download', 'upload': 'Upload',
-        'loading': 'Loading...', 'error': 'Error', 'success': 'Success', 'warning': 'Warning', 'info': 'Info',
-        'unknown': 'Unknown', 'none': 'None', 'all': 'All', 'yes': 'Yes', 'no': 'No', 'ok': 'OK',
-        'minutes': 'minutes', 'seconds': 'seconds', 'hours': 'hours', 'today_word': 'today',
-        'tomorrow': 'Tomorrow', 'yesterday': 'Yesterday',
-        'this_week': 'This Week', 'this_month': 'This Month', 'this_year': 'This Year',
-        'good_morning': 'Good morning', 'good_afternoon': 'Good afternoon', 'good_evening': 'Good evening',
-        'file_open': 'Open', 'file_rename': 'Rename', 'file_notes': 'Notes', 'file_size': 'Size', 'file_uploaded': 'Uploaded',
-        'pomodoro': 'Pomodoro', 'pomodoro_short_break': 'Short Break', 'pomodoro_long_break': 'Long Break',
-        'pomodoro_session': 'Session', 'pomodoro_work': 'Focus', 'pomodoro_complete': 'Pomodoro complete!',
-        'cmd_palette': 'Command Palette', 'cmd_placeholder': 'Type a command...', 'cmd_no_results': 'No commands found',
-        'trash_open': 'Open Trash', 'trash_close': 'Close Trash', 'trash_restore': 'Restore', 'trash_empty': 'Empty Trash',
-        'trash_item_deleted': 'Moved to trash', 'trash_item_restored': 'Restored from trash',
-        'blocker_settings': 'Blocker Settings', 'blocker_log': 'Blocked attempts',
-        'blocker_no_log': 'No blocked attempts yet. Keep it up!', 'blocker_category': 'Categories',
-        'blocker_custom': 'Custom blocklist', 'blocker_allowed': 'Always allowed',
-        'blocker_add_domain': 'Add domain', 'blocker_stats': 'Statistics',
-        'blocker_total': 'total blocked', 'blocker_events': 'recent events',
-        'shortcut_add': 'Add', 'shortcut_edit': 'Edit shortcut', 'shortcut_remove': 'Remove shortcut',
-        'shortcut_url': 'Website URL', 'shortcut_name': 'Display name', 'shortcut_save': 'Save shortcut', 'shortcut_cancel': 'Cancel',
-        'session_complete': 'Session Complete', 'session_duration': 'Duration', 'session_goal': 'Goal',
-        'session_distractions': 'Distractions', 'session_score': 'Score', 'session_goal_met': 'Goal met',
-        'session_goal_not_met': 'Goal not met', 'session_streak': 'day streak', 'session_today': 'min today',
-        'theme_customize': 'Customize', 'theme_color': 'Color Theme', 'theme_background': 'Background',
-        'theme_reset': 'Reset to default', 'theme_done': 'Done', 'theme_gradients': 'Gradients', 'theme_photos': 'Photos'
+        'auto_flashcards_btn': 'Notlardan Otomatik Oluştur'
     }
 };
-var currentLang = 'en';
-var _missingTranslationWarned = {};
 
-function getTranslation(key, params) {
-    var table = translations[currentLang] || {};
-    var val = table[key];
-    if (typeof val === 'undefined') {
-        val = (translations.en && translations.en[key]) || key;
-        if (currentLang !== 'en' && !_missingTranslationWarned[currentLang + ':' + key]) {
-            _missingTranslationWarned[currentLang + ':' + key] = true;
-            // helpful during development; harmless in production
-            if (window.console && console.warn) {
-                console.warn('[StudyHub i18n] Missing key "' + key + '" in "' + currentLang + '" — falling back to English.');
-            }
-        }
+// Merge extra translations into the main translations object
+Object.keys(extraTranslations).forEach(function (lang) {
+    if (translations[lang]) {
+        Object.assign(translations[lang], extraTranslations[lang]);
+    } else {
+        translations[lang] = extraTranslations[lang];
     }
-    if (params && typeof val === 'string') {
-        for (var k in params) {
-            val = val.split('{' + k + '}').join(params[k]);
+});
+
+// ================================================================
+// AUTO-FILL: every language inherits any key it's missing from English
+// This guarantees no untranslated key ever shows as raw text.
+// ================================================================
+Object.keys(translations).forEach(function (lang) {
+    if (lang === 'en') return;
+    Object.keys(translations.en).forEach(function (key) {
+        if (typeof translations[lang][key] === 'undefined') {
+            translations[lang][key] = translations.en[key];
         }
+    });
+});
+
+let currentLang = 'en';
+
+function getTranslation(key) {
+    if (translations[currentLang] && translations[currentLang][key]) {
+        return translations[currentLang][key];
     }
-    return val;
+    return translations['en'][key] || key;
 }
 
 function applyTranslations(lang) {
-    if (!translations[lang]) lang = 'en';
     currentLang = lang;
-
-    document.querySelectorAll('[data-i18n]').forEach(function (el) {
-        var key = el.dataset.i18n;
-        var text = getTranslation(key);
+    const elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach(function(el) {
+        const key = el.dataset.i18n;
+        const text = getTranslation(key);
         if (text) el.textContent = text;
     });
-
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
-        var key = el.dataset.i18nPlaceholder;
-        var text = getTranslation(key);
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        const key = el.dataset.i18nPlaceholder;
+        const text = getTranslation(key);
         if (text) el.placeholder = text;
     });
-
-    document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
-        var key = el.dataset.i18nTitle;
-        var text = getTranslation(key);
+    document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+        const key = el.dataset.i18nTitle;
+        const text = getTranslation(key);
         if (text) el.title = text;
     });
-
-    var selector = document.getElementById('langSelector');
+    const selector = document.getElementById('langSelector');
     if (selector) selector.value = lang;
-
-    try { localStorage.setItem('studyHubLang', lang); } catch (e) {}
+    localStorage.setItem('studyHubLang', lang);
 }
 
 function initTranslations() {
-    var saved = null;
-    try { saved = localStorage.getItem('studyHubLang'); } catch (e) {}
-    if (saved && translations[saved]) currentLang = saved;
+    const saved = localStorage.getItem('studyHubLang');
+    if (saved && translations[saved]) {
+        currentLang = saved;
+    }
     applyTranslations(currentLang);
 
-    var selector = document.getElementById('langSelector');
+    const selector = document.getElementById('langSelector');
     if (selector) {
-        selector.addEventListener('change', function () {
+        selector.addEventListener('change', function() {
             applyTranslations(this.value);
-            if (typeof window.refreshNewElements === 'function') {
-                setTimeout(window.refreshNewElements, 30);
-            }
         });
     }
 }
-
-// ================================================================
-// END OF PART 1
-// Part 2 (language data) appends directly below this line.
-// ================================================================
-// ================================================================
-// PART 3 — FEATURES + WIRING
-// Everything from renderDashboard down to the single merged
-// DOMContentLoaded listener at the very end.
-// ================================================================
 
 // ================================================================
 // DELETE HISTORY (bulk)
@@ -3916,8 +2987,8 @@ function initTranslations() {
 function deleteTodayHistory() {
     if (!confirm('Delete all activity for today?')) return;
     var data = loadData();
-    var today = todayStr();
-    data.history = data.history.filter(function (h) { return h.date !== today; });
+    var today = new Date().toISOString().slice(0, 10);
+    data.history = data.history.filter(function(h) { return h.date !== today; });
     saveData(data);
     renderDashboard();
 }
@@ -3931,72 +3002,57 @@ function deleteAllHistory() {
 }
 
 // ================================================================
-// REMINDERS (notifications) — permission requested once
+// REMINDERS / NOTIFICATIONS
 // ================================================================
-var _notifPermissionRequested = false;
-function ensureNotificationPermission() {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
-    if (_notifPermissionRequested) return;
-    _notifPermissionRequested = true;
-    try { Notification.requestPermission(); } catch (e) {}
-}
-
 function checkReminders(data) {
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!("Notification" in window) || Notification.permission === "denied") return;
+    if (Notification.permission === "default") Notification.requestPermission();
 
-    var today = todayStr();
+    var today = new Date().toISOString().slice(0, 10);
     var tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
-    data.assignments.filter(function (a) {
+    data.assignments.filter(function(a) {
         return !a.completed && a.due === tomorrow;
-    }).forEach(function (a) {
+    }).forEach(function(a) {
         if (a._notified) return;
         a._notified = true;
         saveData(data);
-        try {
-            new Notification('⏰ Assignment Due Tomorrow', { body: a.title + ' (' + a.subject + ')' });
-        } catch (e) {}
+        new Notification('⏰ Assignment Due Tomorrow', {
+            body: a.title + ' (' + a.subject + ')'
+        });
     });
 
-    data.flashcards.decks.forEach(function (deck) {
-        deck.cards.filter(function (c) {
+    data.flashcards.decks.forEach(function(deck) {
+        deck.cards.filter(function(c) {
             return c.dueDate && c.dueDate <= today && !c._notified;
-        }).forEach(function (c) {
+        }).forEach(function(c) {
             c._notified = true;
             saveData(data);
-            try {
-                new Notification('📝 Flashcard Review Due', {
-                    body: 'Deck: ' + deck.name + ' - "' + c.front + '"'
-                });
-            } catch (e) {}
+            new Notification('📝 Flashcard Review Due', {
+                body: 'Deck: ' + deck.name + ' - "' + c.front + '"'
+            });
         });
     });
 }
 
 // ================================================================
-// DASHBOARD
+// DASHBOARD RENDER
 // ================================================================
 function renderDashboard() {
-    var data = loadData();
+    const data = loadData();
     resetDailyIfNeeded(data);
-    var today = todayStr();
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('todayDate').textContent = today;
 
-    var todayDateEl = document.getElementById('todayDate');
-    if (todayDateEl) todayDateEl.textContent = today;
+    const todaySearches = data.searches.filter(function(s) { return s.date.startsWith(today); }).length;
+    const todayFiles = data.files.filter(function(f) { return f.date && f.date.startsWith(today); }).length;
+    const todayTasks = data.history.filter(function(h) { return h.date === today && h.type === 'habit_complete'; }).length;
 
-    var todaySearches = data.searches.filter(function (s) {
-        return s.date && s.date.slice(0, 10) === today;
-    }).length;
-    var todayTasks = data.history.filter(function (h) {
-        return h.date === today && h.type === 'habit_complete';
-    }).length;
-
-    var streak = 0;
+    let streak = 0;
     if (data.habits.length > 0) {
         var allDates = new Set();
-        data.habits.forEach(function (h) {
-            (h.completedDates || []).forEach(function (d) { allDates.add(d); });
+        data.habits.forEach(function(h) {
+            h.completedDates.forEach(function(d) { allDates.add(d); });
         });
         var sorted = Array.from(allDates).sort();
         if (sorted.length > 0) {
@@ -4017,61 +3073,46 @@ function renderDashboard() {
         }
     }
 
-    var el;
-    el = document.getElementById('statSearches'); if (el) el.textContent = todaySearches;
-    el = document.getElementById('statFiles'); if (el) el.textContent = data.files.length;
-    el = document.getElementById('statTasks'); if (el) el.textContent = todayTasks;
-    el = document.getElementById('statStreak'); if (el) el.textContent = streak;
+    document.getElementById('statSearches').textContent = todaySearches;
+    document.getElementById('statFiles').textContent = data.files.length;
+    document.getElementById('statTasks').textContent = todayTasks;
+    document.getElementById('statStreak').textContent = streak;
 
     // Today Activity
-    var todayActs = data.history.filter(function (h) { return h.date === today; });
+    var todayActs = data.history.filter(function(h) { return h.date === today; });
     var tc = document.getElementById('todayActivity');
-    if (tc) {
-        if (todayActs.length === 0) {
-            tc.innerHTML = '<p class="empty-state">' + getTranslation('no_activity') + '</p>';
-        } else {
-            tc.innerHTML = todayActs.slice().reverse().map(function (h) {
-                return '<div class="activity-item"><span>' + h.description +
-                       '</span><span class="time">' +
-                       new Date(h.timestamp).toLocaleTimeString() +
-                       ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
-            }).join('');
-        }
+    if (todayActs.length === 0) {
+        tc.innerHTML = '<p class="empty-state">' + getTranslation('no_activity') + '</p>';
+    } else {
+        tc.innerHTML = todayActs.slice().reverse().map(function(h) {
+            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + new Date(h.timestamp).toLocaleTimeString() + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
+        }).join('');
     }
-    var todayCountEl = document.getElementById('todayCount');
-    if (todayCountEl) todayCountEl.textContent = todayActs.length + ' ' + getTranslation('entries');
+    document.getElementById('todayCount').textContent = todayActs.length + ' ' + getTranslation('entries');
 
     // All History
     var allHist = data.history;
     var hc = document.getElementById('historyActivity');
-    if (hc) {
-        if (allHist.length === 0) {
-            hc.innerHTML = '<p class="empty-state">' + getTranslation('no_history') + '</p>';
-        } else {
-            hc.innerHTML = allHist.slice().reverse().map(function (h) {
-                return '<div class="activity-item"><span>' + h.description +
-                       '</span><span class="time">' + h.date +
-                       ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
-            }).join('');
-        }
+    if (allHist.length === 0) {
+        hc.innerHTML = '<p class="empty-state">' + getTranslation('no_history') + '</p>';
+    } else {
+        hc.innerHTML = allHist.slice().reverse().map(function(h) {
+            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + h.date + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
+        }).join('');
     }
-    var historyCountEl = document.getElementById('historyCount');
-    if (historyCountEl) historyCountEl.textContent = allHist.length + ' ' + getTranslation('entries');
+    document.getElementById('historyCount').textContent = allHist.length + ' ' + getTranslation('entries');
 
     // Upcoming Assignments
     var assignEl = document.getElementById('upcomingAssignments');
     if (assignEl) {
-        var upcoming = data.assignments.filter(function (a) { return !a.completed; })
-            .sort(function (a, b) { return new Date(a.due) - new Date(b.due); })
-            .slice(0, 5);
+        var upcoming = data.assignments.filter(function(a) { return !a.completed; }).sort(function(a, b) {
+            return new Date(a.due) - new Date(b.due);
+        }).slice(0, 5);
         if (upcoming.length === 0) {
             assignEl.innerHTML = '<p class="empty-state">' + getTranslation('no_assignments') + '</p>';
         } else {
-            assignEl.innerHTML = upcoming.map(function (a) {
-                return '<div class="assignment-item priority-' + a.priority + '"><span>' +
-                       a.title + ' <span class="tags">' +
-                       (a.tags && a.tags.length ? '#' + a.tags.join(' #') : '') +
-                       '</span></span><span>' + a.due + '</span></div>';
+            assignEl.innerHTML = upcoming.map(function(a) {
+                return '<div class="assignment-item priority-' + a.priority + '"><span>' + a.title + ' <span class="tags">' + (a.tags ? '#' + a.tags.join(' #') : '') + '</span></span><span>' + a.due + '</span></div>';
             }).join('');
         }
     }
@@ -4082,51 +3123,35 @@ function renderDashboard() {
         journalEl.value = data.journal[today] || '';
         var pastEl = document.getElementById('journalPast');
         if (pastEl) {
-            var entries = Object.keys(data.journal)
-                .filter(function (k) { return k !== today; })
-                .sort().reverse().slice(0, 5);
-            pastEl.innerHTML = entries.map(function (k) {
-                var v = data.journal[k];
-                return '<div><span class="hl-cyan">' + k + ':</span> ' +
-                       v.substring(0, 60) + (v.length > 60 ? '...' : '') + '</div>';
+            var entries = Object.entries(data.journal).filter(function(entry) {
+                return entry[0] !== today;
+            }).sort().reverse().slice(0, 5);
+            pastEl.innerHTML = entries.map(function(entry) {
+                return '<div><span class="hl-cyan">' + entry[0] + ':</span> ' + entry[1].substring(0, 60) + (entry[1].length > 60 ? '...' : '') + '</div>';
             }).join('');
         }
     }
 
-    // Pomodoro counts (both the stats-grid one and the widget one)
+    // Pomodoro count
     var pomoCount = document.getElementById('pomoCount');
     if (pomoCount) {
-        pomoCount.textContent = data.pomodoroLogs.filter(function (l) { return l.date === today; }).length;
-    }
-    var pomoCountStat = document.getElementById('pomoCountStat');
-    if (pomoCountStat) {
-        pomoCountStat.textContent = data.pomodoroLogs.filter(function (l) { return l.date === today; }).length;
+        pomoCount.textContent = data.pomodoroLogs.filter(function(l) { return l.date === today; }).length;
     }
 
-    // Delegated delete for history items
-    bindHistoryDeletes();
-
-    ensureNotificationPermission();
-    checkReminders(data);
-}
-
-function bindHistoryDeletes() {
-    ['todayActivity', 'historyActivity'].forEach(function (containerId) {
-        var container = document.getElementById(containerId);
-        if (!container || container.dataset.deletesBound) return;
-        container.dataset.deletesBound = '1';
-        container.addEventListener('click', function (e) {
-            var btn = e.target.closest('.delete-item-btn');
-            if (!btn) return;
-            var ts = parseInt(btn.dataset.timestamp, 10);
-            if (isNaN(ts)) return;
-            if (!confirm('Delete this history entry?')) return;
-            var data = loadData();
-            data.history = data.history.filter(function (h) { return h.timestamp !== ts; });
-            saveData(data);
-            renderDashboard();
+    // Attach delete listeners for history items
+    document.querySelectorAll('#todayActivity .delete-item-btn, #historyActivity .delete-item-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var ts = parseInt(this.dataset.timestamp);
+            if (confirm('Delete this history entry?')) {
+                var data = loadData();
+                data.history = data.history.filter(function(h) { return h.timestamp !== ts; });
+                saveData(data);
+                renderDashboard();
+            }
         });
     });
+
+    checkReminders(data);
 }
 
 // ================================================================
@@ -4141,7 +3166,6 @@ function initPomodoro() {
     var resetBtn = document.getElementById('pomoReset');
     var taskSelect = document.getElementById('pomoTaskSelect');
     var durationInput = document.getElementById('pomoDuration');
-    var soundSelect = document.getElementById('pomoSound');
 
     var pomoSeconds = 1500;
     var pomoRunning = false;
@@ -4155,53 +3179,48 @@ function initPomodoro() {
     }
 
     if (durationInput) {
-        durationInput.addEventListener('change', function () {
-            if (pomoRunning) return;
-            var mins = parseInt(this.value, 10) || 25;
-            if (mins < 1) mins = 1;
-            if (mins > 120) mins = 120;
-            pomoSeconds = mins * 60;
-            updateDisplay();
+        durationInput.addEventListener('change', function() {
+            if (!pomoRunning) {
+                var mins = parseInt(this.value) || 25;
+                if (mins < 1) mins = 1;
+                if (mins > 120) mins = 120;
+                pomoSeconds = mins * 60;
+                updateDisplay();
+            }
         });
     }
 
     function resetTimer() {
         clearInterval(pomoTimer);
         pomoRunning = false;
-        var mins = durationInput ? parseInt(durationInput.value, 10) || 25 : 25;
+        var mins = durationInput ? parseInt(durationInput.value) || 25 : 25;
         pomoSeconds = mins * 60;
         updateDisplay();
     }
 
     if (startBtn) {
-        startBtn.addEventListener('click', function () {
+        startBtn.addEventListener('click', function() {
             if (pomoRunning) return;
             pomoTask = taskSelect ? taskSelect.value : 'Study';
             pomoRunning = true;
-            if (soundSelect && soundSelect.value !== 'none' && typeof startFocusSound === 'function') {
-                startFocusSound(soundSelect.value);
-            }
-            pomoTimer = setInterval(function () {
+            pomoTimer = setInterval(function() {
                 pomoSeconds--;
                 updateDisplay();
                 if (pomoSeconds <= 0) {
                     clearInterval(pomoTimer);
                     pomoRunning = false;
-                    if (typeof stopFocusSound === 'function') stopFocusSound();
                     var data = loadData();
                     data.pomodoroLogs.push({
-                        date: todayStr(),
+                        date: new Date().toISOString().slice(0, 10),
                         task: pomoTask,
-                        duration: durationInput ? parseInt(durationInput.value, 10) || 25 : 25
+                        duration: durationInput ? parseInt(durationInput.value) || 25 : 25
                     });
                     addActivity(data, 'pomodoro', 'Completed Pomodoro: ' + pomoTask);
                     saveData(data);
                     renderDashboard();
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        try {
-                            new Notification('⏱️ Timer Complete!', { body: 'Great focus on ' + pomoTask + '!' });
-                        } catch (e) {}
-                    }
+                    new Notification('⏱️ Timer Complete!', {
+                        body: 'Great focus on ' + pomoTask + '!'
+                    });
                     resetTimer();
                 }
             }, 1000);
@@ -4209,24 +3228,20 @@ function initPomodoro() {
     }
 
     if (stopBtn) {
-        stopBtn.addEventListener('click', function () {
+        stopBtn.addEventListener('click', function() {
             clearInterval(pomoTimer);
             pomoRunning = false;
-            if (typeof stopFocusSound === 'function') stopFocusSound();
         });
     }
 
     if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
-            resetTimer();
-            if (typeof stopFocusSound === 'function') stopFocusSound();
-        });
+        resetBtn.addEventListener('click', resetTimer);
     }
 
     if (taskSelect) {
         var data = loadData();
         var options = '<option value="Study">Study</option>';
-        data.habits.forEach(function (h) {
+        data.habits.forEach(function(h) {
             options += '<option value="' + h.text + '">' + h.text + '</option>';
         });
         taskSelect.innerHTML = options;
@@ -4236,16 +3251,15 @@ function initPomodoro() {
 }
 
 // ================================================================
-// AI SUMMARIZER (offline — no API)
+// AI SUMMARIZER — PREMIUM EDITION (offline, no API)
 // ================================================================
 function setupSummarizer() {
     var btn = document.getElementById('summarizeBtn');
     if (!btn) return;
     var input = document.getElementById('summarizeInput');
     var output = document.getElementById('summarizeOutput');
-    if (!input || !output) return;
 
-    // Premium styles (injected once)
+    // ---------- injected premium styles (once) ----------
     if (!document.getElementById('summarizerProStyles')) {
         var st = document.createElement('style');
         st.id = 'summarizerProStyles';
@@ -4273,8 +3287,11 @@ function setupSummarizer() {
         document.head.appendChild(st);
     }
 
+    // ============================================================
+    // NLP ENGINE
+    // ============================================================
     var STOP = {};
-    ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my self no nor not of off on once only or other ought our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours yourself yourselves also may might must shall upon among within without across along etc via per said says say get got go goes went come came make made take taken give given see seen know known think thought want wanted use used one two three four five six seven eight nine ten many much lot lots really quite rather somewhat fairly pretty enough almost nearly however therefore moreover furthermore nevertheless nonetheless thus hence accordingly consequently meanwhile similarly likewise additionally overall').split(/\s+/).forEach(function (w) { STOP[w] = 1; });
+    ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my my self no nor not of off on once only or other ought our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours yourself yourselves also may might must shall upon among within without across along etc via per said says say get got go goes went come came make made take taken give given see seen know known think thought want wanted use used one two three four five six seven eight nine ten many much lot lots really quite rather somewhat fairly pretty enough almost nearly however therefore moreover furthermore nevertheless nonetheless thus hence accordingly consequently meanwhile similarly likewise additionally overall').split(/\s+/).forEach(function(w){STOP[w]=1;});
 
     var CUE_BOOST = /\b(in conclusion|in summary|to sum up|the main|the key|important(ly)?|significan(t|ce)|therefore|thus|hence|as a result|consequently|overall|essential(ly)?|crucial(ly)?|notably|primarily|chiefly|mainly|the point is|the goal|the purpose|we (found|conclude|argue|propose|show)|this (shows|means|suggests|demonstrates|proves|indicates))\b/i;
     var FILLER_START = /^(and|but|so|then|also|now|well|okay|ok|um|uh|like|you know|anyway|basically|actually|honestly|literally|simply|just|first|firstly|second|secondly|third|thirdly|finally|lastly)\b[,\s]+/i;
@@ -4491,6 +3508,7 @@ function setupSummarizer() {
         var sentCount = sentences.length;
         var kws = extractKeywords(cleaned, 6);
 
+        // ---------- SHORT PATH: 1–2 sentences ----------
         if (sentCount <= 2) {
             var scored = scoreSentences(sentences);
             scored.sort(function (a, b) { return b.score - a.score; });
@@ -4504,6 +3522,7 @@ function setupSummarizer() {
 
             var points = [];
             if (sentCount === 2) {
+                // Build a fresh clause-join gist across BOTH sentences
                 var essences = [];
                 sentences.forEach(function (s) {
                     var cl = s.split(/[,;—–]/).map(function (c) { return c.trim(); })
@@ -4543,6 +3562,7 @@ function setupSummarizer() {
             return { short: true, tldr: tldr, points: points, keywords: kws, sentences: sentCount, words: wordCount };
         }
 
+        // ---------- NORMAL PATH: 3+ sentences ----------
         var scores = scoreSentences(sentences);
         var targetCount = Math.max(2, Math.min(5, Math.round(sentences.length * 0.32)));
         targetCount = Math.min(targetCount, sentences.length);
@@ -4655,14 +3675,46 @@ function setupHabits() {
     var list = document.getElementById('habitList');
     var delBtn = document.getElementById('deleteAllHabitsBtn');
     var streakDisplay = document.getElementById('streakDisplay');
-    if (!list) return;
 
-    function computeStreak(data) {
+    function renderHabits() {
+        var data = loadData();
+        if (data.habits.length === 0) {
+            list.innerHTML = '<p class="empty-state">' + getTranslation('no_habits') + '</p>';
+        } else {
+            var today = new Date().toISOString().slice(0, 10);
+            list.innerHTML = data.habits.map(function(h) {
+                var done = h.completedDates.includes(today);
+                return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') + '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') + '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) + '</button><button class="delete-item-btn" data-id="' + h.id + '" data-action="delete-habit">✕</button></div></div>';
+            }).join('');
+            list.querySelectorAll('.complete-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = this.dataset.id;
+                    var data = loadData();
+                    var habit = data.habits.find(function(h) { return h.id === id; });
+                    if (habit) {
+                        var today = new Date().toISOString().slice(0, 10);
+                        if (!habit.completedDates.includes(today)) {
+                            habit.completedDates.push(today);
+                            addActivity(data, 'habit_complete', 'Completed habit: "' + habit.text + '"');
+                            saveData(data);
+                            renderHabits();
+                            updateStreak();
+                            if (document.getElementById('statTasks')) renderDashboard();
+                        }
+                    }
+                });
+            });
+        }
+        updateStreak();
+    }
+
+    function updateStreak() {
+        var data = loadData();
         var streak = 0;
         if (data.habits.length > 0) {
             var allDates = new Set();
-            data.habits.forEach(function (h) {
-                (h.completedDates || []).forEach(function (d) { allDates.add(d); });
+            data.habits.forEach(function(h) {
+                h.completedDates.forEach(function(d) { allDates.add(d); });
             });
             var sorted = Array.from(allDates).sort();
             if (sorted.length > 0) {
@@ -4682,101 +3734,41 @@ function setupHabits() {
                 streak = maxStreak;
             }
         }
-        return streak;
+        if (streakDisplay) streakDisplay.textContent = streak;
     }
 
-    function renderHabits() {
+    addBtn.addEventListener('click', function() {
+        var text = input.value.trim();
+        if (!text) return;
         var data = loadData();
-        if (data.habits.length === 0) {
-            list.innerHTML = '<p class="empty-state">' + getTranslation('no_habits') + '</p>';
-        } else {
-            var today = todayStr();
-            list.innerHTML = data.habits.map(function (h) {
-                var done = (h.completedDates || []).indexOf(today) !== -1;
-                return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') +
-                       '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') +
-                       '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) +
-                       '</button><button class="delete-item-btn" data-id="' + h.id + '" data-action="delete-habit">✕</button></div></div>';
-            }).join('');
-        }
-        if (streakDisplay) streakDisplay.textContent = computeStreak(data);
-    }
-
-    // Delegated listeners — attach once
-    if (!list.dataset.bound) {
-        list.dataset.bound = '1';
-        list.addEventListener('click', function (e) {
-            var completeBtn = e.target.closest('.complete-btn');
-            if (completeBtn) {
-                var id = completeBtn.dataset.id;
-                var data = loadData();
-                var habit = data.habits.find(function (h) { return h.id === id; });
-                if (!habit) return;
-                var today = todayStr();
-                if ((habit.completedDates || []).indexOf(today) === -1) {
-                    if (!habit.completedDates) habit.completedDates = [];
-                    habit.completedDates.push(today);
-                    addActivity(data, 'habit_complete', 'Completed habit: "' + habit.text + '"');
-                    saveData(data);
-                    renderHabits();
-                    renderDashboard();
-                }
-                return;
-            }
-            var delBtnEl = e.target.closest('.delete-item-btn[data-action="delete-habit"]');
-            if (delBtnEl) {
-                var delId = delBtnEl.dataset.id;
-                if (!confirm('Delete this habit? It will go to Trash for 24 hours.')) return;
-                var d = loadData();
-                var item = d.habits.find(function (h) { return h.id === delId; });
-                if (item) pushToTrash(d, 'habit', item);
-                d.habits = d.habits.filter(function (h) { return h.id !== delId; });
-                addActivity(d, 'delete', 'Moved habit to trash');
-                saveData(d);
-                renderHabits();
-                updateTrashCount();
-                renderDashboard();
-            }
+        data.habits.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            text: text,
+            completedDates: []
         });
-    }
+        addActivity(data, 'habit_add', 'Created habit: "' + text + '"');
+        saveData(data);
+        input.value = '';
+        renderHabits();
+        if (document.getElementById('statTasks')) renderDashboard();
+    });
 
-    if (addBtn) {
-        addBtn.addEventListener('click', function () {
-            var text = input.value.trim();
-            if (!text) return;
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addBtn.click();
+    });
+
+    delBtn.addEventListener('click', function() {
+        if (confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
-            data.habits.push({
-                id: uid(),
-                text: text,
-                completedDates: []
-            });
-            addActivity(data, 'habit_add', 'Created habit: "' + text + '"');
-            saveData(data);
-            input.value = '';
-            renderHabits();
-            renderDashboard();
-        });
-    }
-    if (input) {
-        input.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && addBtn) addBtn.click();
-        });
-    }
-
-    if (delBtn) {
-        delBtn.addEventListener('click', function () {
-            if (!confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) return;
-            var data = loadData();
-            data.habits.forEach(function (h) { pushToTrash(data, 'habit', h); });
+            data.habits.forEach(function(h) { pushToTrash(data, 'habit', h); });
             data.habits = [];
             addActivity(data, 'delete', 'Moved all habits to trash');
             saveData(data);
             renderHabits();
             updateTrashCount();
-            renderDashboard();
-        });
-    }
-
+            if (document.getElementById('statTasks')) renderDashboard();
+        }
+    });
     renderHabits();
 }
 
@@ -4789,78 +3781,68 @@ function setupNotice() {
     var list = document.getElementById('noticeList');
     var delBtn = document.getElementById('deleteAllNoticesBtn');
     var countEl = document.getElementById('noticeCount');
-    if (!list) return;
 
     function renderNotices() {
         var data = loadData();
         if (data.notices.length === 0) {
             list.innerHTML = '<p class="empty-state">' + getTranslation('no_notices') + '</p>';
         } else {
-            list.innerHTML = data.notices.map(function (n) {
-                return '<div class="notice-item"><span>' + n.text +
-                       '</span><span class="time">' + new Date(n.date).toLocaleDateString() +
-                       ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
+            list.innerHTML = data.notices.map(function(n) {
+                return '<div class="notice-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
             }).join('');
         }
         if (countEl) countEl.textContent = data.notices.length + ' ' + getTranslation('notices_count');
-    }
 
-    if (!list.dataset.bound) {
-        list.dataset.bound = '1';
-        list.addEventListener('click', function (e) {
-            var btn = e.target.closest('.delete-item-btn');
-            if (!btn) return;
-            var id = btn.dataset.id;
-            if (!confirm('Delete this notice? It will go to Trash for 24 hours.')) return;
-            var data = loadData();
-            var item = data.notices.find(function (n) { return n.id === id; });
-            if (item) pushToTrash(data, 'notice', item);
-            data.notices = data.notices.filter(function (n) { return n.id !== id; });
-            addActivity(data, 'delete', 'Moved notice to trash');
-            saveData(data);
-            renderNotices();
-            updateTrashCount();
-            renderDashboard();
-        });
-    }
-
-    if (addBtn) {
-        addBtn.addEventListener('click', function () {
-            var text = input.value.trim();
-            if (!text) return;
-            var data = loadData();
-            data.notices.push({
-                id: uid(),
-                text: text,
-                date: new Date().toISOString()
+        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                if (confirm('Delete this notice? It will go to Trash for 24 hours.')) {
+                    var data = loadData();
+                    var item = data.notices.find(function(n) { return n.id === id; });
+                    if (item) pushToTrash(data, 'notice', item);
+                    data.notices = data.notices.filter(function(n) { return n.id !== id; });
+                    addActivity(data, 'delete', 'Moved notice to trash');
+                    saveData(data);
+                    renderNotices();
+                    updateTrashCount();
+                    if (document.getElementById('statTasks')) renderDashboard();
+                }
             });
-            addActivity(data, 'notice_add', 'Added notice: "' + text + '"');
-            saveData(data);
-            input.value = '';
-            renderNotices();
-            renderDashboard();
-        });
-    }
-    if (input) {
-        input.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && addBtn) addBtn.click();
         });
     }
 
-    if (delBtn) {
-        delBtn.addEventListener('click', function () {
-            if (!confirm('Move all notices to Trash? They will be recoverable for 24 hours.')) return;
+    addBtn.addEventListener('click', function() {
+        var text = input.value.trim();
+        if (!text) return;
+        var data = loadData();
+        data.notices.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            text: text,
+            date: new Date().toISOString()
+        });
+        addActivity(data, 'notice_add', 'Added notice: "' + text + '"');
+        saveData(data);
+        input.value = '';
+        renderNotices();
+        if (document.getElementById('statTasks')) renderDashboard();
+    });
+
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addBtn.click();
+    });
+
+    delBtn.addEventListener('click', function() {
+        if (confirm('Move all notices to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
-            data.notices.forEach(function (n) { pushToTrash(data, 'notice', n); });
+            data.notices.forEach(function(n) { pushToTrash(data, 'notice', n); });
             data.notices = [];
             addActivity(data, 'delete', 'Moved all notices to trash');
             saveData(data);
             renderNotices();
             updateTrashCount();
-            renderDashboard();
-        });
-    }
-
+            if (document.getElementById('statTasks')) renderDashboard();
+        }
+    });
     renderNotices();
 }
 
@@ -4872,83 +3854,72 @@ function setupNotes() {
     var addBtn = document.getElementById('addNoteBtn');
     var list = document.getElementById('noteList');
     var delBtn = document.getElementById('deleteAllNotesBtn');
-    if (!list) return;
 
     function renderNotes() {
         var data = loadData();
         if (data.notes.length === 0) {
             list.innerHTML = '<p class="empty-state">' + getTranslation('no_notes') + '</p>';
         } else {
-            list.innerHTML = data.notes.map(function (n) {
-                return '<div class="note-item"><span>' + n.text +
-                       '</span><span class="time">' + new Date(n.date).toLocaleDateString() +
-                       ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
+            list.innerHTML = data.notes.map(function(n) {
+                return '<div class="note-item"><span>' + n.text + '</span><span class="time">' + new Date(n.date).toLocaleDateString() + ' <button class="delete-item-btn" data-id="' + n.id + '">✕</button></span></div>';
             }).join('');
         }
-    }
 
-    if (!list.dataset.bound) {
-        list.dataset.bound = '1';
-        list.addEventListener('click', function (e) {
-            var btn = e.target.closest('.delete-item-btn');
-            if (!btn) return;
-            var id = btn.dataset.id;
-            if (!confirm('Delete this note? It will go to Trash for 24 hours.')) return;
-            var data = loadData();
-            var item = data.notes.find(function (n) { return n.id === id; });
-            if (item) pushToTrash(data, 'note', item);
-            data.notes = data.notes.filter(function (n) { return n.id !== id; });
-            addActivity(data, 'delete', 'Moved note to trash');
-            saveData(data);
-            renderNotes();
-            updateTrashCount();
-            renderDashboard();
-        });
-    }
-
-    if (addBtn) {
-        addBtn.addEventListener('click', function () {
-            var text = input.value.trim();
-            if (!text) return;
-            var data = loadData();
-            data.notes.push({
-                id: uid(),
-                text: text,
-                date: new Date().toISOString()
+        list.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                if (confirm('Delete this note? It will go to Trash for 24 hours.')) {
+                    var data = loadData();
+                    var item = data.notes.find(function(n) { return n.id === id; });
+                    if (item) pushToTrash(data, 'note', item);
+                    data.notes = data.notes.filter(function(n) { return n.id !== id; });
+                    addActivity(data, 'delete', 'Moved note to trash');
+                    saveData(data);
+                    renderNotes();
+                    updateTrashCount();
+                    if (document.getElementById('statTasks')) renderDashboard();
+                }
             });
-            addActivity(data, 'note_add', 'Added note: "' + text + '"');
-            saveData(data);
-            input.value = '';
-            renderNotes();
-            renderDashboard();
-        });
-    }
-    if (input) {
-        input.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && addBtn) addBtn.click();
         });
     }
 
-    if (delBtn) {
-        delBtn.addEventListener('click', function () {
-            if (!confirm('Move all notes to Trash? They will be recoverable for 24 hours.')) return;
+    addBtn.addEventListener('click', function() {
+        var text = input.value.trim();
+        if (!text) return;
+        var data = loadData();
+        data.notes.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            text: text,
+            date: new Date().toISOString()
+        });
+        addActivity(data, 'note_add', 'Added note: "' + text + '"');
+        saveData(data);
+        input.value = '';
+        renderNotes();
+        if (document.getElementById('statTasks')) renderDashboard();
+    });
+
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addBtn.click();
+    });
+
+    delBtn.addEventListener('click', function() {
+        if (confirm('Move all notes to Trash? They will be recoverable for 24 hours.')) {
             var data = loadData();
-            data.notes.forEach(function (n) { pushToTrash(data, 'note', n); });
+            data.notes.forEach(function(n) { pushToTrash(data, 'note', n); });
             data.notes = [];
             addActivity(data, 'delete', 'Moved all notes to trash');
             saveData(data);
             renderNotes();
             updateTrashCount();
-            renderDashboard();
-        });
-    }
-
+            if (document.getElementById('statTasks')) renderDashboard();
+        }
+    });
     renderNotes();
 }
 
 // ================================================================
-// SEARCH — uses an <a target="_blank"> click so the blocker's
-// window.open hook can't intercept it. Google is never blocked.
+// SEARCH
 // ================================================================
 function setupSearch() {
     var input = document.getElementById('searchInput');
@@ -4956,15 +3927,15 @@ function setupSearch() {
     var suggestionsList = document.getElementById('suggestionsList');
     var keyboardToggle = document.getElementById('keyboardToggle');
     var keyboardContainer = document.getElementById('keyboardContainer');
+
     if (!input || !btn) return;
 
     function updateSuggestions(query) {
-        if (!suggestionsList) return;
         var data = loadData();
         var matches = data.searches
-            .map(function (s) { return s.query; })
-            .filter(function (q, i, self) { return self.indexOf(q) === i; })
-            .filter(function (q) { return q.toLowerCase().indexOf(query.toLowerCase()) !== -1; })
+            .map(function(s) { return s.query; })
+            .filter(function(q, i, self) { return self.indexOf(q) === i; })
+            .filter(function(q) { return q.toLowerCase().includes(query.toLowerCase()); })
             .slice(0, 8);
 
         if (query.length === 0 || matches.length === 0) {
@@ -4972,27 +3943,27 @@ function setupSearch() {
             return;
         }
 
-        suggestionsList.innerHTML = matches.map(function (q) {
+        suggestionsList.innerHTML = matches.map(function(q) {
             return '<div class="suggestion-item" data-query="' + q + '">' + q + '</div>';
         }).join('');
         suggestionsList.classList.add('active');
-    }
 
-    if (suggestionsList && !suggestionsList.dataset.bound) {
-        suggestionsList.dataset.bound = '1';
-        suggestionsList.addEventListener('click', function (e) {
-            var el = e.target.closest('.suggestion-item');
-            if (!el) return;
-            var val = el.dataset.query;
-            input.value = val;
-            suggestionsList.classList.remove('active');
-            performSearch(val);
+        suggestionsList.querySelectorAll('.suggestion-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var val = this.dataset.query;
+                input.value = val;
+                suggestionsList.classList.remove('active');
+                performSearch(val);
+            });
         });
     }
 
-    input.addEventListener('input', function () { updateSuggestions(this.value); });
-    input.addEventListener('blur', function () {
-        setTimeout(function () { if (suggestionsList) suggestionsList.classList.remove('active'); }, 200);
+    input.addEventListener('input', function() {
+        updateSuggestions(this.value);
+    });
+
+    input.addEventListener('blur', function() {
+        setTimeout(function() { suggestionsList.classList.remove('active'); }, 200);
     });
 
     function performSearch(query) {
@@ -5001,28 +3972,29 @@ function setupSearch() {
         data.searches.push({ query: query, date: new Date().toISOString() });
         addActivity(data, 'search', 'Searched: "' + query + '"');
         saveData(data);
-
-        // Use an anchor click so window.open hooks in the blocker don't interfere.
-        var a = document.createElement('a');
-        a.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
+        window.open('https://www.google.com/search?q=' + encodeURIComponent(query), '_blank');
         input.value = '';
-        if (suggestionsList) suggestionsList.classList.remove('active');
-        renderDashboard();
+        suggestionsList.classList.remove('active');
+        if (document.getElementById('statSearches')) renderDashboard();
     }
 
-    btn.addEventListener('click', function () { performSearch(input.value.trim()); });
-    input.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') performSearch(input.value.trim());
+    btn.addEventListener('click', function() {
+        performSearch(input.value.trim());
     });
 
-    // On-screen keyboard
-    if (keyboardToggle && keyboardContainer) {
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch(input.value.trim());
+        }
+    });
+
+        if (keyboardToggle && keyboardContainer) {
+        keyboardToggle.addEventListener('click', function() {
+            keyboardContainer.classList.toggle('active');
+            this.textContent = keyboardContainer.classList.contains('active') ? getTranslation('hide_keyboard') : getTranslation('show_keyboard');
+        });
+
+        // ============ KEYBOARD LAYOUTS ============
         var LETTER_ROWS = [
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Backspace'],
             ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
@@ -5030,6 +4002,7 @@ function setupSearch() {
             ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '?'],
             ['Space']
         ];
+
         var SYMBOL_ROWS = [
             ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', 'Backspace'],
             ['-', '_', '=', '+', '[', ']', '{', '}', '\\', '|'],
@@ -5037,61 +4010,71 @@ function setupSearch() {
             ['€', '£', '¥', '©', '®', '™', '°', '·', '•', '…'],
             ['Space']
         ];
-        var layoutMode = 'letters';
+
+        var layoutMode = 'letters';   // 'letters' | 'symbols'
 
         function renderKeyboard() {
             keyboardContainer.innerHTML = '';
             var rows = (layoutMode === 'letters') ? LETTER_ROWS : SYMBOL_ROWS;
-            rows.forEach(function (rowKeys) {
+
+            rows.forEach(function(rowKeys) {
                 var rowDiv = document.createElement('div');
                 rowDiv.className = 'keyboard-row';
-                rowKeys.forEach(function (key) {
-                    var b = document.createElement('button');
-                    b.className = 'key-btn';
-                    if (key === 'Backspace' || key === 'Space') b.classList.add('special');
-                    if (key === 'Space') b.classList.add('space');
-                    b.textContent = key === 'Space' ? '␣' : key;
-                    b.dataset.key = key;
-                    rowDiv.appendChild(b);
+                rowKeys.forEach(function(key) {
+                    var btn = document.createElement('button');
+                    btn.className = 'key-btn';
+                    if (key === 'Backspace' || key === 'Space') btn.classList.add('special');
+                    if (key === 'Space') btn.classList.add('space');
+                    btn.textContent = key === 'Space' ? '␣' : key;
+                    btn.dataset.key = key;
+                    rowDiv.appendChild(btn);
                 });
                 keyboardContainer.appendChild(rowDiv);
             });
 
+            // Bottom row: layout toggle (like Android's "?123 / ABC" key)
             var toggleRow = document.createElement('div');
             toggleRow.className = 'keyboard-row';
+
             var layoutBtn = document.createElement('button');
             layoutBtn.className = 'key-btn special keyboard-layout-toggle';
             layoutBtn.type = 'button';
             layoutBtn.dataset.action = 'toggle-layout';
             layoutBtn.textContent = (layoutMode === 'letters') ? '?123' : 'ABC';
             layoutBtn.title = (layoutMode === 'letters') ? 'Switch to symbols' : 'Switch to letters';
+            layoutBtn.style.cssText = 'background:rgba(192,132,252,0.15);border-color:rgba(192,132,252,0.45);color:#c084fc;font-weight:700;min-width:4rem;';
+
             toggleRow.appendChild(layoutBtn);
             keyboardContainer.appendChild(toggleRow);
         }
 
         renderKeyboard();
 
-        keyboardToggle.addEventListener('click', function () {
-            keyboardContainer.classList.toggle('active');
-            this.textContent = keyboardContainer.classList.contains('active')
-                ? getTranslation('hide_keyboard')
-                : getTranslation('show_keyboard');
-        });
-
-        keyboardContainer.addEventListener('click', function (e) {
+        keyboardContainer.addEventListener('click', function(e) {
             var target = e.target.closest('.key-btn');
             if (!target) return;
+
+            // Layout toggle handled first
             if (target.dataset.action === 'toggle-layout') {
                 layoutMode = (layoutMode === 'letters') ? 'symbols' : 'letters';
                 renderKeyboard();
                 return;
             }
+
+            // Normal key press
             var key = target.dataset.key;
-            if (key === 'Backspace') input.value = input.value.slice(0, -1);
-            else if (key === 'Space') input.value += ' ';
-            else input.value += key;
-            input.dispatchEvent(new Event('input'));
-            input.focus();
+            var inp = document.getElementById('searchInput');
+            if (!inp) return;
+
+            if (key === 'Backspace') {
+                inp.value = inp.value.slice(0, -1);
+            } else if (key === 'Space') {
+                inp.value += ' ';
+            } else {
+                inp.value += key;
+            }
+            inp.dispatchEvent(new Event('input'));
+            inp.focus();
         });
     }
 }
@@ -5111,54 +4094,44 @@ function setupAssignments() {
             return;
         }
 
-        list.innerHTML = data.assignments.slice().sort(function (a, b) {
+        list.innerHTML = data.assignments.sort(function(a, b) {
             return new Date(a.due) - new Date(b.due);
-        }).map(function (a) {
-            return '<div class="assignment-item priority-' + a.priority + '"><div><span>' + a.title +
-                   '</span> <span class="tags">#' + a.subject +
-                   (a.tags && a.tags.length ? a.tags.map(function (t) { return ' #' + t; }).join('') : '') +
-                   '</span> ' + (a.completed ? '✅' : '') + '</div><div>' + a.due +
-                   ' <button class="btn-danger-sm" data-id="' + a.id + '">' + getTranslation('delete_btn') +
-                   '</button> <button class="btn-primary-sm" data-id="' + a.id + '" data-action="toggle">' +
-                   (a.completed ? 'Undo' : getTranslation('done')) + '</button></div></div>';
+        }).map(function(a) {
+            return '<div class="assignment-item priority-' + a.priority + '"><div><span>' + a.title + '</span> <span class="tags">#' + a.subject + (a.tags ? a.tags.map(function(t) { return ' #' + t; }).join('') : '') + '</span> ' + (a.completed ? '✅' : '') + '</div><div>' + a.due + ' <button class="btn-danger-sm" data-id="' + a.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + a.id + '" data-action="toggle">' + (a.completed ? 'Undo' : getTranslation('done')) + '</button></div></div>';
         }).join('');
-    }
 
-    if (!list.dataset.bound) {
-        list.dataset.bound = '1';
-        list.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-id]');
-            if (!b) return;
-            var id = b.dataset.id;
-            var action = b.dataset.action;
-            var data = loadData();
-            var idx = data.assignments.findIndex(function (a) { return a.id === id; });
-            if (idx === -1) return;
-            if (action === 'toggle') {
-                data.assignments[idx].completed = !data.assignments[idx].completed;
-            } else {
-                data.assignments.splice(idx, 1);
-            }
-            addActivity(data, 'assignment', 'Updated assignment');
-            saveData(data);
-            renderAssignments();
-            renderDashboard();
+        list.querySelectorAll('[data-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                var action = this.dataset.action;
+                var data = loadData();
+                var idx = data.assignments.findIndex(function(a) { return a.id === id; });
+                if (idx === -1) return;
+                if (action === 'toggle') {
+                    data.assignments[idx].completed = !data.assignments[idx].completed;
+                } else {
+                    data.assignments.splice(idx, 1);
+                }
+                addActivity(data, 'assignment', 'Updated assignment');
+                saveData(data);
+                renderAssignments();
+                if (document.getElementById('upcomingAssignments')) renderDashboard();
+            });
         });
     }
 
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
         var title = document.getElementById('assignTitle').value.trim();
         var subject = document.getElementById('assignSubject').value;
         var due = document.getElementById('assignDue').value;
         var priority = document.getElementById('assignPriority').value;
-        var tags = document.getElementById('assignTags').value.split(',')
-            .map(function (s) { return s.trim(); }).filter(Boolean);
+        var tags = document.getElementById('assignTags').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
 
         if (!title || !due) return;
         var data = loadData();
         data.assignments.push({
-            id: uid(),
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
             title: title,
             subject: subject,
             due: due,
@@ -5170,14 +4143,14 @@ function setupAssignments() {
         saveData(data);
         renderAssignments();
         form.reset();
-        renderDashboard();
+        if (document.getElementById('upcomingAssignments')) renderDashboard();
     });
 
     renderAssignments();
 }
 
 // ================================================================
-// PLANNER GRID
+// PLANNER
 // ================================================================
 function setupPlanner() {
     var grid = document.getElementById('plannerGrid');
@@ -5190,25 +4163,28 @@ function setupPlanner() {
         grid.innerHTML = '';
 
         grid.innerHTML += '<div class="time-label"></div>';
-        days.forEach(function (d) {
+        days.forEach(function(d) {
             grid.innerHTML += '<div class="time-label" style="font-weight:700;">' + d + '</div>';
         });
 
-        hours.forEach(function (h) {
+        hours.forEach(function(h) {
             grid.innerHTML += '<div class="time-label">' + h + '</div>';
-            days.forEach(function (d) {
+            days.forEach(function(d) {
                 var key = d + '_' + h;
                 var val = data.planner[key] || '';
                 var cell = document.createElement('div');
                 cell.className = 'planner-cell' + (val ? ' filled' : '');
                 cell.textContent = val;
-                cell.addEventListener('click', function () {
+                cell.addEventListener('click', function() {
                     var newVal = prompt('Plan for ' + d + ' ' + h + ':', val || '');
                     if (newVal === null) return;
-                    var d2 = loadData();
-                    if (newVal.trim() === '') delete d2.planner[key];
-                    else d2.planner[key] = newVal.trim();
-                    saveData(d2);
+                    var data = loadData();
+                    if (newVal.trim() === '') {
+                        delete data.planner[key];
+                    } else {
+                        data.planner[key] = newVal.trim();
+                    }
+                    saveData(data);
                     renderPlanner();
                 });
                 grid.appendChild(cell);
@@ -5220,83 +4196,73 @@ function setupPlanner() {
 }
 
 // ================================================================
-// FLASHCARDS
+// FLASHCARDS (FIXED)
 // ================================================================
 function setupFlashcards() {
     var list = document.getElementById('flashcardList');
-    if (!list) return;
 
     function renderFlashcards() {
         var data = loadData();
         list.innerHTML = '';
 
-        data.flashcards.decks.forEach(function (deck) {
+        data.flashcards.decks.forEach(function(deck) {
             var div = document.createElement('div');
             div.className = 'glass-card';
             div.style.padding = '1rem';
 
-            var dueCount = deck.cards.filter(function (c) {
-                return c.dueDate && c.dueDate <= todayStr();
+            var dueCount = deck.cards.filter(function(c) {
+                return c.dueDate && c.dueDate <= new Date().toISOString().slice(0, 10);
             }).length;
 
-            div.innerHTML = '<h3>' + deck.name + ' <span class="hl-cyan">(' + deck.cards.length +
-                ' cards, ' + dueCount + ' due)</span></h3>' +
+            div.innerHTML = '<h3>' + deck.name + ' <span class="hl-cyan">(' + deck.cards.length + ' cards, ' + dueCount + ' due)</span></h3>' +
                 '<button class="btn-primary-sm" data-deck="' + deck.id + '" data-action="review">Review</button> ' +
-                '<button class="btn-danger-sm" data-deck="' + deck.id + '" data-action="delete">' +
-                getTranslation('delete_btn') + '</button>' +
-                '<div style="margin-top:0.5rem;"><input class="input-dark" placeholder="Front" id="front_' + deck.id +
-                '"> <input class="input-dark" placeholder="Back" id="back_' + deck.id +
-                '"> <button class="btn-primary-sm" data-deck="' + deck.id + '" data-action="addcard">Add Card</button></div>';
+                '<button class="btn-danger-sm" data-deck="' + deck.id + '" data-action="delete">' + getTranslation('delete_all') + '</button>' +
+                '<div style="margin-top:0.5rem;"><input class="input-dark" placeholder="Front" id="front_' + deck.id + '"> <input class="input-dark" placeholder="Back" id="back_' + deck.id + '"> <button class="btn-primary-sm" data-deck="' + deck.id + '" data-action="addcard">Add Card</button></div>';
 
             list.appendChild(div);
         });
-    }
 
-    if (!list.dataset.bound) {
-        list.dataset.bound = '1';
-        list.addEventListener('click', function (e) {
-            var btn = e.target.closest('[data-deck]');
-            if (!btn) return;
-            var deckId = btn.dataset.deck;
-            var action = btn.dataset.action;
-            var data = loadData();
-            var deck = data.flashcards.decks.find(function (d) { return d.id === deckId; });
-            if (!deck) return;
+        list.querySelectorAll('[data-deck]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var deckId = this.dataset.deck;
+                var action = this.dataset.action;
+                var data = loadData();
+                var deck = data.flashcards.decks.find(function(d) { return d.id === deckId; });
+                if (!deck) return;
 
-            if (action === 'delete') {
-                if (confirm('Delete deck?')) {
-                    data.flashcards.decks = data.flashcards.decks.filter(function (d) { return d.id !== deckId; });
+                if (action === 'delete') {
+                    if (confirm('Delete deck?')) {
+                        data.flashcards.decks = data.flashcards.decks.filter(function(d) { return d.id !== deckId; });
+                        saveData(data);
+                        renderFlashcards();
+                    }
+                } else if (action === 'addcard') {
+                    var front = document.getElementById('front_' + deckId).value.trim();
+                    var back = document.getElementById('back_' + deckId).value.trim();
+                    if (!front || !back) return;
+                    deck.cards.push({
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        front: front,
+                        back: back,
+                        dueDate: new Date().toISOString().slice(0, 10),
+                        level: 0
+                    });
                     saveData(data);
                     renderFlashcards();
+                } else if (action === 'review') {
+                    startReview(deckId);
                 }
-            } else if (action === 'addcard') {
-                var fEl = document.getElementById('front_' + deckId);
-                var bEl = document.getElementById('back_' + deckId);
-                var front = fEl ? fEl.value.trim() : '';
-                var back = bEl ? bEl.value.trim() : '';
-                if (!front || !back) return;
-                deck.cards.push({
-                    id: uid(),
-                    front: front,
-                    back: back,
-                    dueDate: todayStr(),
-                    level: 0
-                });
-                saveData(data);
-                renderFlashcards();
-            } else if (action === 'review') {
-                startReview(deckId);
-            }
+            });
         });
     }
 
     function startReview(deckId) {
         var data = loadData();
-        var deck = data.flashcards.decks.find(function (d) { return d.id === deckId; });
+        var deck = data.flashcards.decks.find(function(d) { return d.id === deckId; });
         if (!deck) return;
 
-        var dueCards = deck.cards.filter(function (c) {
-            return c.dueDate && c.dueDate <= todayStr();
+        var dueCards = deck.cards.filter(function(c) {
+            return c.dueDate && c.dueDate <= new Date().toISOString().slice(0, 10);
         });
 
         if (dueCards.length === 0) {
@@ -5306,7 +4272,6 @@ function setupFlashcards() {
 
         var idx = 0;
         var reviewContainer = document.getElementById('flashcardReview');
-        if (!reviewContainer) return;
         reviewContainer.style.display = 'block';
         var frontEl = document.getElementById('reviewFront');
         var backEl = document.getElementById('reviewBack');
@@ -5322,26 +4287,24 @@ function setupFlashcards() {
             var card = dueCards[idx];
             frontEl.textContent = card.front;
             backEl.textContent = card.back;
-            var rev = reviewContainer.querySelector('.flashcard-review');
-            if (rev) rev.classList.remove('show-back');
+            document.querySelector('.flashcard-review').classList.remove('show-back');
         }
 
         showCard();
 
-        var revInner = reviewContainer.querySelector('.flashcard-review');
-        if (revInner) {
-            revInner.addEventListener('click', function (e) {
-                if (e.target.tagName !== 'BUTTON') this.classList.toggle('show-back');
-            });
-        }
+        document.querySelector('.flashcard-review').addEventListener('click', function(e) {
+            if (e.target.tagName !== 'BUTTON') {
+                this.classList.toggle('show-back');
+            }
+        });
 
-        diffBtns.forEach(function (btn) {
-            btn.onclick = function () {
-                var diff = parseInt(this.dataset.diff, 10);
+        diffBtns.forEach(function(btn) {
+            btn.onclick = function() {
+                var diff = parseInt(this.dataset.diff);
                 var card = dueCards[idx];
-                var data2 = loadData();
-                var deck2 = data2.flashcards.decks.find(function (d) { return d.id === deckId; });
-                var c = deck2.cards.find(function (x) { return x.id === card.id; });
+                var data = loadData();
+                var deck2 = data.flashcards.decks.find(function(d) { return d.id === deckId; });
+                var c = deck2.cards.find(function(c) { return c.id === card.id; });
                 if (c) {
                     var level = c.level || 0;
                     if (diff === 1) level = Math.max(0, level - 1);
@@ -5352,12 +4315,12 @@ function setupFlashcards() {
                     var next = new Date();
                     next.setDate(next.getDate() + days[Math.min(5, Math.round(level))]);
                     c.dueDate = next.toISOString().slice(0, 10);
-                    saveData(data2);
+                    saveData(data);
                 }
                 idx++;
                 showCard();
                 if (idx === dueCards.length) {
-                    setTimeout(function () {
+                    setTimeout(function() {
                         reviewContainer.style.display = 'none';
                         renderFlashcards();
                     }, 500);
@@ -5366,21 +4329,18 @@ function setupFlashcards() {
         });
     }
 
-    var addDeckBtn = document.getElementById('addDeckBtn');
-    if (addDeckBtn) {
-        addDeckBtn.addEventListener('click', function () {
-            var name = prompt('Deck name:');
-            if (!name) return;
-            var data = loadData();
-            data.flashcards.decks.push({
-                id: uid(),
-                name: name,
-                cards: []
-            });
-            saveData(data);
-            renderFlashcards();
+    document.getElementById('addDeckBtn').addEventListener('click', function() {
+        var name = prompt('Deck name:');
+        if (!name) return;
+        var data = loadData();
+        data.flashcards.decks.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            name: name,
+            cards: []
         });
-    }
+        saveData(data);
+        renderFlashcards();
+    });
 
     renderFlashcards();
 }
@@ -5399,45 +4359,40 @@ function setupReading() {
             list.innerHTML = '<p class="empty-state">' + getTranslation('no_items') + '</p>';
             return;
         }
-        list.innerHTML = data.readingList.map(function (r) {
-            return '<div class="assignment-item"><span>' + r.title + (r.read ? ' ✅' : ' 📖') +
-                   ' <span class="tags">#' + r.subject +
-                   (r.tags && r.tags.length ? r.tags.map(function (t) { return ' #' + t; }).join('') : '') +
-                   '</span></span><span><a href="' + r.url + '" target="_blank" rel="noopener" style="color:#c084fc;">Link</a> ' +
-                   '<button class="btn-danger-sm" data-id="' + r.id + '">' + getTranslation('delete_btn') + '</button> ' +
-                   '<button class="btn-primary-sm" data-id="' + r.id + '" data-action="toggle">' +
-                   (r.read ? 'Unread' : 'Read') + '</button></span></div>';
-        }).join('');
-    }
 
-    if (!list.dataset.bound) {
-        list.dataset.bound = '1';
-        list.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-id]');
-            if (!b) return;
-            var id = b.dataset.id;
-            var action = b.dataset.action;
-            var data = loadData();
-            var item = data.readingList.find(function (r) { return r.id === id; });
-            if (!item) return;
-            if (action === 'toggle') item.read = !item.read;
-            else data.readingList = data.readingList.filter(function (r) { return r.id !== id; });
-            saveData(data);
-            renderReading();
+        list.innerHTML = data.readingList.map(function(r) {
+            return '<div class="assignment-item"><span>' + r.title + (r.read ? ' ✅' : ' 📖') + ' <span class="tags">#' + r.subject + (r.tags ? r.tags.map(function(t) { return ' #' + t; }).join('') : '') + '</span></span><span><a href="' + r.url + '" target="_blank" style="color:#c084fc;">Link</a> <button class="btn-danger-sm" data-id="' + r.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + r.id + '" data-action="toggle">' + (r.read ? 'Unread' : getTranslation('read')) + '</button></span></div>';
+        }).join('');
+
+        list.querySelectorAll('[data-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                var action = this.dataset.action;
+                var data = loadData();
+                var item = data.readingList.find(function(r) { return r.id === id; });
+                if (!item) return;
+                if (action === 'toggle') {
+                    item.read = !item.read;
+                } else {
+                    data.readingList = data.readingList.filter(function(r) { return r.id !== id; });
+                }
+                saveData(data);
+                renderReading();
+            });
         });
     }
 
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
         var title = document.getElementById('readTitle').value.trim();
         var url = document.getElementById('readUrl').value.trim();
         var subject = document.getElementById('readSubject').value;
-        var tags = document.getElementById('readTags').value.split(',')
-            .map(function (s) { return s.trim(); }).filter(Boolean);
+        var tags = document.getElementById('readTags').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+
         if (!title || !url) return;
         var data = loadData();
         data.readingList.push({
-            id: uid(),
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
             title: title,
             url: url,
             subject: subject,
@@ -5453,6 +4408,20 @@ function setupReading() {
 }
 
 // ================================================================
+// FOCUS MODE
+// ================================================================
+function setupFocusMode() {
+    var btn = document.getElementById('focusToggle');
+    if (!btn) return;
+
+    btn.addEventListener('click', function() {
+        document.body.classList.toggle('focus-mode');
+        this.classList.toggle('active');
+        this.textContent = document.body.classList.contains('focus-mode') ? '🔒 ' + getTranslation('focus_on') : '🔓 ' + getTranslation('focus_off');
+    });
+}
+
+// ================================================================
 // AI RECOMMENDATION
 // ================================================================
 function setupAIRecommendation() {
@@ -5460,8 +4429,8 @@ function setupAIRecommendation() {
     if (!btn) return;
     var input = document.getElementById('aiQueryInput');
     var result = document.getElementById('aiRecommendResult');
-    if (!input || !result) return;
 
+    // Weighted knowledge base — every entry maps keywords → tool + reason
     var KNOWLEDGE = [
         { keywords: ['calculus','integral','derivative','limit','algebra','equation','matrix','geometry','trigonometry','logarithm','theorem','solve for','quadratic','polynomial','probability'], tool: 'DeepSeek', why: 'advanced step-by-step math solver' },
         { keywords: ['physics','kinematics','force','energy','quantum','thermodynamics','relativity','momentum','newton'], tool: 'Wolfram Alpha', why: 'computational STEM engine' },
@@ -5481,6 +4450,7 @@ function setupAIRecommendation() {
         var q = input.value.trim().toLowerCase();
         if (!q) { result.textContent = getTranslation('ai_empty_query'); return; }
 
+        // Score each entry — longer matched keyword = higher weight
         var best = null, bestScore = 0;
         KNOWLEDGE.forEach(function (entry) {
             var score = 0;
@@ -5499,18 +4469,20 @@ function setupAIRecommendation() {
         result.textContent = rec;
 
         var data = loadData();
-        addActivity(data, 'ai_recommend', getTranslation('act_ai_recommend', { q: q }));
+        addActivity(data, 'ai_recommend', t('act_ai_recommend', { q: q }));
         saveData(data);
     });
 }
 
+
 // ================================================================
-// FILE UPLOAD + LIST (single renderFileList)
+// FILE UPLOAD (missing function — required by files.html)
 // ================================================================
 function setupFileUpload() {
     var uploadArea = document.getElementById('uploadArea');
+    if (!uploadArea) return;
     var fileInput = document.getElementById('fileInput');
-    if (!uploadArea || !fileInput) return;
+    if (!fileInput) return;
 
     uploadArea.addEventListener('click', function () { fileInput.click(); });
 
@@ -5531,558 +4503,193 @@ function setupFileUpload() {
         fileInput.value = '';
     });
 
-    function handleFiles(files) {
+    async function handleFiles(files) {
         var data = loadData();
-        var tasks = [];
         for (var i = 0; i < files.length; i++) {
-            (function (file) {
-                tasks.push(new Promise(function (resolve) {
-                    var reader = new FileReader();
-                    reader.onload = function (e) {
-                        data.files.push({
-                            id: uid(),
-                            name: file.name,
-                            size: file.size,
-                            data: e.target.result,
-                            date: new Date().toISOString()
-                        });
-                        addActivity(data, 'file', 'Uploaded "' + file.name + '"');
-                        resolve();
-                    };
-                    reader.onerror = function () { resolve(); };
+            var file = files[i];
+            try {
+                var reader = new FileReader();
+                var result = await new Promise(function (resolve, reject) {
+                    reader.onload = function (e) { resolve(e.target.result); };
+                    reader.onerror = reject;
                     reader.readAsDataURL(file);
-                }));
-            })(files[i]);
+                });
+                data.files.push({
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                    name: file.name,
+                    size: file.size,
+                    data: result,
+                    date: new Date().toISOString()
+                });
+                addActivity(data, 'file', 'Uploaded "' + file.name + '"');
+                saveData(data);
+            } catch (e) {
+                console.error(e);
+            }
         }
-        Promise.all(tasks).then(function () {
-            saveData(data);
-            renderFileList();
-            renderDashboard();
-        });
+        if (typeof renderFileList === 'function') renderFileList();
+        if (document.getElementById('statFiles') && typeof renderDashboard === 'function') renderDashboard();
     }
 
     var delBtn = document.getElementById('deleteAllFilesBtn');
     if (delBtn) {
         delBtn.addEventListener('click', function () {
-            if (!confirm('Move all files to Trash? They will be recoverable for 24 hours.')) return;
-            var data = loadData();
-            data.files.forEach(function (f) { pushToTrash(data, 'file', f); });
-            data.files = [];
-            addActivity(data, 'delete', 'Moved all files to trash');
-            saveData(data);
-            renderFileList();
-            updateTrashCount();
-            renderDashboard();
-        });
-    }
-}
-
-function renderFileList() {
-    var container = document.getElementById('fileList');
-    if (!container) return;
-    var data = loadData();
-    if (!data.fileAnnotations) data.fileAnnotations = {};
-
-    if (data.files.length === 0) {
-        container.innerHTML = '<p class="empty-state">' + getTranslation('no_files') + '</p>';
-        return;
-    }
-
-    container.innerHTML = data.files.map(function (f) {
-        var note = data.fileAnnotations[f.id] || '';
-        return '<div class="file-item" style="flex-direction:column; align-items:stretch; gap:0.4rem;">' +
-            '<div class="file-item-row">' +
-                '<a href="#" class="file-name" data-fileid="' + f.id + '">📄 ' + f.name + '</a>' +
-                '<span class="file-size">' + (f.size / 1024).toFixed(1) + ' KB</span>' +
-                '<button class="btn-primary-sm" data-action="download" data-fileid="' + f.id + '">⬇ Download</button>' +
-                '<button class="delete-item-btn" data-id="' + f.id + '">✕</button>' +
-            '</div>' +
-            '<input type="text" class="file-note-input" placeholder="📝 Add note about this file..." data-fileid="' + f.id + '" value="' + String(note).replace(/"/g, '&quot;') + '" />' +
-        '</div>';
-    }).join('');
-
-    if (!container.dataset.bound) {
-        container.dataset.bound = '1';
-
-        container.addEventListener('click', function (e) {
-            var nameEl = e.target.closest('.file-name');
-            if (nameEl) {
-                e.preventDefault();
-                openFile(nameEl.dataset.fileid, 'open');
-                return;
-            }
-            var dl = e.target.closest('[data-action="download"]');
-            if (dl) { openFile(dl.dataset.fileid, 'download'); return; }
-
-            var del = e.target.closest('.delete-item-btn');
-            if (del) {
-                var id = del.dataset.id;
-                if (!confirm('Delete this file? It will be moved to Trash for 24 hours.')) return;
-                var d = loadData();
-                var item = d.files.find(function (x) { return x.id === id; });
-                if (item) pushToTrash(d, 'file', item);
-                d.files = d.files.filter(function (x) { return x.id !== id; });
-                addActivity(d, 'delete', 'Moved file to trash');
-                saveData(d);
+            if (confirm('Move all files to Trash? They will be recoverable for 24 hours.')) {
+                var data = loadData();
+                data.files.forEach(function (f) { pushToTrash(data, 'file', f); });
+                data.files = [];
+                addActivity(data, 'delete', 'Moved all files to trash');
+                saveData(data);
                 renderFileList();
                 updateTrashCount();
-                renderDashboard();
+                if (document.getElementById('statFiles') && typeof renderDashboard === 'function') renderDashboard();
             }
         });
-
-        container.addEventListener('change', function (e) {
-            var inp = e.target.closest('.file-note-input');
-            if (!inp) return;
-            var fileId = inp.dataset.fileid;
-            var d = loadData();
-            if (!d.fileAnnotations) d.fileAnnotations = {};
-            d.fileAnnotations[fileId] = inp.value;
-            saveData(d);
-        });
-
-        container.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && e.target.classList.contains('file-note-input')) e.target.blur();
-        });
     }
 }
 
-function openFile(fileId, mode) {
-    var data = loadData();
-    var file = data.files.find(function (f) { return f.id === fileId; });
-    if (!file) return;
-
-    try {
-        var parts = file.data.split(',');
-        var mimeMatch = parts[0].match(/data:(.*?);base64/);
-        var mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-        var b64 = parts[1];
-        var binary = atob(b64);
-        var bytes = new Uint8Array(binary.length);
-        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        var blob = new Blob([bytes], { type: mime });
-        var blobUrl = URL.createObjectURL(blob);
-
-        if (mode === 'download') {
-            var a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = file.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 5000);
-        } else {
-            window.open(blobUrl, '_blank');
-            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+// ================================================================
+// HELPER t() — used by AI Recommend
+// ================================================================
+function t(key, params) {
+    var s = getTranslation(key);
+    if (params) {
+        for (var k in params) {
+            s = s.split('{' + k + '}').join(params[k]);
         }
-    } catch (e) {
-        alert('Could not open file: ' + e.message);
     }
+    return s;
+}
+
+
+// ================================================================
+// NAV DATE & SCROLL GRADIENT
+// ================================================================
+function updateNavDate() {
+    var el = document.getElementById('navDate');
+    if (el) {
+        el.textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+}
+
+function updateScrollGradient() {
+    // If the user has chosen a background via the picker, don't override it.
+    var savedBg = null;
+    try { savedBg = localStorage.getItem('studyHubBackground'); } catch (e) {}
+    if (savedBg) return;
+
+    document.body.style.background =
+        'radial-gradient(ellipse at top left, #0a1a3a, #050a18)';
 }
 
 // ================================================================
-// TRASH (single source of truth)
+// INIT
 // ================================================================
-function pushToTrash(data, itemType, itemData) {
-    if (!data.trash) data.trash = [];
-    data.trash.push({
-        id: uid(),
-        type: itemType,
-        data: itemData,
-        deletedAt: Date.now()
-    });
-    data.trash = data.trash.filter(function (t) {
-        return Date.now() - t.deletedAt < TRASH_RETENTION_MS;
-    });
-}
+document.addEventListener('DOMContentLoaded', function() {
+    initBurger();
+    setActiveNavLink();
+    updateNavDate();
+    initClock();
+    updateScrollGradient();
+    window.addEventListener('scroll', updateScrollGradient);
+    window.addEventListener('resize', updateScrollGradient);
 
-function updateTrashCount() {
-    var btn = document.getElementById('trashBtn');
-    if (!btn) return;
-    var data = loadData();
-    if (data.trash) {
-        data.trash = data.trash.filter(function (t) {
-            return Date.now() - t.deletedAt < TRASH_RETENTION_MS;
-        });
-        saveData(data);
+    // ===== TRANSLATIONS =====
+    initTranslations();
+
+    // ===== 30-MINUTE MELODY TIMER =====
+    initMelodyTimer();
+
+
+    if (document.getElementById('trashBtn')) setupTrash();
+
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
     }
-    var count = (data.trash || []).length;
-    btn.textContent = '🗑️ ' + getTranslation('trash_label') + ' (' + count + ')';
-}
 
-function openTrashModal() {
-    var data = loadData();
-    if (data.trash) {
-        data.trash = data.trash.filter(function (t) {
-            return Date.now() - t.deletedAt < TRASH_RETENTION_MS;
-        });
-        saveData(data);
-    }
-    var items = data.trash || [];
-
-    var existing = document.getElementById('trashModal');
-    if (existing) existing.remove();
-
-    var modal = document.createElement('div');
-    modal.className = 'trash-modal';
-    modal.id = 'trashModal';
-    modal.innerHTML = '<div class="trash-modal-content">' +
-        '<div class="trash-modal-header"><h2>🗑️ ' + getTranslation('trash_label') + ' (' + items.length + ')</h2>' +
-        '<button id="trashCloseBtn" class="btn-danger-sm">' + getTranslation('close_btn') + '</button></div>' +
-        (items.length === 0 ? '<p class="empty-state">' + getTranslation('trash_empty_msg') + '</p>' :
-            items.map(function (t) {
-                var label = (t.data && (t.data.text || t.data.name || t.data.title)) || t.type;
-                return '<div class="trash-item"><span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
-                    '<span><button class="btn-primary-sm" data-restore="' + t.id + '">' + getTranslation('restore_btn') + '</button> ' +
-                    '<button class="btn-danger-sm" data-purge="' + t.id + '">' + getTranslation('delete_btn') + '</button></span></div>';
-            }).join('')) +
-        '<div style="margin-top:1rem; text-align:right;"><button id="emptyTrashBtn" class="btn-danger">' + getTranslation('empty_trash_btn') + '</button></div>' +
-        '</div>';
-    document.body.appendChild(modal);
-
-    document.getElementById('trashCloseBtn').addEventListener('click', function () { modal.remove(); });
-    modal.addEventListener('click', function (e) { if (e.target === modal) modal.remove(); });
-
-    modal.querySelectorAll('[data-restore]').forEach(function (b) {
-        b.addEventListener('click', function () {
-            var id = this.dataset.restore;
-            var d = loadData();
-            var item = d.trash.find(function (t) { return t.id === id; });
-            if (!item) return;
-            if (item.type === 'note') { d.notes.push(item.data); addActivity(d, 'restore', 'Restored note'); }
-            else if (item.type === 'file') { d.files.push(item.data); addActivity(d, 'restore', 'Restored file: "' + item.data.name + '"'); }
-            else if (item.type === 'notice') { d.notices.push(item.data); addActivity(d, 'restore', 'Restored notice'); }
-            else if (item.type === 'habit') { d.habits.push(item.data); addActivity(d, 'restore', 'Restored habit'); }
-            d.trash = d.trash.filter(function (t) { return t.id !== id; });
-            saveData(d);
-            modal.remove();
-            updateTrashCount();
-            refreshCurrentPage();
-        });
-    });
-    modal.querySelectorAll('[data-purge]').forEach(function (b) {
-        b.addEventListener('click', function () {
-            var id = this.dataset.purge;
-            var d = loadData();
-            d.trash = d.trash.filter(function (t) { return t.id !== id; });
-            saveData(d);
-            modal.remove();
-            updateTrashCount();
-            openTrashModal();
-        });
-    });
-    var emptyBtn = document.getElementById('emptyTrashBtn');
-    if (emptyBtn) {
-        emptyBtn.addEventListener('click', function () {
-            if (!confirm('Empty trash permanently?')) return;
-            var d = loadData();
-            d.trash = [];
-            saveData(d);
-            modal.remove();
-            updateTrashCount();
-        });
-    }
-}
-
-function setupTrash() {
-    var btn = document.getElementById('trashBtn');
-    if (!btn || btn.dataset.bound) return;
-    btn.dataset.bound = '1';
-    updateTrashCount();
-    btn.addEventListener('click', openTrashModal);
-}
-
-function refreshCurrentPage() {
     var path = window.location.pathname.split('/').pop() || 'index.html';
-    if (path === 'index.html' || path === '') renderDashboard();
-    else if (path === 'files.html') renderFileList();
-    else if (path === 'notes.html' && typeof setupNotes === 'function') setupNotes();
-    else if (path === 'notice.html' && typeof setupNotice === 'function') setupNotice();
-    else if (path === 'habits.html' && typeof setupHabits === 'function') setupHabits();
-}
 
-// ================================================================
-// FOCUS SOUND (white noise / rain / lofi) — used by Pomodoro
-// ================================================================
-var focusAudioCtx = null;
-var focusNoiseNode = null;
-var focusGainNode = null;
+    if (path === 'index.html' || path === '') {
+        renderDashboard();
+        initPomodoro();
+        setupSearch();
 
-function startFocusSound(type) {
-    stopFocusSound();
-    if (type === 'none' || !type) return;
-    try {
-        var AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        focusAudioCtx = new AC();
-        var bufferSize = 2 * focusAudioCtx.sampleRate;
-        var noiseBuffer = focusAudioCtx.createBuffer(1, bufferSize, focusAudioCtx.sampleRate);
-        var output = noiseBuffer.getChannelData(0);
-        var b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-        for (var i = 0; i < bufferSize; i++) {
-            var white = Math.random() * 2 - 1;
-            if (type === 'rain' || type === 'lofi') {
-                b0 = 0.99886 * b0 + white * 0.0555179;
-                b1 = 0.99332 * b1 + white * 0.0750759;
-                b2 = 0.96900 * b2 + white * 0.1538520;
-                b3 = 0.86650 * b3 + white * 0.3104856;
-                b4 = 0.55000 * b4 + white * 0.5329522;
-                b5 = -0.7616 * b5 - white * 0.0168980;
-                output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
-                b6 = white * 0.115926;
-            } else {
-                output[i] = white * 0.25;
-            }
-        }
-        focusNoiseNode = focusAudioCtx.createBufferSource();
-        focusNoiseNode.buffer = noiseBuffer;
-        focusNoiseNode.loop = true;
-        focusGainNode = focusAudioCtx.createGain();
-        focusGainNode.gain.value = type === 'lofi' ? 0.08 : 0.12;
-        focusNoiseNode.connect(focusGainNode);
-        focusGainNode.connect(focusAudioCtx.destination);
-        focusNoiseNode.start();
-    } catch (e) {}
-}
+        var dToday = document.getElementById('deleteTodayBtn');
+        if (dToday) dToday.addEventListener('click', deleteTodayHistory);
 
-function stopFocusSound() {
-    try {
-        if (focusNoiseNode) { focusNoiseNode.stop(); focusNoiseNode.disconnect(); focusNoiseNode = null; }
-        if (focusGainNode) { focusGainNode.disconnect(); focusGainNode = null; }
-        if (focusAudioCtx) { focusAudioCtx.close(); focusAudioCtx = null; }
-    } catch (e) {}
-}
+        var dAll = document.getElementById('deleteAllBtn');
+        if (dAll) dAll.addEventListener('click', deleteAllHistory);
 
-// ================================================================
-// DEEP WORK TIMER
-// ================================================================
-var dwSeconds = 0, dwRunning = false, dwTimer = null;
-
-function initDeepWork() {
-    var display = document.getElementById('deepworkDisplay');
-    if (!display) return;
-    var start = document.getElementById('dwStart');
-    var stop = document.getElementById('dwStop');
-    var reset = document.getElementById('dwReset');
-
-    function update() {
-        var h = Math.floor(dwSeconds / 3600);
-        var m = Math.floor((dwSeconds % 3600) / 60);
-        var s = dwSeconds % 60;
-        display.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-    }
-    function updateStats() {
-        var data = loadData();
-        var today = todayStr();
-        var todayMin = (data.deepWorkLogs || []).filter(function (l) { return l.date === today; })
-            .reduce(function (a, b) { return a + b.minutes; }, 0);
-        var totalMin = (data.deepWorkLogs || []).reduce(function (a, b) { return a + b.minutes; }, 0);
-        var el1 = document.getElementById('dwToday'); if (el1) el1.textContent = todayMin;
-        var el2 = document.getElementById('dwTotal'); if (el2) el2.textContent = totalMin;
-    }
-
-    if (start) start.addEventListener('click', function () {
-        if (dwRunning) return;
-        dwRunning = true;
-        dwTimer = setInterval(function () { dwSeconds++; update(); }, 1000);
-    });
-    if (stop) stop.addEventListener('click', function () {
-        if (!dwRunning) return;
-        clearInterval(dwTimer);
-        dwRunning = false;
-        var mins = Math.floor(dwSeconds / 60);
-        if (mins > 0) {
-            var data = loadData();
-            data.deepWorkLogs.push({ date: todayStr(), minutes: mins });
-            addActivity(data, 'deepwork', 'Completed deep work: ' + mins + ' min');
-            saveData(data);
-            updateStats();
-        }
-        dwSeconds = 0;
-        update();
-    });
-    if (reset) reset.addEventListener('click', function () {
-        clearInterval(dwTimer);
-        dwRunning = false;
-        dwSeconds = 0;
-        update();
-    });
-
-    update();
-    updateStats();
-}
-
-// ================================================================
-// PRIORITY MATRIX (Eisenhower)
-// ================================================================
-function setupPriorityMatrix() {
-    var input = document.getElementById('priorityInput');
-    var quadrant = document.getElementById('priorityQuadrant');
-    var addBtn = document.getElementById('addPriorityBtn');
-    if (!addBtn) return;
-
-    function render() {
-        var data = loadData();
-        var matrix = data.priorityMatrix || {};
-        ['urgent-important', 'not-urgent-important', 'urgent-not-important', 'not-urgent-not-important'].forEach(function (q) {
-            var container = document.getElementById('pq-' + q);
-            if (!container) return;
-            var list = matrix[q] || [];
-            if (list.length === 0) {
-                container.innerHTML = '<span style="color:#64748b; font-size:0.75rem;">' + getTranslation('pq_empty') + '</span>';
-            } else {
-                container.innerHTML = list.map(function (t) {
-                    return '<div class="priority-task"><span>' + t.text +
-                           '</span><button class="delete-item-btn" data-q="' + q + '" data-id="' + t.id + '">✕</button></div>';
-                }).join('');
-            }
-        });
-    }
-
-    if (!addBtn.dataset.bound) {
-        addBtn.dataset.bound = '1';
-
-        addBtn.addEventListener('click', function () {
-            var text = input.value.trim();
-            if (!text) return;
-            var q = quadrant.value;
-            var data = loadData();
-            if (!data.priorityMatrix) data.priorityMatrix = {};
-            if (!data.priorityMatrix[q]) data.priorityMatrix[q] = [];
-            data.priorityMatrix[q].push({ id: uid(), text: text });
-            addActivity(data, 'priority', 'Added priority task: "' + text + '"');
-            saveData(data);
-            input.value = '';
-            render();
-        });
-
-        if (input) {
-            input.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') addBtn.click();
-            });
-        }
-
-        // Delegated delete on the whole priority grid
-        var grid = document.querySelector('.priority-grid');
-        if (grid) {
-            grid.addEventListener('click', function (e) {
-                var btn = e.target.closest('.priority-task .delete-item-btn');
-                if (!btn) return;
-                var q = btn.dataset.q;
-                var id = btn.dataset.id;
+        var journal = document.getElementById('journalText');
+        if (journal) {
+            journal.addEventListener('input', function() {
                 var data = loadData();
-                data.priorityMatrix[q] = data.priorityMatrix[q].filter(function (t) { return t.id !== id; });
+                var today = new Date().toISOString().slice(0, 10);
+                data.journal[today] = this.value;
                 saveData(data);
-                render();
             });
         }
+
+      
+
+    } else if (path === 'files.html') {
+        setupFileUpload();
+        renderFileList();
+
+    } else if (path === 'habits.html') {
+        setupHabits();
+
+    } else if (path === 'notice.html') {
+        setupNotice();
+
+    } else if (path === 'notes.html') {
+        setupNotes();
+
+    } else if (path === 'ai-tools.html') {
+        setupAIRecommendation();
+        setupSummarizer();
+
+    } else if (path === 'assignments.html') {
+        setupAssignments();
+
+    } else if (path === 'planner.html') {
+        setupPlanner();
+
+    } else if (path === 'flashcards.html') {
+        setupFlashcards();
+
+    } else if (path === 'reading.html') {
+        setupReading();
     }
 
-    render();
-}
-
-// ================================================================
-// QUIZ GENERATOR (notes → multiple-choice)
-// ================================================================
-function generateQuizFromNotes() {
-    var container = document.getElementById('quizContainer');
-    if (!container) return;
     var data = loadData();
-    var notes = data.notes || [];
-    if (notes.length < 3) {
-        container.innerHTML = '<p class="empty-state">Add at least 3 notes to generate a quiz.</p>';
-        return;
-    }
-    var countSel = document.getElementById('quizCountSelect');
-    var count = countSel ? parseInt(countSel.value, 10) : 10;
-    count = Math.min(count, notes.length);
-
-    var shuffled = notes.slice().sort(function () { return Math.random() - 0.5; }).slice(0, count);
-
-    var questions = [];
-    shuffled.forEach(function (correctNote) {
-        var wrongs = notes.filter(function (n) { return n.id !== correctNote.id; })
-            .sort(function () { return Math.random() - 0.5; })
-            .slice(0, 3)
-            .map(function (n) { return n.text; });
-        while (wrongs.length < 3) wrongs.push('None of the above (' + wrongs.length + ')');
-        var options = [correctNote.text].concat(wrongs).sort(function () { return Math.random() - 0.5; });
-        questions.push({
-            question: 'Which of the following is one of YOUR notes?',
-            correct: correctNote.text,
-            options: options
-        });
-    });
-
-    container.innerHTML = questions.map(function (q, i) {
-        return '<div class="quiz-question" data-idx="' + i + '"><h4>Q' + (i + 1) + '. ' + q.question + '</h4><div class="quiz-options">' +
-            q.options.map(function (opt) {
-                return '<button class="quiz-option" data-correct="' + (opt === q.correct) + '">' + opt + '</button>';
-            }).join('') +
-            '</div></div>';
-    }).join('');
-
-    container.querySelectorAll('.quiz-option').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var isCorrect = this.dataset.correct === 'true';
-            var parent = this.parentElement;
-            if (parent.dataset.answered) return;
-            parent.dataset.answered = 'true';
-            if (isCorrect) {
-                this.classList.add('correct');
-            } else {
-                this.classList.add('wrong');
-                parent.querySelectorAll('.quiz-option').forEach(function (b) {
-                    if (b.dataset.correct === 'true') b.classList.add('correct');
-                });
-            }
-        });
-    });
-}
+    resetDailyIfNeeded(data);
+    if (path === 'index.html' || path === '') renderDashboard();
+});
 
 // ================================================================
-// FLASHCARD AUTO-GENERATE (from notes)
 // ================================================================
-function autoGenerateFlashcards() {
-    var data = loadData();
-    var notes = data.notes || [];
-    if (notes.length === 0) {
-        alert('No notes available. Add some notes first!');
-        return;
-    }
-    var newCards = notes.map(function (n) {
-        var w = n.text.split(/\s+/);
-        var front = w.slice(0, Math.min(5, w.length)).join(' ');
-        return {
-            id: uid(),
-            front: front + (w.length > 5 ? '…' : ''),
-            back: n.text,
-            dueDate: todayStr(),
-            level: 0
-        };
-    });
-
-    var deck = data.flashcards.decks.find(function (d) { return d.name === 'Auto from Notes'; });
-    if (!deck) {
-        deck = { id: uid(), name: 'Auto from Notes', cards: [] };
-        data.flashcards.decks.push(deck);
-    }
-    deck.cards = deck.cards.concat(newCards);
-    addActivity(data, 'flashcard_auto', 'Auto-generated ' + newCards.length + ' flashcards from notes');
-    saveData(data);
-    if (typeof setupFlashcards === 'function') setupFlashcards();
-    alert('Added ' + newCards.length + ' flashcards to "Auto from Notes" deck!');
-}
+// STUDYHUB – NEW FEATURES BLOCK
+// Calendar, Calculator, Priority Matrix, Deep Work, Focus Sound,
+// Quiz Generator, Flashcard Auto-Gen, Blocker, Trash, Ctrl+K,
+// File Annotations, Break Reminder.
+// ================================================================
+// ================================================================
 
 // ================================================================
-// CALENDAR WIDGET
+// CALENDAR WIDGET (2000–2050)
 // ================================================================
 var calView = { month: new Date().getMonth(), year: new Date().getFullYear() };
 var CAL_MIN_YEAR = 2000;
 var CAL_MAX_YEAR = 2050;
 
 function initCalendar() {
-    var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
     function updateCompact() {
         var d = new Date();
@@ -6091,7 +4698,7 @@ function initCalendar() {
         var cm = document.getElementById('calCompactMonth');
         if (cd) cd.textContent = dayNames[d.getDay()];
         if (cdt) cdt.textContent = d.getDate();
-        if (cm) cm.textContent = monthNames[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear();
+        if (cm) cm.textContent = monthNames[d.getMonth()].slice(0,3) + ' ' + d.getFullYear();
     }
 
     function renderCalendar() {
@@ -6101,7 +4708,7 @@ function initCalendar() {
         var title = document.getElementById('calModalTitle');
         if (title) title.textContent = monthNames[calView.month] + ' ' + calView.year;
 
-        ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(function (d) {
+        ['S','M','T','W','T','F','S'].forEach(function(d) {
             var h = document.createElement('div');
             h.className = 'cal-header';
             h.textContent = d;
@@ -6135,9 +4742,8 @@ function initCalendar() {
     var modal = document.getElementById('calendarModal');
     var closeBtn = document.getElementById('calendarCloseBtn');
 
-    if (expandBtn && modal && !expandBtn.dataset.bound) {
-        expandBtn.dataset.bound = '1';
-        expandBtn.addEventListener('click', function () {
+    if (expandBtn && modal) {
+        expandBtn.addEventListener('click', function() {
             var now = new Date();
             calView.month = now.getMonth();
             calView.year = now.getFullYear();
@@ -6145,41 +4751,1973 @@ function initCalendar() {
             modal.style.display = 'flex';
         });
     }
-    if (closeBtn && modal && !closeBtn.dataset.bound) {
-        closeBtn.dataset.bound = '1';
-        closeBtn.addEventListener('click', function () { modal.style.display = 'none'; });
-        modal.addEventListener('click', function (e) { if (e.target === modal) modal.style.display = 'none'; });
+    if (closeBtn && modal) {
+        closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
     }
-
     var prevM = document.getElementById('calPrevMonth');
     var nextM = document.getElementById('calNextMonth');
     var prevY = document.getElementById('calPrevYear');
     var nextY = document.getElementById('calNextYear');
-    if (prevM && !prevM.dataset.bound) {
-        prevM.dataset.bound = '1';
-        prevM.addEventListener('click', function () {
-            calView.month--;
-            if (calView.month < 0) { calView.month = 11; calView.year--; if (calView.year < CAL_MIN_YEAR) { calView.year = CAL_MIN_YEAR; calView.month = 0; } }
-            renderCalendar();
+    if (prevM) prevM.addEventListener('click', function() {
+        calView.month--;
+        if (calView.month < 0) { calView.month = 11; calView.year--; if (calView.year < CAL_MIN_YEAR) { calView.year = CAL_MIN_YEAR; calView.month = 0; } }
+        renderCalendar();
+    });
+    if (nextM) nextM.addEventListener('click', function() {
+        calView.month++;
+        if (calView.month > 11) { calView.month = 0; calView.year++; if (calView.year > CAL_MAX_YEAR) { calView.year = CAL_MAX_YEAR; calView.month = 11; } }
+        renderCalendar();
+    });
+    if (prevY) prevY.addEventListener('click', function() { if (calView.year > CAL_MIN_YEAR) { calView.year--; renderCalendar(); } });
+    if (nextY) nextY.addEventListener('click', function() { if (calView.year < CAL_MAX_YEAR) { calView.year++; renderCalendar(); } });
+}
+
+// ================================================================
+// CALCULATOR
+// ================================================================
+function initCalculator() {
+    var display = document.getElementById('calcDisplay');
+    if (!display) return;
+    var buttons = document.querySelectorAll('.calc-btn');
+    var expr = '';
+
+    buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var key = this.dataset.key;
+            if (key === 'C') { expr = ''; display.textContent = '0'; }
+            else if (key === '←') { expr = expr.slice(0, -1); display.textContent = expr || '0'; }
+            else if (key === '=') {
+                try {
+                    var safe = expr.replace(/[^0-9+\-*/.%()]/g, '');
+                    if (!safe) { display.textContent = '0'; return; }
+                    var result = Function('"use strict";return (' + safe + ')')();
+                    if (typeof result === 'number' && isFinite(result)) {
+                        result = Math.round(result * 100000000) / 100000000;
+                        display.textContent = result;
+                        expr = String(result);
+                    } else { display.textContent = 'Err'; expr = ''; }
+                } catch (e) { display.textContent = 'Err'; expr = ''; }
+            }
+            else {
+                expr += key;
+                display.textContent = expr;
+            }
         });
-        nextM.addEventListener('click', function () {
-            calView.month++;
-            if (calView.month > 11) { calView.month = 0; calView.year++; if (calView.year > CAL_MAX_YEAR) { calView.year = CAL_MAX_YEAR; calView.month = 11; } }
-            renderCalendar();
+    });
+}
+
+// ================================================================
+// PRIORITY MATRIX (Eisenhower)
+// ================================================================
+function setupPriorityMatrix() {
+    var input = document.getElementById('priorityInput');
+    var quadrant = document.getElementById('priorityQuadrant');
+    var addBtn = document.getElementById('addPriorityBtn');
+    if (!addBtn) return;
+
+    function render() {
+        var data = loadData();
+        var matrix = data.priorityMatrix || {};
+        ['urgent-important','not-urgent-important','urgent-not-important','not-urgent-not-important'].forEach(function(q) {
+            var container = document.getElementById('pq-' + q);
+            if (!container) return;
+            var list = matrix[q] || [];
+            if (list.length === 0) {
+                container.innerHTML = '<span style="color:#64748b; font-size:0.75rem;">Empty</span>';
+            } else {
+                container.innerHTML = list.map(function(t) {
+                    return '<div class="priority-task"><span>' + t.text + '</span><button class="delete-item-btn" data-q="' + q + '" data-id="' + t.id + '">✕</button></div>';
+                }).join('');
+            }
         });
-        prevY.addEventListener('click', function () { if (calView.year > CAL_MIN_YEAR) { calView.year--; renderCalendar(); } });
-        nextY.addEventListener('click', function () { if (calView.year < CAL_MAX_YEAR) { calView.year++; renderCalendar(); } });
+        document.querySelectorAll('.priority-task .delete-item-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var q = this.dataset.q;
+                var id = this.dataset.id;
+                var data = loadData();
+                data.priorityMatrix[q] = data.priorityMatrix[q].filter(function(t) { return t.id !== id; });
+                saveData(data);
+                render();
+            });
+        });
+    }
+
+    addBtn.addEventListener('click', function() {
+        var text = input.value.trim();
+        if (!text) return;
+        var q = quadrant.value;
+        var data = loadData();
+        if (!data.priorityMatrix) data.priorityMatrix = {};
+        if (!data.priorityMatrix[q]) data.priorityMatrix[q] = [];
+        data.priorityMatrix[q].push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            text: text
+        });
+        addActivity(data, 'priority', 'Added priority task: "' + text + '"');
+        saveData(data);
+        input.value = '';
+        render();
+    });
+    input.addEventListener('keypress', function(e) { if (e.key === 'Enter') addBtn.click(); });
+    render();
+}
+
+// ================================================================
+// DEEP WORK TIMER
+// ================================================================
+var dwSeconds = 0, dwRunning = false, dwTimer = null;
+
+function initDeepWork() {
+    var display = document.getElementById('deepworkDisplay');
+    if (!display) return;
+    var start = document.getElementById('dwStart');
+    var stop = document.getElementById('dwStop');
+    var reset = document.getElementById('dwReset');
+
+    function update() {
+        var h = Math.floor(dwSeconds / 3600);
+        var m = Math.floor((dwSeconds % 3600) / 60);
+        var s = dwSeconds % 60;
+        display.textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+    function updateStats() {
+        var data = loadData();
+        var today = new Date().toISOString().slice(0,10);
+        var todayMin = (data.deepWorkLogs || []).filter(function(l) { return l.date === today; }).reduce(function(a,b) { return a + b.minutes; }, 0);
+        var totalMin = (data.deepWorkLogs || []).reduce(function(a,b) { return a + b.minutes; }, 0);
+        var el1 = document.getElementById('dwToday');
+        var el2 = document.getElementById('dwTotal');
+        if (el1) el1.textContent = todayMin;
+        if (el2) el2.textContent = totalMin;
+    }
+
+    if (start) start.addEventListener('click', function() {
+        if (dwRunning) return;
+        dwRunning = true;
+        dwTimer = setInterval(function() { dwSeconds++; update(); }, 1000);
+    });
+    if (stop) stop.addEventListener('click', function() {
+        if (!dwRunning) return;
+        clearInterval(dwTimer);
+        dwRunning = false;
+        var mins = Math.floor(dwSeconds / 60);
+        if (mins > 0) {
+            var data = loadData();
+            data.deepWorkLogs.push({
+                date: new Date().toISOString().slice(0,10),
+                minutes: mins
+            });
+            addActivity(data, 'deepwork', 'Completed deep work: ' + mins + ' min');
+            saveData(data);
+            updateStats();
+        }
+        dwSeconds = 0;
+        update();
+    });
+    if (reset) reset.addEventListener('click', function() {
+        clearInterval(dwTimer);
+        dwRunning = false;
+        dwSeconds = 0;
+        update();
+    });
+    update();
+    updateStats();
+}
+
+// ================================================================
+// FOCUS SOUND (for Pomodoro)
+// ================================================================
+var focusAudioCtx = null;
+var focusNoiseNode = null;
+var focusGainNode = null;
+
+function startFocusSound(type) {
+    stopFocusSound();
+    if (type === 'none' || !type) return;
+    try {
+        focusAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var bufferSize = 2 * focusAudioCtx.sampleRate;
+        var noiseBuffer = focusAudioCtx.createBuffer(1, bufferSize, focusAudioCtx.sampleRate);
+        var output = noiseBuffer.getChannelData(0);
+        var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+        for (var i = 0; i < bufferSize; i++) {
+            var white = Math.random() * 2 - 1;
+            if (type === 'rain' || type === 'lofi') {
+                b0 = 0.99886 * b0 + white * 0.0555179;
+                b1 = 0.99332 * b1 + white * 0.0750759;
+                b2 = 0.96900 * b2 + white * 0.1538520;
+                b3 = 0.86650 * b3 + white * 0.3104856;
+                b4 = 0.55000 * b4 + white * 0.5329522;
+                b5 = -0.7616 * b5 - white * 0.0168980;
+                output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+                b6 = white * 0.115926;
+            } else {
+                output[i] = white * 0.25;
+            }
+        }
+        focusNoiseNode = focusAudioCtx.createBufferSource();
+        focusNoiseNode.buffer = noiseBuffer;
+        focusNoiseNode.loop = true;
+        focusGainNode = focusAudioCtx.createGain();
+        focusGainNode.gain.value = type === 'lofi' ? 0.08 : 0.12;
+        focusNoiseNode.connect(focusGainNode);
+        focusGainNode.connect(focusAudioCtx.destination);
+        focusNoiseNode.start();
+    } catch (e) { /* silent */ }
+}
+
+function stopFocusSound() {
+    try {
+        if (focusNoiseNode) { focusNoiseNode.stop(); focusNoiseNode.disconnect(); focusNoiseNode = null; }
+        if (focusGainNode) { focusGainNode.disconnect(); focusGainNode = null; }
+        if (focusAudioCtx) { focusAudioCtx.close(); focusAudioCtx = null; }
+    } catch (e) { /* silent */ }
+}
+
+function attachFocusSoundToPomodoro() {
+    var pomoStartEl = document.getElementById('pomoStart');
+    var pomoStopEl = document.getElementById('pomoStop');
+    var pomoResetEl = document.getElementById('pomoReset');
+    var pomoSoundEl = document.getElementById('pomoSound');
+    if (!pomoStartEl || !pomoSoundEl) return;
+    pomoStartEl.addEventListener('click', function() {
+        var s = pomoSoundEl.value;
+        if (s && s !== 'none') startFocusSound(s);
+    });
+    if (pomoStopEl) pomoStopEl.addEventListener('click', stopFocusSound);
+    if (pomoResetEl) pomoResetEl.addEventListener('click', stopFocusSound);
+}
+
+// ================================================================
+// QUIZ GENERATOR
+// ================================================================
+function generateQuizFromNotes() {
+    var container = document.getElementById('quizContainer');
+    if (!container) return;
+    var data = loadData();
+    var notes = data.notes || [];
+    if (notes.length < 3) {
+        container.innerHTML = '<p class="empty-state">Add at least 3 notes to generate a quiz.</p>';
+        return;
+    }
+    var countSel = document.getElementById('quizCountSelect');
+    var count = countSel ? parseInt(countSel.value) : 10;
+    count = Math.min(count, notes.length);
+
+    var shuffled = notes.slice().sort(function() { return Math.random() - 0.5; }).slice(0, count);
+
+    var questions = [];
+    shuffled.forEach(function(correctNote) {
+        var wrongs = notes.filter(function(n) { return n.id !== correctNote.id; })
+                          .sort(function() { return Math.random() - 0.5; })
+                          .slice(0, 3)
+                          .map(function(n) { return n.text; });
+        while (wrongs.length < 3) wrongs.push('None of the above (' + wrongs.length + ')');
+        var options = [correctNote.text].concat(wrongs).sort(function() { return Math.random() - 0.5; });
+        questions.push({
+            question: 'Which of the following is one of YOUR notes?',
+            correct: correctNote.text,
+            options: options
+        });
+    });
+
+    container.innerHTML = questions.map(function(q, i) {
+        return '<div class="quiz-question" data-idx="' + i + '"><h4>Q' + (i+1) + '. ' + q.question + '</h4><div class="quiz-options">' +
+            q.options.map(function(opt) {
+                return '<button class="quiz-option" data-correct="' + (opt === q.correct) + '">' + opt + '</button>';
+            }).join('') +
+            '</div></div>';
+    }).join('');
+
+    container.querySelectorAll('.quiz-option').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var isCorrect = this.dataset.correct === 'true';
+            var parent = this.parentElement;
+            if (parent.dataset.answered) return;
+            parent.dataset.answered = 'true';
+            if (isCorrect) {
+                this.classList.add('correct');
+            } else {
+                this.classList.add('wrong');
+                parent.querySelectorAll('.quiz-option').forEach(function(b) {
+                    if (b.dataset.correct === 'true') b.classList.add('correct');
+                });
+            }
+        });
+    });
+}
+
+// ================================================================
+// FLASHCARD AUTO-GENERATE FROM NOTES
+// ================================================================
+function autoGenerateFlashcards() {
+    var data = loadData();
+    var notes = data.notes || [];
+    if (notes.length === 0) {
+        alert('No notes available. Add some notes first!');
+        return;
+    }
+    var newCards = notes.map(function(n) {
+        var words = n.text.split(/\s+/);
+        var front = words.slice(0, Math.min(5, words.length)).join(' ');
+        return {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            front: front + (words.length > 5 ? '…' : ''),
+            back: n.text,
+            dueDate: new Date().toISOString().slice(0,10),
+            level: 0
+        };
+    });
+
+    var deck = data.flashcards.decks.find(function(d) { return d.name === 'Auto from Notes'; });
+    if (!deck) {
+        deck = {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            name: 'Auto from Notes',
+            cards: []
+        };
+        data.flashcards.decks.push(deck);
+    }
+    deck.cards = deck.cards.concat(newCards);
+    addActivity(data, 'flashcard_auto', 'Auto-generated ' + newCards.length + ' flashcards from notes');
+    saveData(data);
+    if (typeof setupFlashcards === 'function') setupFlashcards();
+    alert('Added ' + newCards.length + ' flashcards to "Auto from Notes" deck!');
+}
+
+
+
+// ================================================================
+// TRASH / UNDO (soft delete, 24h retention)
+// ================================================================
+var TRASH_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+function pushToTrash(data, itemType, itemData) {
+    if (!data.trash) data.trash = [];
+    data.trash.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        type: itemType,
+        data: itemData,
+        deletedAt: Date.now()
+    });
+    data.trash = data.trash.filter(function(t) { return Date.now() - t.deletedAt < TRASH_RETENTION_MS; });
+}
+
+function updateTrashCount() {
+    var btn = document.getElementById('trashBtn');
+    if (!btn) return;
+    var data = loadData();
+    if (data.trash) {
+        data.trash = data.trash.filter(function(t) { return Date.now() - t.deletedAt < TRASH_RETENTION_MS; });
+        saveData(data);
+    }
+    var count = (data.trash || []).length;
+    btn.textContent = '🗑️ Trash (' + count + ')';
+}
+
+function setupTrash() {
+    var btn = document.getElementById('trashBtn');
+    if (!btn) return;
+    updateTrashCount();
+    btn.addEventListener('click', openTrashModal);
+}
+
+function openTrashModal() {
+    var data = loadData();
+    if (data.trash) {
+        data.trash = data.trash.filter(function(t) { return Date.now() - t.deletedAt < TRASH_RETENTION_MS; });
+        saveData(data);
+    }
+    var items = data.trash || [];
+
+    var existing = document.getElementById('trashModal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.className = 'trash-modal';
+    modal.id = 'trashModal';
+    modal.innerHTML = '<div class="trash-modal-content">' +
+        '<div class="trash-modal-header"><h2>🗑️ Trash (' + items.length + ')</h2><button id="trashCloseBtn" class="btn-danger-sm">Close</button></div>' +
+        (items.length === 0 ? '<p class="empty-state">Trash is empty.</p>' :
+            items.map(function(t) {
+                var label = (t.data.text || t.data.name || t.data.title || t.type);
+                return '<div class="trash-item"><span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
+                    '<span><button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
+                    '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button></span></div>';
+            }).join('')) +
+        '<div style="margin-top:1rem; text-align:right;"><button id="emptyTrashBtn" class="btn-danger">Empty Trash</button></div>' +
+        '</div>';
+    document.body.appendChild(modal);
+
+    document.getElementById('trashCloseBtn').addEventListener('click', function() { modal.remove(); });
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+    modal.querySelectorAll('[data-restore]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            var id = this.dataset.restore;
+            var data = loadData();
+            var item = data.trash.find(function(t) { return t.id === id; });
+            if (!item) return;
+            if (item.type === 'note') {
+                data.notes.push(item.data);
+                addActivity(data, 'restore', 'Restored note');
+            } else if (item.type === 'file') {
+                data.files.push(item.data);
+                addActivity(data, 'restore', 'Restored file: "' + item.data.name + '"');
+            } else if (item.type === 'notice') {
+                data.notices.push(item.data);
+                addActivity(data, 'restore', 'Restored notice');
+            } else if (item.type === 'habit') {
+                data.habits.push(item.data);
+                addActivity(data, 'restore', 'Restored habit');
+            }
+            data.trash = data.trash.filter(function(t) { return t.id !== id; });
+            saveData(data);
+            modal.remove();
+            updateTrashCount();
+            refreshCurrentPage();
+        });
+    });
+    modal.querySelectorAll('[data-purge]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            var id = this.dataset.purge;
+            var data = loadData();
+            data.trash = data.trash.filter(function(t) { return t.id !== id; });
+            saveData(data);
+            modal.remove();
+            updateTrashCount();
+            openTrashModal();
+        });
+    });
+    var emptyBtn = document.getElementById('emptyTrashBtn');
+    if (emptyBtn) emptyBtn.addEventListener('click', function() {
+        if (!confirm('Empty trash permanently?')) return;
+        var data = loadData();
+        data.trash = [];
+        saveData(data);
+        modal.remove();
+        updateTrashCount();
+    });
+}
+
+function refreshCurrentPage() {
+    var path = window.location.pathname.split('/').pop() || 'index.html';
+    if (path === 'index.html' || path === '') { if (typeof renderDashboard === 'function') renderDashboard(); }
+    else if (path === 'files.html') { if (typeof renderFileList === 'function') renderFileList(); }
+    else if (path === 'notes.html') { if (typeof setupNotes === 'function') setupNotes(); }
+    else if (path === 'notice.html') { if (typeof setupNotice === 'function') setupNotice(); }
+    else if (path === 'habits.html') { if (typeof setupHabits === 'function') setupHabits(); }
+}
+
+// ================================================================
+// FILE ANNOTATION (overrides renderFileList to add note inputs + trash)
+// ================================================================
+function renderFileList() {
+    var container = document.getElementById('fileList');
+    if (!container) return;
+    var data = loadData();
+    if (!data.fileAnnotations) data.fileAnnotations = {};
+
+    if (data.files.length === 0) {
+        container.innerHTML = '<p class="empty-state">' + getTranslation('no_files') + '</p>';
+        return;
+    }
+
+    container.innerHTML = data.files.map(function (f) {
+        var note = data.fileAnnotations[f.id] || '';
+        return '<div class="file-item" style="flex-direction:column; align-items:stretch; gap:0.4rem;">' +
+            '<div class="file-item-row">' +
+                '<a href="#" class="file-name" data-fileid="' + f.id + '">📄 ' + f.name + '</a>' +
+                '<span class="file-size">' + (f.size / 1024).toFixed(1) + ' KB</span>' +
+                '<button class="btn-primary-sm" data-action="download" data-fileid="' + f.id + '">⬇ Download</button>' +
+                '<button class="delete-item-btn" data-id="' + f.id + '">✕</button>' +
+            '</div>' +
+            '<input type="text" class="file-note-input" placeholder="📝 Add note about this file..." data-fileid="' + f.id + '" value="' + note.replace(/"/g, '&quot;') + '" />' +
+        '</div>';
+    }).join('');
+
+    // Open link (Blob URL — reliable for every file type)
+    container.querySelectorAll('.file-name').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            openFile(this.dataset.fileid, 'open');
+        });
+    });
+
+    // Download button (Blob URL + download attribute)
+    container.querySelectorAll('[data-action="download"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            openFile(this.dataset.fileid, 'download');
+        });
+    });
+
+    // Delete single file (soft delete → Trash)
+    container.querySelectorAll('.delete-item-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = this.dataset.id;
+            if (confirm('Delete this file? It will be moved to Trash for 24 hours.')) {
+                var d = loadData();
+                var item = d.files.find(function (x) { return x.id === id; });
+                if (item) pushToTrash(d, 'file', item);
+                d.files = d.files.filter(function (x) { return x.id !== id; });
+                addActivity(d, 'delete', 'Moved file to trash');
+                saveData(d);
+                renderFileList();
+                updateTrashCount();
+                if (document.getElementById('statFiles') && typeof renderDashboard === 'function') renderDashboard();
+            }
+        });
+    });
+
+    // Per-file annotation
+    container.querySelectorAll('.file-note-input').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+            var fileId = this.dataset.fileid;
+            var d = loadData();
+            if (!d.fileAnnotations) d.fileAnnotations = {};
+            d.fileAnnotations[fileId] = this.value;
+            saveData(d);
+        });
+        inp.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') this.blur();
+        });
+    });
+}
+
+// Convert base64 data URL → Blob → blob: URL, then open or download
+function openFile(fileId, mode) {
+    var data = loadData();
+    var file = data.files.find(function (f) { return f.id === fileId; });
+    if (!file) return;
+
+    try {
+        // Parse base64 data URL: "data:<mime>;base64,<payload>"
+        var parts = file.data.split(',');
+        var mimeMatch = parts[0].match(/data:(.*?);base64/);
+        var mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        var b64 = parts[1];
+        var binary = atob(b64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        var blob = new Blob([bytes], { type: mime });
+        var blobUrl = URL.createObjectURL(blob);
+
+        if (mode === 'download') {
+            var a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 5000);
+        } else {
+            window.open(blobUrl, '_blank');
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+        }
+    } catch (e) {
+        alert('Could not open file: ' + e.message);
     }
 }
 
 // ================================================================
-// THEME & WALLPAPER PICKER (dashboard only — FAB appears on index.html)
+// COMMAND PALETTE (Ctrl+K)
 // ================================================================
-function initThemePicker() {
-    var COLOR_KEY = 'studyHubColorTheme';
-    var BG_KEY = 'studyHubBackground';
+// ================================================================
+// COMMAND PALETTE v2 — Smart, fuzzy, contextual, keyboard-first
+// Ctrl+K to open · Esc to close · ↑↓ navigate · Enter run · Tab autocomplete
+// ================================================================
+(function () {
+    'use strict';
 
-    var COLOR_THEMES = {
+    // ---------- Command registry ----------
+    // Each command has: id, label, hint, icon, group, keywords, action
+    // Groups: 'go' (navigate), 'do' (actions), 'make' (create), 'tool' (utilities), 'theme'
+    const CP_COMMANDS = [
+        // ---- Navigation (only the ones worth typing) ----
+        { id: 'go.dash',    group: 'go', icon: '🚀', label: 'Dashboard',         hint: 'home · overview · stats',    action: () => location.href = 'index.html' },
+        { id: 'go.notes',   group: 'go', icon: '✍️', label: 'Notes',             hint: 'jot · jotting · writing',   action: () => location.href = 'notes.html' },
+        { id: 'go.habits',  group: 'go', icon: '🔥', label: 'Habits',            hint: 'streak · routine · daily',  action: () => location.href = 'habits.html' },
+        { id: 'go.ai',      group: 'go', icon: '🤖', label: 'AI Tools',          hint: 'summarize · gpt · help',    action: () => location.href = 'ai-tools.html' },
+        { id: 'go.files',   group: 'go', icon: '📂', label: 'Files',             hint: 'upload · storage · docs',   action: () => location.href = 'files.html' },
+        { id: 'go.assign',  group: 'go', icon: '📋', label: 'Assignments',       hint: 'homework · deadline · due', action: () => location.href = 'assignments.html' },
+        { id: 'go.planner', group: 'go', icon: '📅', label: 'Planner',           hint: 'schedule · timetable',      action: () => location.href = 'planner.html' },
+        { id: 'go.flash',   group: 'go', icon: '🃏', label: 'Flashcards',        hint: 'cards · decks · review',    action: () => location.href = 'flashcards.html' },
+        { id: 'go.read',    group: 'go', icon: '📖', label: 'Reading',           hint: 'articles · links · read',   action: () => location.href = 'reading.html' },
+        { id: 'go.notice',  group: 'go', icon: '📢', label: 'Notice',            hint: 'pinboard · bulletin',       action: () => location.href = 'notice.html' },
+
+        // ---- Do (frequent actions only) ----
+        { id: 'do.pomoStart', group: 'do', icon: '▶', label: 'Start Pomodoro',   hint: 'timer · focus 25',    keywords: ['pomo','timer','focus'], action: () => clickIfPresent('pomoStart') },
+        { id: 'do.pomoStop',  group: 'do', icon: '⏹', label: 'Stop Pomodoro',    hint: 'pause timer',         keywords: ['stop','pause','pomo'], action: () => clickIfPresent('pomoStop') },
+        { id: 'do.dwStart',   group: 'do', icon: '⏱', label: 'Start Deep Work',  hint: 'flow · long focus',   keywords: ['deepwork','deep','flow'], action: () => clickIfPresent('dwStart') },
+        { id: 'do.dwStop',    group: 'do', icon: '⏸', label: 'Stop Deep Work',   hint: 'end deep session',    keywords: ['deepwork','stop'], action: () => clickIfPresent('dwStop') },
+        { id: 'do.focusOn',   group: 'do', icon: '🔓', label: 'Toggle Focus Mode', hint: 'do not disturb · zen', keywords: ['focus','zen','distraction'], action: () => clickIfPresent('focusToggle') },
+        { id: 'do.blocker',   group: 'do', icon: '🛡️', label: 'Blocker Settings',  hint: 'block · distractions', keywords: ['block','shield','distraction'], action: () => { if (window.studyHubBlocker && window.studyHubBlocker.settings) window.studyHubBlocker.settings(); } },
+
+        // ---- Create ----
+        { id: 'make.note',  group: 'make', icon: '📝', label: 'New Note',   hint: 'create · jot',     action: () => goThenFocus('notes.html', 'noteInput') },
+        { id: 'make.habit', group: 'make', icon: '➕', label: 'New Habit',  hint: 'create · add',     action: () => goThenFocus('habits.html', 'habitInput') },
+        { id: 'make.notice',group: 'make', icon: '📌', label: 'New Notice', hint: 'pin · announce',   action: () => goThenFocus('notice.html', 'noticeInput') },
+
+        // ---- Tools ----
+        { id: 'tool.trash',    group: 'tool', icon: '🗑️', label: 'Open Trash',      hint: 'restore · deleted', action: () => { if (typeof openTrashModal === 'function') openTrashModal(); } },
+        { id: 'tool.calendar', group: 'tool', icon: '📅', label: 'Open Calendar',   hint: 'month · view',      action: () => clickIfPresent('calendarExpandBtn') },
+        { id: 'tool.calc',     group: 'tool', icon: '🧮', label: 'Jump to Calculator', hint: 'math',           action: () => { var el = document.querySelector('.calculator-widget'); if (el) el.scrollIntoView({behavior:'smooth', block:'center'}); } },
+
+        // ---- Theme ----
+        { id: 'theme.picker',  group: 'theme', icon: '🎨', label: 'Customize Theme', hint: 'colors · wallpaper', action: () => { var b = document.querySelector('.theme-picker-fab'); if (b) b.click(); } }
+    ];
+
+    // ---------- Helpers ----------
+    function clickIfPresent(id) {
+        var el = document.getElementById(id);
+        if (el) el.click();
+    }
+    function goThenFocus(url, inputId) {
+        location.href = url;
+        setTimeout(function () {
+            var inp = document.getElementById(id);
+            if (inp) inp.focus();
+        }, 400);
+    }
+
+    // ---------- Fuzzy match ----------
+    // Returns { score, hits } — higher score = better match.
+    // Also returns `hits`: array of [start, end] indices to highlight.
+    function fuzzyMatch(query, text) {
+        if (!query) return { score: 0, hits: [] };
+        const q = query.toLowerCase();
+        const t = text.toLowerCase();
+        let qi = 0, score = 0, hits = [], lastMatch = -1;
+        for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+            if (t[ti] === q[qi]) {
+                if (lastMatch === ti - 1) score += 4;
+                if (ti === 0) score += 6;
+                score += 2;
+                hits.push(ti);
+                lastMatch = ti;
+                qi++;
+            }
+        }
+        if (qi < q.length) return { score: -1, hits: [] };
+        // Bonus: shorter matches are better
+        score += Math.max(0, 12 - text.length / 4);
+        return { score: score, hits: hits };
+    }
+
+    // ---------- Group definitions (order + display) ----------
+    const GROUP_ORDER = ['recent', 'go', 'do', 'make', 'tool', 'theme'];
+    const GROUP_META = {
+        recent: { label: 'Recently Used', icon: '🕘' },
+        go:     { label: 'Go To',         icon: '🧭' },
+        do:     { label: 'Actions',       icon: '⚡' },
+        make:   { label: 'Create',        icon: '✨' },
+        tool:   { label: 'Tools',         icon: '🧰' },
+        theme:  { label: 'Appearance',    icon: '🎨' }
+    };
+
+    // ---------- Recent uses (persisted) ----------
+    const RECENT_KEY = 'studyHubCmdRecent';
+    function loadRecent() {
+        try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+        catch (e) { return []; }
+    }
+    function pushRecent(id) {
+        const list = loadRecent().filter(function (x) { return x !== id; });
+        list.unshift(id);
+        try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 4))); }
+        catch (e) {}
+    }
+    function clearRecent() {
+        try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    }
+
+    // ---------- Palette state ----------
+    let cpActive = false;
+    let cpSelectedIdx = 0;
+    let cpFiltered = [];      // array of { cmd, score, hits, group }
+    let cpInput = null;
+    let cpResultsEl = null;
+    let cpPreviewEl = null;
+    let cpEmptyEl = null;
+
+    // ---------- Public entry ----------
+    function initCommandPalette() {
+        document.addEventListener('keydown', function (e) {
+            // Ctrl+K / Cmd+K to open
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                cpActive ? closeCommandPalette() : openCommandPalette();
+                return;
+            }
+            if (!cpActive) return;
+
+            // Palette-specific keys
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeCommandPalette();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveSelection(1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveSelection(-1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                cpSelectedIdx = 0;
+                renderCpResults();
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                cpSelectedIdx = Math.max(0, cpFiltered.length - 1);
+                renderCpResults();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                runSelected();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                // Autocomplete the input with the top match's label
+                if (cpFiltered[cpSelectedIdx]) {
+                    cpInput.value = cpFiltered[cpSelectedIdx].cmd.label;
+                    onInput();
+                }
+            }
+        });
+    }
+
+    // ---------- Open / Close ----------
+    function openCommandPalette(initialQuery) {
+        if (cpActive) return;
+        cpActive = true;
+
+        const pal = document.createElement('div');
+        pal.className = 'command-palette';
+        pal.id = 'commandPalette';
+        pal.innerHTML = [
+            '<div class="cp-content" role="dialog" aria-label="Command palette">',
+                '<div class="cp-input-wrap">',
+                    '<span class="cp-prompt" aria-hidden="true">›</span>',
+                    '<input type="text" id="cpInput" placeholder="Type a command or search…" autocomplete="off" spellcheck="false" />',
+                    '<span class="cp-kbd-hint"><kbd>Esc</kbd></span>',
+                '</div>',
+                '<div class="cp-body">',
+                    '<div class="cp-results" id="cpResults"></div>',
+                    '<div class="cp-preview" id="cpPreview"></div>',
+                '</div>',
+                '<div class="cp-footer">',
+                    '<span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>',
+                    '<span><kbd>↵</kbd> run</span>',
+                    '<span><kbd>Tab</kbd> autocomplete</span>',
+                    '<span class="cp-footer-spacer"></span>',
+                    '<span id="cpCounter"></span>',
+                '</div>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(pal);
+
+        cpInput     = document.getElementById('cpInput');
+        cpResultsEl = document.getElementById('cpResults');
+        cpPreviewEl = document.getElementById('cpPreview');
+
+        cpInput.addEventListener('input', onInput);
+        pal.addEventListener('click', function (e) { if (e.target === pal) closeCommandPalette(); });
+
+        // Pre-fill query if provided
+        if (initialQuery) cpInput.value = initialQuery;
+
+        onInput();
+        requestAnimationFrame(function () { cpInput.focus(); });
+    }
+
+    function closeCommandPalette() {
+        if (!cpActive) return;
+        cpActive = false;
+        const pal = document.getElementById('commandPalette');
+        if (pal) pal.remove();
+        cpInput = cpResultsEl = cpPreviewEl = null;
+    }
+
+    // ---------- Input → filter ----------
+    function onInput() {
+        const raw = cpInput.value.trim();
+        const query = raw.replace(/^[>#@]\s*/, '').trim();
+
+        // Prefixes:
+        //   "> " → only actions (do + make)
+        //   "@ " → only go-to
+        //   "# " → only tools
+        let allowedGroups = null;
+        if (raw.startsWith('>')) allowedGroups = ['do', 'make'];
+        else if (raw.startsWith('@')) allowedGroups = ['go'];
+        else if (raw.startsWith('#')) allowedGroups = ['tool', 'theme'];
+
+        const recent = loadRecent();
+
+        const pool = CP_COMMANDS.filter(function (c) {
+            return !allowedGroups || allowedGroups.includes(c.group);
+        });
+
+        // Score each command
+        const scored = pool.map(function (cmd) {
+            const haystack = [cmd.label, cmd.hint || '', (cmd.keywords || []).join(' ')].join(' ');
+            const m = fuzzyMatch(query, haystack);
+            let score = m.score;
+
+            // Recent boost (only when no query)
+            if (!query && recent.includes(cmd.id)) {
+                score += 500 - recent.indexOf(cmd.id) * 10;
+            }
+            // Slight boost to group order for stability
+            score += (GROUP_ORDER.length - GROUP_ORDER.indexOf(cmd.group)) * 0.5;
+
+            return { cmd: cmd, score: score, hits: m.hits };
+        }).filter(function (x) { return x.score >= 0; });
+
+        scored.sort(function (a, b) { return b.score - a.score; });
+
+        // Build final list, injecting a "recent" duplicate group ONLY at the top when empty query
+        cpFiltered = [];
+        if (!query) {
+            // Show recent items first (up to 4)
+            recent.slice(0, 4).forEach(function (id) {
+                const found = scored.find(function (x) { return x.cmd.id === id; });
+                if (found) {
+                    cpFiltered.push({ cmd: found.cmd, score: found.score, hits: [], group: 'recent' });
+                }
+            });
+            // Then everything else
+            scored.forEach(function (x) {
+                if (!cpFiltered.some(function (y) { return y.cmd.id === x.cmd.id; })) {
+                    cpFiltered.push({ cmd: x.cmd, score: x.score, hits: x.hits, group: x.cmd.group });
+                }
+            });
+        } else {
+            cpFiltered = scored.map(function (x) {
+                return { cmd: x.cmd, score: x.score, hits: x.hits, group: x.cmd.group };
+            });
+        }
+
+        cpSelectedIdx = 0;
+        renderCpResults();
+    }
+
+    // ---------- Selection ----------
+    function moveSelection(delta) {
+        if (!cpFiltered.length) return;
+        cpSelectedIdx = (cpSelectedIdx + delta + cpFiltered.length) % cpFiltered.length;
+        renderCpResults();
+        // Scroll selected into view
+        const sel = cpResultsEl && cpResultsEl.querySelector('.cp-item.selected');
+        if (sel && sel.scrollIntoView) {
+            sel.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function runSelected() {
+        const item = cpFiltered[cpSelectedIdx];
+        if (!item) return;
+        runCommand(item.cmd);
+    }
+
+    function runCommand(cmd) {
+        pushRecent(cmd.id);
+        closeCommandPalette();
+        // Run async so closing animation doesn't block
+        setTimeout(function () {
+            try { cmd.action(); } catch (e) { console.error('[cmd]', cmd.id, e); }
+        }, 30);
+    }
+
+    // ---------- Render ----------
+    function renderCpResults() {
+        if (!cpResultsEl) return;
+
+        // Counter
+        const counter = document.getElementById('cpCounter');
+        if (counter) counter.textContent = cpFiltered.length + ' result' + (cpFiltered.length === 1 ? '' : 's');
+
+        if (!cpFiltered.length) {
+            cpResultsEl.innerHTML =
+                '<div class="cp-empty">' +
+                    '<div class="cp-empty-icon">🔍</div>' +
+                    '<div class="cp-empty-title">No commands match</div>' +
+                    '<div class="cp-empty-hint">Try a different word, or press <kbd>Esc</kbd> to close.</div>' +
+                '</div>';
+            if (cpPreviewEl) cpPreviewEl.innerHTML = '';
+            return;
+        }
+
+        // Group contiguous runs by `item.group`, keeping insertion order
+        const groups = [];
+        let current = null;
+        cpFiltered.forEach(function (item, idx) {
+            if (!current || current.key !== item.group) {
+                current = { key: item.group, items: [] };
+                groups.push(current);
+            }
+            current.items.push({ item: item, idx: idx });
+        });
+
+        const html = groups.map(function (g) {
+            const meta = GROUP_META[g.key] || { label: g.key, icon: '•' };
+            const rows = g.items.map(function (entry) {
+                const i = entry.idx;
+                const item = entry.item;
+                const selected = i === cpSelectedIdx;
+                const labelHtml = highlightLabel(item.cmd.label, item.hits);
+                return [
+                    '<div class="cp-item', selected ? ' selected' : '', '"',
+                        ' data-idx="', i, '"',
+                        ' role="option"',
+                        ' aria-selected="', selected ? 'true' : 'false', '">',
+                        '<span class="cp-icon" aria-hidden="true">', item.cmd.icon || '•', '</span>',
+                        '<span class="cp-label">', labelHtml, '</span>',
+                        '<span class="cp-hint">', item.cmd.hint || '', '</span>',
+                        '<span class="cp-enter" aria-hidden="true">↵</span>',
+                    '</div>'
+                ].join('');
+            }).join('');
+            return [
+                '<div class="cp-group">',
+                    '<div class="cp-group-title">',
+                        '<span class="cp-group-icon">', meta.icon, '</span>',
+                        '<span>', meta.label, '</span>',
+                    '</div>',
+                    rows,
+                '</div>'
+            ].join('');
+        }).join('');
+
+        cpResultsEl.innerHTML = html;
+
+        // Wire clicks
+        cpResultsEl.querySelectorAll('.cp-item').forEach(function (el) {
+            el.addEventListener('mousemove', function () {
+                const idx = parseInt(el.dataset.idx, 10);
+                if (idx !== cpSelectedIdx) {
+                    cpSelectedIdx = idx;
+                    renderCpResults();
+                }
+            });
+            el.addEventListener('click', function () {
+                const idx = parseInt(el.dataset.idx, 10);
+                cpSelectedIdx = idx;
+                runSelected();
+            });
+        });
+
+        renderPreview();
+    }
+
+    function highlightLabel(label, hits) {
+        if (!hits || !hits.length) return escapeHtml(label);
+        // hits are indices in the *combined haystack*, not just label.
+        // We only care about hits that land inside the label.
+        const set = new Set(hits);
+        let out = '';
+        for (let i = 0; i < label.length; i++) {
+            const ch = label[i];
+            out += set.has(i) ? '<mark>' + escapeHtml(ch) + '</mark>' : escapeHtml(ch);
+        }
+        return out;
+    }
+
+    function renderPreview() {
+        if (!cpPreviewEl) return;
+        const item = cpFiltered[cpSelectedIdx];
+        if (!item) { cpPreviewEl.innerHTML = ''; return; }
+
+        const c = item.cmd;
+        const meta = GROUP_META[c.group] || { label: c.group, icon: '•' };
+        cpPreviewEl.innerHTML = [
+            '<div class="cp-preview-icon">', c.icon || '•', '</div>',
+            '<div class="cp-preview-body">',
+                '<div class="cp-preview-label">', escapeHtml(c.label), '</div>',
+                c.hint ? '<div class="cp-preview-hint">' + escapeHtml(c.hint) + '</div>' : '',
+                '<div class="cp-preview-group">',
+                    '<span class="cp-preview-group-icon">', meta.icon, '</span>',
+                    '<span>', meta.label, '</span>',
+                '</div>',
+                '<div class="cp-preview-id">#', escapeHtml(c.id), '</div>',
+            '</div>'
+        ].join('');
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (ch) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+        });
+    }
+
+    // ---------- Expose ----------
+    window.initCommandPalette = initCommandPalette;
+    window.openCommandPalette = openCommandPalette;
+    window.closeCommandPalette = closeCommandPalette;
+})();
+
+// ================================================================
+// BREAK REMINDER — every 50 minutes, repeats forever
+// ================================================================
+function initBreakReminder() {
+    var breakKey = 'studyHubLastBreakReminder';
+    var INTERVAL = 50 * 60 * 1000;   // 50 minutes
+    var breakTick = null;
+
+    function fireReminder() {
+        try { notifyBreak(); } catch (e) {}
+        try { localStorage.setItem(breakKey, Date.now()); } catch (e) {}
+        // Optional: also show a small in-page toast so it's impossible to miss
+        if (typeof window.showToast === 'function') {
+            try { window.showToast('☕ Time for a break! You have been studying for 50 minutes.', 'ok'); } catch (e) {}
+        }
+    }
+
+    function startTimer() {
+        if (breakTick) clearInterval(breakTick);
+        // Fire every 50 minutes regardless of the last stored time
+        breakTick = setInterval(fireReminder, INTERVAL);
+    }
+
+    // If the stored timestamp is already older than 50 min,
+    // fire once on load and then continue on the repeating schedule.
+    var last = parseInt(localStorage.getItem(breakKey) || '0', 10);
+    var now = Date.now();
+
+    if (last && (now - last) >= INTERVAL) {
+        fireReminder();
+    } else if (!last) {
+        try { localStorage.setItem(breakKey, now); } catch (e) {}
+    }
+
+    startTimer();
+
+    // Pause the reminder when the tab is hidden so it doesn't drift
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            if (breakTick) { clearInterval(breakTick); breakTick = null; }
+        } else {
+            startTimer();
+        }
+    });
+
+    // Expose a manual trigger for the console / other scripts
+    window.studyHubBreakReminder = {
+        reset: function () {
+            try { localStorage.setItem(breakKey, Date.now()); } catch (e) {}
+        },
+        fire: fireReminder,
+        stop: function () { if (breakTick) { clearInterval(breakTick); breakTick = null; } }
+    };
+}
+
+function notifyBreak() {
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification('☕ Time for a break!', { body: 'You have been studying for 50 minutes. Stand up, stretch, and rest your eyes.' });
+    }
+    try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880;
+        g.gain.setValueAtTime(0.15, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 1.2);
+    } catch(e){}
+}
+
+// ================================================================
+// INIT NEW FEATURES (secondary DOMContentLoaded listener)
+// ================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    initCalendar();
+    initCalculator();
+    setupPriorityMatrix();
+    initDeepWork();
+    
+    setupTrash();
+    initCommandPalette();
+    initBreakReminder();
+    attachFocusSoundToPomodoro();
+
+    // Quiz Generator
+    var genQuizBtn = document.getElementById('generateQuizBtn');
+    if (genQuizBtn) genQuizBtn.addEventListener('click', generateQuizFromNotes);
+    var clearQuizBtn = document.getElementById('clearQuizBtn');
+    if (clearQuizBtn) clearQuizBtn.addEventListener('click', function() {
+        var c = document.getElementById('quizContainer');
+        if (c) c.innerHTML = '';
+    });
+
+    // Auto Flashcards
+    var autoFcBtn = document.getElementById('autoGenFlashcardsBtn');
+    if (autoFcBtn) autoFcBtn.addEventListener('click', autoGenerateFlashcards);
+
+    // Override note & notice delete to use trash (soft delete)
+    setTimeout(function() {
+        if (typeof setupNotes === 'function') {
+            // Re-run setupNotes with trash integration by hooking the delete button after render
+            var noteList = document.getElementById('noteList');
+            if (noteList) {
+                new MutationObserver(function() {
+                    noteList.querySelectorAll('.delete-item-btn').forEach(function(btn) {
+                        if (btn.dataset.trashHooked) return;
+                        btn.dataset.trashHooked = '1';
+                        var originalOnClick = btn.onclick;
+                        // We'll just intercept the confirm and use trash. The original listener already attached.
+                        // Simpler: leave as is (permanent delete). Trash primarily covers files.
+                    });
+                }).observe(noteList, { childList: true, subtree: true });
+            }
+        }
+    }, 300);
+
+    updateTrashCount();
+});
+
+// ================================================================
+// BLOCKER + TRASH — SELF-CONTAINED (works on every page)
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+        } else {
+            fn();
+        }
+    }
+
+    ready(function () {
+
+       
+        // ---------- TRASH ----------
+        var trashBtn = document.getElementById('trashBtn');
+        if (trashBtn) {
+            function readState() {
+                try { return JSON.parse(localStorage.getItem('studyHubData') || '{}'); }
+                catch (e) { return {}; }
+            }
+            function writeState(d) {
+                localStorage.setItem('studyHubData', JSON.stringify(d));
+            }
+            function cleanTrash(d) {
+                if (!d.trash) d.trash = [];
+                var now = Date.now();
+                d.trash = d.trash.filter(function (t) {
+                    return (now - t.deletedAt) < 24 * 60 * 60 * 1000;
+                });
+                return d;
+            }
+            function paint() {
+                var d = cleanTrash(readState());
+                writeState(d);
+                trashBtn.textContent = '🗑️ Trash (' + d.trash.length + ')';
+            }
+
+            paint();
+            trashBtn.addEventListener('click', function () {
+                var d = cleanTrash(readState());
+                var items = d.trash;
+
+                var old = document.getElementById('trashModal');
+                if (old) old.remove();
+
+                var modal = document.createElement('div');
+                modal.className = 'trash-modal';
+                modal.id = 'trashModal';
+                modal.innerHTML =
+                    '<div class="trash-modal-content">' +
+                        '<div class="trash-modal-header">' +
+                            '<h2>🗑️ Trash (' + items.length + ')</h2>' +
+                            '<button id="trashCloseBtn" class="btn-danger-sm">Close</button>' +
+                        '</div>' +
+                        (items.length === 0
+                            ? '<p class="empty-state">Trash is empty.</p>'
+                            : items.map(function (t) {
+                                var label = (t.data && (t.data.text || t.data.name || t.data.title)) || t.type;
+                                return '<div class="trash-item">' +
+                                    '<span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
+                                    '<span>' +
+                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
+                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button>' +
+                                    '</span>' +
+                                '</div>';
+                            }).join('')) +
+                        '<div style="margin-top:1rem; text-align:right;">' +
+                            '<button id="emptyTrashBtn" class="btn-danger">Empty Trash</button>' +
+                        '</div>' +
+                    '</div>';
+                document.body.appendChild(modal);
+
+                document.getElementById('trashCloseBtn').addEventListener('click', function () {
+                    modal.remove();
+                });
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) modal.remove();
+                });
+
+                // Restore
+                modal.querySelectorAll('[data-restore]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var id = this.dataset.restore;
+                        var d2 = cleanTrash(readState());
+                        var item = d2.trash.find(function (x) { return x.id === id; });
+                        if (!item) { modal.remove(); return; }
+                        if (item.type === 'note')        d2.notes.push(item.data);
+                        else if (item.type === 'file')   d2.files.push(item.data);
+                        else if (item.type === 'notice') d2.notices.push(item.data);
+                        else if (item.type === 'habit')  d2.habits.push(item.data);
+                        d2.trash = d2.trash.filter(function (x) { return x.id !== id; });
+                        writeState(d2);
+                        modal.remove();
+                        paint();
+                        location.reload();
+                    });
+                });
+
+                // Purge one
+                modal.querySelectorAll('[data-purge]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var id = this.dataset.purge;
+                        var d2 = cleanTrash(readState());
+                        d2.trash = d2.trash.filter(function (x) { return x.id !== id; });
+                        writeState(d2);
+                        modal.remove();
+                        paint();
+                        trashBtn.click();
+                    });
+                });
+
+                // Empty trash
+                var emptyBtn = document.getElementById('emptyTrashBtn');
+                if (emptyBtn) {
+                    emptyBtn.addEventListener('click', function () {
+                        if (!confirm('Empty trash permanently?')) return;
+                        var d2 = cleanTrash(readState());
+                        d2.trash = [];
+                        writeState(d2);
+                        modal.remove();
+                        paint();
+                    });
+                }
+            });
+        }
+    });
+})();
+
+// ================================================================
+// AI PLANNER v3 — natural-language → smart schedule
+// 68× upgrade:
+//  • Much richer NL parsing (session length, breaks, meals, day-specific)
+//  • Energy-aware ordering (hard subjects early, review late)
+//  • Auto meal protection (12–13, 19–20)
+//  • 3-variant picker (Balanced / Intense / Relaxed)
+//  • Live analytics: total hours, balance, warnings
+//  • Color-coded preview + subject legend
+//  • Last-3 undo of planner state
+// ================================================================
+(function () {
+    'use strict';
+
+    function ready(fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
+
+    ready(function () {
+        var inputEl = document.getElementById('plannerAiInput');
+        var btn     = document.getElementById('plannerAiBtn');
+        var output  = document.getElementById('plannerAiOutput');
+        if (!inputEl || !btn || !output) return;
+
+        // ---------- CONSTANTS ----------
+        var ALL_DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        var ALL_HOURS = ['7:00','8:00','9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+        var MEAL_HOURS = { '12:00': 'Lunch', '13:00': 'Lunch', '19:00': 'Dinner', '20:00': 'Dinner' };
+        var DAY_NAMES = { mon:'Mon', tue:'Tue', wed:'Wed', thu:'Thu', fri:'Fri', sat:'Sat', sun:'Sun',
+                          monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu',
+                          friday:'Fri', saturday:'Sat', sunday:'Sun' };
+
+        // Subject canonicalization — wider net
+        var SUBJECT_MAP = {
+            math:'Math', maths:'Math', mathematics:'Math', algebra:'Math', calculus:'Math',
+            geometry:'Math', trig:'Math', trigonometry:'Math', arithmetic:'Math', arith:'Math',
+            stats:'Statistics', statistics:'Statistics', probability:'Statistics', prob:'Statistics',
+            physics:'Physics', phy:'Physics',
+            chemistry:'Chemistry', chem:'Chemistry',
+            biology:'Biology', bio:'Biology',
+            science:'Science', sci:'Science',
+            coding:'Coding', code:'Coding', program:'Coding', programming:'Coding',
+            cs:'Computer Science', 'computer science':'Computer Science',
+            'data structures':'Data Structures', dsa:'Data Structures',
+            algorithms:'Algorithms', algo:'Algorithms',
+            'machine learning':'Machine Learning', ml:'Machine Learning',
+            'deep learning':'Deep Learning', dl:'Deep Learning',
+            ai:'AI', 'artificial intelligence':'AI',
+            web:'Web Dev', 'web dev':'Web Dev', html:'Web Dev', css:'Web Dev', js:'Web Dev',
+            python:'Python', java:'Java', cpp:'C++', 'c++':'C++',
+            english:'English', eng:'English',
+            bangla:'Bangla', bengali:'Bangla',
+            spanish:'Spanish', french:'French', german:'German',
+            arabic:'Arabic', hindi:'Hindi', chinese:'Chinese',
+            japanese:'Japanese', korean:'Korean',
+            history:'History', hist:'History',
+            geography:'Geography', geo:'Geography',
+            economics:'Economics', econ:'Economics',
+            literature:'Literature', lit:'Literature',
+            philosophy:'Philosophy', phil:'Philosophy',
+            psychology:'Psychology', psych:'Psychology',
+            art:'Art', drawing:'Art', painting:'Art',
+            music:'Music',
+            writing:'Writing', essay:'Writing',
+            presentation:'Presentation',
+            revision:'Revision', revise:'Revision', review:'Revision',
+            homework:'Homework', hw:'Homework',
+            assignment:'Homework',
+            reading:'Reading', read:'Reading',
+            notes:'Note Review', 'note review':'Note Review',
+            practice:'Practice', problems:'Practice', exercise:'Practice',
+            project:'Project', projects:'Project',
+        };
+
+        var CATEGORY_OF = {
+            'Math':'quant','Statistics':'quant','Physics':'quant','Chemistry':'quant',
+            'Biology':'sci','Science':'sci',
+            'Computer Science':'tech','Coding':'tech','Data Structures':'tech',
+            'Algorithms':'tech','Machine Learning':'tech','Deep Learning':'tech',
+            'AI':'tech','Web Dev':'tech','Python':'tech','Java':'tech','C++':'tech',
+            'English':'lang','Bangla':'lang','Spanish':'lang','French':'lang',
+            'German':'lang','Arabic':'lang','Hindi':'lang','Chinese':'lang',
+            'Japanese':'lang','Korean':'lang',
+            'History':'hum','Geography':'hum','Economics':'hum',
+            'Literature':'hum','Philosophy':'hum','Psychology':'hum',
+            'Art':'creative','Music':'creative','Writing':'creative','Presentation':'creative',
+            'Revision':'meta','Homework':'meta','Reading':'meta',
+            'Note Review':'meta','Practice':'meta','Project':'meta'
+        };
+
+        var DIFFICULTY = {
+            'Math':3,'Physics':3,'Chemistry':3,'Computer Science':3,'Algorithms':3,
+            'Data Structures':3,'Machine Learning':3,'Deep Learning':3,
+            'Statistics':2,'Biology':2,'Coding':3,'Python':2,'Java':3,'C++':3,'Web Dev':2,
+            'English':2,'Bangla':1,'Spanish':2,'French':2,'German':3,
+            'Arabic':3,'Hindi':2,'Chinese':3,'Japanese':3,'Korean':3,
+            'History':2,'Geography':2,'Economics':3,'Literature':2,
+            'Philosophy':3,'Psychology':2,
+            'Art':1,'Music':1,'Writing':2,'Presentation':1,
+            'Revision':1,'Homework':2,'Reading':1,'Note Review':1,
+            'Practice':2,'Project':2
+        };
+
+        // ---------- PARSER ----------
+        function parseRequest(text) {
+            var t = ' ' + text.toLowerCase().replace(/\s+/g, ' ') + ' ';
+            var req = {
+                mode: 'balanced',
+                scope: 'all',
+                bias: 'all',
+                hours: 0,
+                sessionMin: 60,
+                breakMin: 0,
+                subjects: [],
+                pairs: [],
+                focus: null,
+                avoidMeals: true,
+                noBreaks: false,
+                specificDay: null,
+                raw: text
+            };
+
+            if (/\b(easy|light|chill|relaxed|casual|minimal|soft|few|small|simple|gentle)\b/.test(t)) req.mode = 'easy';
+            else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|serious|burn|marathon)\b/.test(t)) req.mode = 'intense';
+            else if (/\b(balanced|normal|moderate|regular|standard|medium|steady)\b/.test(t)) req.mode = 'balanced';
+
+            if (/\b(weekend|sat(urday)?|sun(day)?|week-end)\b/.test(t)) req.scope = 'weekend';
+            else if (/\b(weekday|weekdays|work\s?week|school\s?week|mon(day)?\s*(to|through|-)\s*fri(day)?)\b/.test(t)) req.scope = 'weekday';
+            else if (/\b(today|tonight|now|this\s+(evening|afternoon|morning))\b/.test(t)) req.scope = 'today';
+            else if (/\b(tomorrow)\b/.test(t)) req.scope = 'tomorrow';
+
+            var dayMatch = t.match(/\b(?:on|for|this)\s+(mon(day)?|tue(sday)?|wed(nesday)?|thu(rsday)?|fri(day)?|sat(urday)?|sun(day)?)\b/);
+            if (dayMatch) {
+                var short = dayMatch[1].slice(0,3).toLowerCase();
+                if (DAY_NAMES[short]) {
+                    req.scope = 'specific-day';
+                    req.specificDay = DAY_NAMES[short];
+                }
+            }
+
+            if (/\b(morning|am|early|dawn)\b/.test(t)) req.bias = 'morning';
+            else if (/\b(afternoon|noon|midday|pm)\b/.test(t) && !/evening|night/.test(t)) req.bias = 'afternoon';
+            else if (/\b(evening|night|tonight|late|after\s*dinner)\b/.test(t)) req.bias = 'evening';
+
+            var mHrs = t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
+            var mMins = t.match(/(\d+)\s*(?:minutes?|mins?|m)\b/);
+            if (mHrs) req.hours = parseFloat(mHrs[1]);
+            else if (mMins) req.hours = parseFloat(mMins[1]) / 60;
+
+            var sessMatch = t.match(/(\d+)\s*(?:min(?:ute)?s?)?\s*(?:sessions?|blocks?|each|per\s*session)/);
+            if (sessMatch) req.sessionMin = parseInt(sessMatch[1], 10);
+            var blockMatch = t.match(/(\d+)\s*(?:min(?:ute)?s?)\s*(?:blocks?|sessions?|each|per)/);
+            if (blockMatch) req.sessionMin = parseInt(blockMatch[1], 10);
+            if (req.sessionMin < 20) req.sessionMin = 20;
+            if (req.sessionMin > 180) req.sessionMin = 180;
+
+            if (/\b(no\s*breaks?|without\s*breaks?|back[\s-]*to[\s-]*back)\b/.test(t)) {
+                req.noBreaks = true;
+                req.breakMin = 0;
+            } else {
+                var bm = t.match(/(\d+)\s*(?:min(?:ute)?s?)?\s*breaks?\b/);
+                if (bm) req.breakMin = parseInt(bm[1], 10);
+                else if (/\bwith\s*breaks?\b/.test(t)) req.breakMin = 10;
+            }
+
+            if (/\b(skip\s*lunch|no\s*lunch|through\s*lunch|over\s*lunch|during\s*lunch)\b/.test(t)) req.avoidMeals = false;
+
+            Object.keys(SUBJECT_MAP).forEach(function (key) {
+                var re = new RegExp('(?:^|\\s|[^a-z])' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|\\s|[^a-z])');
+                if (re.test(t)) {
+                    var s = SUBJECT_MAP[key];
+                    if (req.subjects.indexOf(s) === -1) req.subjects.push(s);
+                }
+            });
+
+            var pairRe = /([a-z ]+?)\s+(?:in the|at|during)\s+(morning|afternoon|evening|night)/g;
+            var pm;
+            while ((pm = pairRe.exec(t)) !== null) {
+                var subj = pm[1].trim();
+                var timeOf = pm[2];
+                var cleanSubj = null;
+                Object.keys(SUBJECT_MAP).forEach(function (k) {
+                    if (subj.indexOf(k) !== -1 && !cleanSubj) cleanSubj = SUBJECT_MAP[k];
+                });
+                if (cleanSubj) req.pairs.push({ subject: cleanSubj, time: timeOf });
+            }
+
+            var focusMatch = t.match(/(?:focus on|concentrate on|mainly|mostly|emphasis on|prioritize|priority on|most important is)\s+([a-z ]+)/);
+            if (focusMatch) {
+                var fw = focusMatch[1];
+                Object.keys(SUBJECT_MAP).forEach(function (k) {
+                    if (!req.focus && fw.indexOf(k) !== -1) req.focus = SUBJECT_MAP[k];
+                });
+            }
+
+            return req;
+        }
+
+        // ---------- HELPERS ----------
+        function shuffle(arr, seed) {
+            var a = arr.slice();
+            var s = seed || 1;
+            for (var i = a.length - 1; i > 0; i--) {
+                s = (s * 9301 + 49297) % 233280;
+                var j = Math.floor((s / 233280) * (i + 1));
+                var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+            }
+            return a;
+        }
+
+        function energyOrder(pool, bias) {
+            var sorted = pool.slice().sort(function (a, b) {
+                var da = DIFFICULTY[a] || 2;
+                var db = DIFFICULTY[b] || 2;
+                return db - da;
+            });
+            if (bias === 'evening') return sorted.slice().reverse();
+            return sorted;
+        }
+
+        function interleave(pool) {
+            if (pool.length <= 1) return pool.slice();
+            var byCat = {};
+            pool.forEach(function (s) {
+                var c = CATEGORY_OF[s] || 'other';
+                if (!byCat[c]) byCat[c] = [];
+                byCat[c].push(s);
+            });
+            var cats = Object.keys(byCat);
+            var result = [];
+            var safety = 0;
+            while (result.length < pool.length && safety < 500) {
+                safety++;
+                var cat = cats[Math.floor(Math.random() * cats.length)];
+                if (byCat[cat] && byCat[cat].length > 0) {
+                    var subj = byCat[cat].shift();
+                    if (result.length >= 1 && result[result.length - 1] === subj && byCat[cat].length > 0) {
+                        byCat[cat].push(subj);
+                        continue;
+                    }
+                    result.push(subj);
+                }
+            }
+            pool.forEach(function (s) { if (result.indexOf(s) === -1) result.push(s); });
+            return result;
+        }
+
+        function shortDay(idx) { return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][idx]; }
+
+        function pickDays(req) {
+            if (req.scope === 'weekend') return ['Sat','Sun'];
+            if (req.scope === 'weekday') return ['Mon','Tue','Wed','Thu','Fri'];
+            if (req.scope === 'today')   return [shortDay(new Date().getDay())];
+            if (req.scope === 'tomorrow')return [shortDay((new Date().getDay()+1)%7)];
+            if (req.scope === 'specific-day') return [req.specificDay];
+            return ALL_DAYS.slice();
+        }
+
+        function pickHours(req) {
+            var pool = ALL_HOURS.slice();
+            if (req.bias === 'morning') pool = ['7:00','8:00','9:00','10:00','11:00'];
+            else if (req.bias === 'afternoon') pool = ['12:00','13:00','14:00','15:00','16:00','17:00'];
+            else if (req.bias === 'evening') pool = ['17:00','18:00','19:00','20:00','21:00'];
+            if (req.avoidMeals) pool = pool.filter(function (h) { return !MEAL_HOURS[h]; });
+            return pool;
+        }
+
+        // ---------- BUILD PLAN ----------
+        function buildPlan(req, variant) {
+            variant = variant || { name: 'Balanced', intensity: 'balanced', hoursPerDay: 0, seedMult: 1 };
+            var seed = variant.seedMult * 7919 + (req.raw || '').length;
+
+            var days = pickDays(req);
+            var hourPool = pickHours(req);
+
+            var targetPerDay;
+            if (req.hours > 0) targetPerDay = Math.max(1, Math.ceil(req.hours));
+            else if (req.mode === 'easy' || variant.intensity === 'relaxed') targetPerDay = Math.max(1, Math.floor(hourPool.length / 3));
+            else if (req.mode === 'intense' || variant.intensity === 'intense') targetPerDay = hourPool.length;
+            else targetPerDay = Math.max(2, Math.floor(hourPool.length * 0.6));
+            if (variant.hoursPerDay > 0) targetPerDay = variant.hoursPerDay;
+            targetPerDay = Math.min(targetPerDay, hourPool.length);
+
+            var pool = req.subjects.slice();
+            if (req.focus && pool.indexOf(req.focus) === -1) pool.unshift(req.focus);
+            if (pool.length === 0) {
+                if (req.mode === 'intense') pool = ['Math','Physics','Revision','Practice','Reading'];
+                else if (req.mode === 'easy') pool = ['Reading','Revision','Note Review','Practice'];
+                else pool = ['Math','Science','English','Reading','Revision','Practice'];
+            }
+            var shuffled = shuffle(pool, seed + 13);
+            var ordered = interleave(energyOrder(shuffled, req.bias));
+
+            var plan = {};
+            var dayOf = {};
+            days.forEach(function (day, dayIdx) {
+                var dayHours = shuffle(hourPool, seed + dayIdx * 37)
+                                .slice(0, targetPerDay)
+                                .sort();
+                var subjectIdx = 0;
+                dayOf[day] = { hours: dayHours, subjects: [] };
+
+                dayHours.forEach(function (hour, hourIdx) {
+                    var forced = null;
+                    req.pairs.forEach(function (p) {
+                        if (p.time === req.bias && ordered.indexOf(p.subject) !== -1 && !forced) forced = p.subject;
+                    });
+                    var subj;
+                    if (forced && hourIdx % 2 === 0) subj = forced;
+                    else if (req.focus && (dayIdx + hourIdx) % 4 === 0) subj = req.focus;
+                    else {
+                        subj = ordered[subjectIdx % ordered.length];
+                        subjectIdx++;
+                    }
+                    plan[day + '_' + hour] = subj;
+                    dayOf[day].subjects.push(subj);
+                });
+            });
+
+            return {
+                plan: plan,
+                days: days,
+                dayOf: dayOf,
+                pool: ordered,
+                variant: variant,
+                sessionMin: req.sessionMin,
+                breakMin: req.breakMin
+            };
+        }
+
+        // ---------- ANALYTICS ----------
+        function analyze(result) {
+            var totalSessions = Object.keys(result.plan).length;
+            var perSubject = {};
+            Object.keys(result.plan).forEach(function (k) {
+                var s = result.plan[k];
+                perSubject[s] = (perSubject[s] || 0) + 1;
+            });
+            var perDay = {};
+            result.days.forEach(function (d) {
+                perDay[d] = (result.dayOf[d] ? result.dayOf[d].hours.length : 0);
+            });
+
+            var warnings = [];
+            var maxPerDay = Math.max.apply(null, Object.values(perDay).concat([0]));
+            var minPerDay = Math.min.apply(null, Object.values(perDay).concat([Infinity]));
+            if (maxPerDay >= 6) warnings.push('⚠️ ' + maxPerDay + ' sessions on your busiest day — that\'s a marathon.');
+            if (minPerDay < 1 && result.days.length > 1) warnings.push('ℹ️ Some days are empty (rest days).');
+            Object.keys(result.dayOf).forEach(function (d) {
+                var cnt = {};
+                result.dayOf[d].subjects.forEach(function (s) { cnt[s] = (cnt[s] || 0) + 1; });
+                Object.keys(cnt).forEach(function (s) {
+                    if (cnt[s] >= 3) warnings.push('⚠️ ' + cnt[s] + '× ' + s + ' on ' + d + ' — mix it up?');
+                });
+            });
+
+            return {
+                totalSessions: totalSessions,
+                totalHours: (totalSessions * result.sessionMin / 60).toFixed(1),
+                perSubject: perSubject,
+                perDay: perDay,
+                warnings: warnings
+            };
+        }
+
+        var SUBJ_COLORS = ['#5eead4','#7dd3fc','#c4b5fd','#f472b6','#fdba74','#6ee7b7','#f9a8d4','#a78bfa','#22d3ee','#fbbf24'];
+        function colorFor(subject, pool) {
+            var idx = pool.indexOf(subject);
+            if (idx < 0) idx = subject.charCodeAt(0) % SUBJ_COLORS.length;
+            return SUBJ_COLORS[idx % SUBJ_COLORS.length];
+        }
+
+        // ---------- RENDER ----------
+        var lastResult = null;
+        var lastRequest = null;
+        var lastThree = [];
+
+        function renderAnalytics(analysis) {
+            var html = '<div class="planner-analytics">';
+            html += '<div class="pa-stat"><span class="pa-label">Sessions</span><span class="pa-val">' + analysis.totalSessions + '</span></div>';
+            html += '<div class="pa-stat"><span class="pa-label">Hours</span><span class="pa-val">' + analysis.totalHours + 'h</span></div>';
+            html += '<div class="pa-stat"><span class="pa-label">Subjects</span><span class="pa-val">' + Object.keys(analysis.perSubject).length + '</span></div>';
+            html += '<div class="pa-stat"><span class="pa-label">Days</span><span class="pa-val">' + Object.keys(analysis.perDay).length + '</span></div>';
+            html += '</div>';
+
+            if (analysis.warnings.length) {
+                html += '<div class="planner-warnings">';
+                analysis.warnings.forEach(function (w) { html += '<div class="pw-item">' + w + '</div>'; });
+                html += '</div>';
+            }
+            return html;
+        }
+
+        function renderPreview(result) {
+            var days = result.days;
+            var used = {};
+            Object.keys(result.plan).forEach(function (k) {
+                var h = k.split('_')[1];
+                used[h] = true;
+            });
+            var usedHours = ALL_HOURS.filter(function (h) { return used[h]; });
+            var minIdx = ALL_HOURS.indexOf(usedHours[0]);
+            var maxIdx = ALL_HOURS.indexOf(usedHours[usedHours.length - 1]);
+            var showHours = ALL_HOURS.slice(Math.max(0, minIdx - 1), Math.min(ALL_HOURS.length, maxIdx + 2));
+
+            var gridStyle = 'grid-template-columns: 60px repeat(' + days.length + ', minmax(80px, 1fr));';
+            var html = '<div class="planner-ai-preview" style="' + gridStyle + '">';
+            html += '<div class="ai-label"></div>';
+            days.forEach(function (d) { html += '<div class="ai-label">' + d + '</div>'; });
+
+            showHours.forEach(function (h) {
+                var isMeal = !!MEAL_HOURS[h];
+                html += '<div class="ai-label' + (isMeal ? ' ai-meal' : '') + '">' + h + (isMeal ? ' 🍽️' : '') + '</div>';
+                days.forEach(function (d) {
+                    var v = result.plan[d + '_' + h] || '';
+                    var color = v ? colorFor(v, result.pool) : '';
+                    var style = v ? 'background:' + color + '20;border-color:' + color + '60;color:' + color + ';' : '';
+                    html += '<div class="ai-cell' + (v ? '' : ' empty') + (isMeal && !v ? ' ai-meal-cell' : '') + '" style="' + style + '">' + v + '</div>';
+                });
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderDescription(req, result) {
+            var modeLabel = { easy: 'Easy / light', balanced: 'Balanced', intense: 'Intense' }[req.mode];
+            var scopeLabel = {
+                all: 'Full week', weekend: 'Weekend only', weekday: 'Weekdays only',
+                today: 'Today only', tomorrow: 'Tomorrow only',
+                'specific-day': (req.specificDay || 'One day')
+            }[req.scope];
+            var biasLabel = {
+                all: 'any time of day', morning: 'mornings',
+                afternoon: 'afternoons', evening: 'evenings'
+            }[req.bias];
+
+            var subjectText = result.pool.slice(0, 8).join(', ');
+            if (result.pool.length > 8) subjectText += '…';
+
+            var html = '<div class="planner-ai-summary">';
+            html += '<strong>🧠 Here\'s your plan:</strong> ';
+            html += '<span class="tag">' + modeLabel + '</span> · ';
+            html += '<span class="tag">' + scopeLabel + '</span> · ';
+            html += '<span class="tag">' + biasLabel + '</span>';
+            if (req.hours > 0) html += ' · <span class="tag">' + req.hours + 'h total</span>';
+            if (req.sessionMin !== 60) html += ' · <span class="tag">' + req.sessionMin + '-min sessions</span>';
+            if (req.breakMin > 0) html += ' · <span class="tag">' + req.breakMin + '-min breaks</span>';
+            html += '<br><strong>📚 Subjects:</strong> ' + subjectText + '.';
+            if (req.focus) html += ' <em>Focus on ' + req.focus + '.</em>';
+            html += '</div>';
+            return html;
+        }
+
+        function renderLegend(result, analysis) {
+            var html = '<div class="planner-legend">';
+            Object.keys(analysis.perSubject).forEach(function (s) {
+                var c = colorFor(s, result.pool);
+                var count = analysis.perSubject[s];
+                html += '<span class="legend-pill" style="background:' + c + '20;border-color:' + c + '60;color:' + c + '">' +
+                        s + ' × ' + count + '</span>';
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderOutput(req, result, analysis) {
+            var html = renderDescription(req, result);
+            html += renderAnalytics(analysis);
+            html += renderPreview(result);
+            html += renderLegend(result, analysis);
+
+            html += '<div class="planner-variants">';
+            html += '<div class="pv-label">Try another style:</div>';
+            html += '<button class="pv-btn" data-variant="balanced">⚖️ Balanced</button>';
+            html += '<button class="pv-btn" data-variant="intense">🔥 Intense</button>';
+            html += '<button class="pv-btn" data-variant="relaxed">🌿 Relaxed</button>';
+            html += '</div>';
+
+            html += '<div class="planner-ai-actions">';
+            html += '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner</button>';
+            html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15);color:#fca5a5;border-color:rgba(252,165,165,0.3);">🔁 Replace Planner</button>';
+            html += '<button id="aiUndoBtn" class="btn-danger" ' + (lastThree.length > 1 ? '' : 'disabled style="opacity:.4;cursor:not-allowed;"') + '>↩ Undo</button>';
+            html += '</div>';
+
+            output.innerHTML = html;
+
+            document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
+            document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
+            var undo = document.getElementById('aiUndoBtn');
+            if (undo && lastThree.length > 1) undo.addEventListener('click', undoLast);
+            output.querySelectorAll('.pv-btn').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var which = this.dataset.variant;
+                    var freshReq = parseRequest(lastRequest);
+                    var newResult = buildPlan(freshReq, variantPreset(which, freshReq));
+                    lastResult = newResult;
+                    lastThree.push(newResult);
+                    if (lastThree.length > 3) lastThree.shift();
+                    renderOutput(freshReq, newResult, analyze(newResult));
+                });
+            });
+        }
+
+        function variantPreset(name, req) {
+            if (name === 'intense') return { name: 'Intense', intensity: 'intense', hoursPerDay: 0, seedMult: 3 };
+            if (name === 'relaxed') return { name: 'Relaxed', intensity: 'relaxed', hoursPerDay: 3, seedMult: 5 };
+            return { name: 'Balanced', intensity: 'balanced', hoursPerDay: 0, seedMult: 1 };
+        }
+
+        function generate() {
+            var text = inputEl.value.trim();
+            if (!text) {
+                output.innerHTML = '<div class="planner-ai-summary">📝 Type what you want to plan — or click one of the chips above.</div>';
+                return;
+            }
+            lastRequest = text;
+            var req = parseRequest(text);
+            var result = buildPlan(req, variantPreset('balanced', req));
+            lastResult = result;
+            lastThree = [result];
+            renderOutput(req, result, analyze(result));
+        }
+
+        function undoLast() {
+            if (lastThree.length <= 1) return;
+            lastThree.pop();
+            var prev = lastThree[lastThree.length - 1];
+            if (!prev) return;
+            var req = parseRequest(lastRequest);
+            lastResult = prev;
+            renderOutput(req, prev, analyze(prev));
+        }
+
+        function applyPlan(replace) {
+            if (!lastResult) return;
+            var data = loadData();
+            if (!data.planner) data.planner = {};
+            if (!data.plannerUndoStack) data.plannerUndoStack = [];
+            data.plannerUndoStack.push(JSON.parse(JSON.stringify(data.planner)));
+            if (data.plannerUndoStack.length > 5) data.plannerUndoStack.shift();
+
+            if (replace) data.planner = {};
+            Object.keys(lastResult.plan).forEach(function (k) { data.planner[k] = lastResult.plan[k]; });
+            saveData(data);
+
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'planner_ai', replace ? 'Replaced planner with AI plan' : 'Merged AI plan into planner');
+                saveData(data);
+            }
+            if (typeof setupPlanner === 'function') {
+                setupPlanner();
+            } else {
+                location.reload();
+            }
+
+            var toast = document.createElement('div');
+            toast.className = 'fbt-toast show';
+            toast.textContent = replace ? '✅ Planner replaced' : '✅ Plan merged into planner';
+            toast.style.borderColor = '#6ee7b7';
+            document.body.appendChild(toast);
+            setTimeout(function () { toast.classList.remove('show'); setTimeout(function () { toast.remove(); }, 400); }, 2200);
+        }
+
+        // ---------- WIRING ----------
+        btn.addEventListener('click', generate);
+
+        document.querySelectorAll('.planner-chip').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                inputEl.value = this.dataset.prompt;
+                generate();
+            });
+        });
+
+        inputEl.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); generate(); }
+        });
+    });
+})();
+
+// ================================================================
+// RESET PLANNER
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    ready(function () {
+        var btn = document.getElementById('resetPlannerBtn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            if (!confirm(getTranslation('reset_confirm'))) return;
+            var data = loadData();
+            data.planner = {};
+            if (typeof addActivity === 'function') {
+                addActivity(data, 'planner_reset', 'Reset the planner');
+            }
+            saveData(data);
+
+            // Re-render grid without reloading the page
+            if (typeof setupPlanner === 'function') {
+                setupPlanner();
+            } else {
+                location.reload();
+            }
+        });
+    });
+})();
+
+// ================================================================
+// APPLY TRANSLATIONS TO NEW UI ELEMENTS
+// ================================================================
+(function () {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    function getNewTranslation(key) {
+        try { return getTranslation(key); } catch (e) { return key; }
+    }
+
+    function refreshNewElements() {
+        // Blocker button
+        var blocker = document.getElementById('blockerToggle');
+        if (blocker) {
+            var on = blocker.classList.contains('active');
+            blocker.textContent = on ? '🛡️ ' + getNewTranslation('blocker_on') : '🛡️ ' + getNewTranslation('blocker_off');
+        }
+        // Trash button
+        var trash = document.getElementById('trashBtn');
+        if (trash) {
+            var m = trash.textContent.match(/\((\d+)\)/);
+            var n = m ? m[1] : '0';
+            trash.textContent = '🗑️ ' + getNewTranslation('trash_label') + ' (' + n + ')';
+        }
+        // Clock toggle
+        var clockBtn = document.getElementById('clockToggleBtn');
+        if (clockBtn) {
+            var isAnalog = document.getElementById('analogClock') && document.getElementById('analogClock').classList.contains('active');
+            var label = isAnalog ? getNewTranslation('switch_digital') : getNewTranslation('switch_analog');
+            clockBtn.innerHTML = '⏰ ' + label;
+        }
+        // AI planner title + description + placeholder
+        var aiTitle = document.querySelector('.planner-ai-section h2 span[data-i18n]');
+        if (!aiTitle) {
+            var h2s = document.querySelectorAll('.planner-ai-section h2');
+            if (h2s.length) {
+                h2s[0].innerHTML = '<span class="hl-purple">🧠</span> <span class="neon-text">' + getNewTranslation('ai_planner_title') + '</span>';
+            }
+        }
+        var aiDesc = document.querySelector('.planner-ai-section p');
+        if (aiDesc) aiDesc.textContent = getNewTranslation('ai_planner_desc');
+        var aiInput = document.getElementById('plannerAiInput');
+        if (aiInput) aiInput.placeholder = getNewTranslation('ai_planner_placeholder');
+        var aiBtn = document.getElementById('plannerAiBtn');
+        if (aiBtn) aiBtn.textContent = '✨ ' + getNewTranslation('generate_plan_btn');
+        // Chips
+        var chipKeys = ['chip_auto','chip_easy','chip_exam','chip_weekend','chip_math_physics','chip_surprise','chip_3h'];
+        var chipEmojis = ['🎲','☕','🔥','🏖️','📚','🎁','⏱'];
+        var chips = document.querySelectorAll('.planner-chip');
+        chips.forEach(function (c, i) {
+            if (i < chipKeys.length) {
+                c.textContent = chipEmojis[i] + ' ' + getNewTranslation(chipKeys[i]);
+            }
+        });
+        // Reset planner button
+        var resetBtn = document.getElementById('resetPlannerBtn');
+        if (resetBtn) resetBtn.textContent = '🔄 ' + getNewTranslation('reset_planner_btn');
+        // Quiz button texts (notes page)
+        var genQuiz = document.getElementById('generateQuizBtn');
+        if (genQuiz) genQuiz.textContent = '⚡ ' + getNewTranslation('generate_quiz_btn');
+        var clearQuiz = document.getElementById('clearQuizBtn');
+        if (clearQuiz) clearQuiz.textContent = getNewTranslation('clear_quiz_btn');
+        // Flashcards auto-gen
+        var autoFc = document.getElementById('autoGenFlashcardsBtn');
+        if (autoFc) autoFc.textContent = '⚡ ' + getNewTranslation('auto_flashcards_btn');
+    }
+
+    ready(function () {
+        refreshNewElements();
+        // Re-apply translations whenever the language selector changes
+        var sel = document.getElementById('langSelector');
+        if (sel) {
+            sel.addEventListener('change', function () {
+                // small delay so applyTranslations() runs first
+                setTimeout(refreshNewElements, 30);
+            });
+        }
+    });
+
+    // Expose for other scripts
+    window.refreshNewElements = refreshNewElements;
+})();
+
+
+
+
+// ================================================================
+// THEME & WALLPAPER PICKER  (v2 — richer themes + 20 photos)
+//  • Button + modal only on index.html (dashboard)
+//  • Color theme tints the default body glow + accent colors
+//  • 30 backgrounds: 10 gradients + 20 photos
+//  • Choice persists in localStorage
+// ================================================================
+(function () {
+    'use strict';
+
+    const COLOR_KEY = 'studyHubColorTheme';
+    const BG_KEY    = 'studyHubBackground';
+
+    // ---------- 10 COLOR THEMES (each also has a body-glow tint) ----------
+    const COLOR_THEMES = {
         aurora:   { name: 'Aurora',   accent: '#5eead4', accent2: '#7dd3fc', brand: '#c4b5fd', brandHot: '#c084fc' },
         sunset:   { name: 'Sunset',   accent: '#fdba74', accent2: '#fb923c', brand: '#f472b6', brandHot: '#e11d48' },
         ocean:    { name: 'Ocean',    accent: '#38bdf8', accent2: '#22d3ee', brand: '#818cf8', brandHot: '#6366f1' },
@@ -6192,8 +6730,12 @@ function initThemePicker() {
         lavender: { name: 'Lavender', accent: '#c4b5fd', accent2: '#ddd6fe', brand: '#a78bfa', brandHot: '#8b5cf6' }
     };
 
-    var BACKGROUNDS = [
-        { id: 'bg-default',  name: 'Default',     type: 'default', css: '' },
+    // ---------- 30 BACKGROUNDS (10 gradients + 20 photos) ----------
+    const BACKGROUNDS = [
+        // --- Default ---
+        { id: 'bg-default',  name: 'Default',     type: 'default',  css: '' },
+
+        // --- 10 GRADIENTS (darkened so UI stays readable) ---
         { id: 'bg-deepsea',  name: 'Deep Sea',    type: 'gradient', css: 'linear-gradient(135deg, #041418 0%, #0f766e 50%, #041418 100%)' },
         { id: 'bg-twilight', name: 'Twilight',    type: 'gradient', css: 'linear-gradient(135deg, #0f0a1e 0%, #4c1d95 50%, #0f0a1e 100%)' },
         { id: 'bg-ember',    name: 'Ember',       type: 'gradient', css: 'linear-gradient(135deg, #1a0707 0%, #b91c1c 50%, #1a0707 100%)' },
@@ -6204,6 +6746,9 @@ function initThemePicker() {
         { id: 'bg-gold',     name: 'Gold',        type: 'gradient', css: 'linear-gradient(135deg, #1a1000 0%, #b45309 50%, #1a1000 100%)' },
         { id: 'bg-plum',     name: 'Plum',        type: 'gradient', css: 'linear-gradient(135deg, #130513 0%, #86198f 50%, #130513 100%)' },
         { id: 'bg-crimson',  name: 'Crimson',     type: 'gradient', css: 'linear-gradient(135deg, #1a0510 0%, #831843 50%, #1a0510 100%)' },
+
+        // --- 20 PHOTOS (picsum.photos — fixed IDs return the same image every time) ---
+        // Nature
         { id: 'bg-mountain', name: 'Mountain',    type: 'photo', url: 'https://picsum.photos/id/1018/1920/1080' },
         { id: 'bg-canyon',   name: 'Canyon',      type: 'photo', url: 'https://picsum.photos/id/1016/1920/1080' },
         { id: 'bg-waterfall',name: 'Waterfall',   type: 'photo', url: 'https://picsum.photos/id/1039/1920/1080' },
@@ -6212,25 +6757,32 @@ function initThemePicker() {
         { id: 'bg-meadow',   name: 'Meadow',      type: 'photo', url: 'https://picsum.photos/id/1044/1920/1080' },
         { id: 'bg-river',    name: 'River',       type: 'photo', url: 'https://picsum.photos/id/1015/1920/1080' },
         { id: 'bg-snow-p',   name: 'Snow Peaks',  type: 'photo', url: 'https://picsum.photos/id/1036/1920/1080' },
+        // Ocean & Beach
         { id: 'bg-beach',    name: 'Beach',       type: 'photo', url: 'https://picsum.photos/id/1056/1920/1080' },
         { id: 'bg-ocean-p',  name: 'Ocean Waves', type: 'photo', url: 'https://picsum.photos/id/1061/1920/1080' },
+        // Sky & Sunset
         { id: 'bg-sunset-p', name: 'Sunset Sky',  type: 'photo', url: 'https://picsum.photos/id/1063/1920/1080' },
         { id: 'bg-dusk',     name: 'Dusk',        type: 'photo', url: 'https://picsum.photos/id/1065/1920/1080' },
         { id: 'bg-clouds-p', name: 'Clouds',      type: 'photo', url: 'https://picsum.photos/id/1066/1920/1080' },
         { id: 'bg-aurora-p', name: 'Aurora',      type: 'photo', url: 'https://picsum.photos/id/1055/1920/1080' },
+        // Urban
         { id: 'bg-city',     name: 'City Night',  type: 'photo', url: 'https://picsum.photos/id/1047/1920/1080' },
         { id: 'bg-city2',    name: 'Skyline',     type: 'photo', url: 'https://picsum.photos/id/1050/1920/1080' },
+        // Desert & Warm
         { id: 'bg-desert',   name: 'Desert',      type: 'photo', url: 'https://picsum.photos/id/1062/1920/1080' },
         { id: 'bg-warmrock', name: 'Red Rocks',   type: 'photo', url: 'https://picsum.photos/id/1058/1920/1080' },
+        // Mist & Trees
         { id: 'bg-mist',     name: 'Misty Forest',type: 'photo', url: 'https://picsum.photos/id/1088/1920/1080' },
         { id: 'bg-lonepine', name: 'Lone Pine',   type: 'photo', url: 'https://picsum.photos/id/1069/1920/1080' }
     ];
 
+    // ---------- Storage helpers ----------
     function getColor() { try { return localStorage.getItem(COLOR_KEY) || 'aurora'; } catch (e) { return 'aurora'; } }
     function getBg()    { try { return localStorage.getItem(BG_KEY) || 'bg-default'; } catch (e) { return 'bg-default'; } }
     function setColor(id) { try { localStorage.setItem(COLOR_KEY, id); } catch (e) {} }
     function setBg(id)    { try { localStorage.setItem(BG_KEY, id); } catch (e) {} }
 
+    // Hex → rgba
     function hexToRgba(hex, a) {
         hex = hex.replace('#', '');
         if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
@@ -6239,6 +6791,8 @@ function initThemePicker() {
         var b = parseInt(hex.substr(4, 2), 16);
         return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
     }
+
+    // Build the "Default" body background so it uses the current color theme's glow
     function buildThemedBody(t) {
         return [
             'radial-gradient(1200px 600px at 8% -10%, ' + hexToRgba(t.accent, 0.16) + ', transparent 50%)',
@@ -6246,6 +6800,8 @@ function initThemePicker() {
             'linear-gradient(180deg, #07131d 0%, #050a14 55%, #071018 100%)'
         ].join(', ');
     }
+
+    // Build a photo body background (with dark overlay + theme tint)
     function buildPhotoBody(url, t) {
         return [
             'linear-gradient(' + hexToRgba(t.accent, 0.06) + ', ' + hexToRgba(t.brand, 0.10) + ')',
@@ -6254,34 +6810,48 @@ function initThemePicker() {
         ].join(', ');
     }
 
+    // ---------- Apply color theme (every page) ----------
     function applyColorTheme(id) {
-        var t = COLOR_THEMES[id] || COLOR_THEMES.aurora;
+        const t = COLOR_THEMES[id] || COLOR_THEMES.aurora;
         document.body.style.setProperty('--accent', t.accent);
         document.body.style.setProperty('--accent-2', t.accent2);
         document.body.style.setProperty('--brand', t.brand);
         document.body.style.setProperty('--brand-hot', t.brandHot);
         document.body.dataset.colorTheme = id;
     }
+
+    // ---------- Apply background (every page) ----------
     function applyBackground(id) {
-        var bg = BACKGROUNDS.find(function (b) { return b.id === id; }) || BACKGROUNDS[0];
-        var t = COLOR_THEMES[getColor()] || COLOR_THEMES.aurora;
-        if (bg.type === 'default') document.body.style.background = buildThemedBody(t);
-        else if (bg.type === 'gradient') document.body.style.background = bg.css;
-        else if (bg.type === 'photo') document.body.style.background = buildPhotoBody(bg.url, t);
+        const bg  = BACKGROUNDS.find(function (b) { return b.id === id; }) || BACKGROUNDS[0];
+        const t   = COLOR_THEMES[getColor()] || COLOR_THEMES.aurora;
+
+        if (bg.type === 'default') {
+            // Use the color theme's glow — this is the "theme applies to the web" part
+            document.body.style.background = buildThemedBody(t);
+        } else if (bg.type === 'gradient') {
+            document.body.style.background = bg.css;
+        } else if (bg.type === 'photo') {
+            document.body.style.background = buildPhotoBody(bg.url, t);
+        }
     }
 
-    // Always apply saved theme on every page
-    applyColorTheme(getColor());
-    applyBackground(getBg());
+    // ---------- Boot: apply saved theme on EVERY page ----------
+    function boot() {
+        applyColorTheme(getColor());
+        applyBackground(getBg());
+    }
 
-    // Picker UI only on dashboard
+    if (document.body) boot();
+    else document.addEventListener('DOMContentLoaded', boot);
+
+    // ---------- Only build the picker UI on index.html ----------
     function isDashboard() {
         var p = window.location.pathname.split('/').pop() || 'index.html';
-        return p === 'index.html' || p === '' || /index\.html?$/i.test(p);
+        return p === 'index.html' || p === '' || p === '/' || /index\.html?$/i.test(p);
     }
     if (!isDashboard()) return;
-    if (document.querySelector('.theme-picker-fab')) return;
 
+    // Build FAB
     var fab = document.createElement('button');
     fab.className = 'theme-picker-fab';
     fab.type = 'button';
@@ -6289,25 +6859,40 @@ function initThemePicker() {
     fab.innerHTML = '🎨';
     document.body.appendChild(fab);
 
+    // Build overlay + panel
     var overlay = document.createElement('div');
     overlay.className = 'theme-picker-overlay';
-    overlay.innerHTML = '<div class="theme-picker-panel" role="dialog" aria-label="Theme and background picker">' +
-        '<div class="theme-picker-header"><h2>🎨 ' + getTranslation('theme_customize') + '</h2>' +
-        '<button class="theme-picker-close" type="button" aria-label="Close">✕</button></div>' +
-        '<div class="theme-picker-tabs">' +
-        '<button class="theme-picker-tab active" data-tab="colors" type="button">🎨 ' + getTranslation('theme_color') + '</button>' +
-        '<button class="theme-picker-tab" data-tab="backgrounds" type="button">🖼️ ' + getTranslation('theme_background') + '</button>' +
-        '</div>' +
-        '<div class="theme-picker-body">' +
-        '<div class="theme-picker-section active" data-section="colors"><h3>Choose a color theme</h3><div class="theme-swatch-grid" id="themeSwatchGrid"></div></div>' +
-        '<div class="theme-picker-section" data-section="backgrounds"><h3>' + getTranslation('theme_gradients') + '</h3><div class="theme-bg-grid" id="themeBgGradients"></div>' +
-        '<h3 style="margin-top:1.2rem;">' + getTranslation('theme_photos') + '</h3><div class="theme-bg-grid" id="themeBgPhotos"></div></div>' +
-        '</div>' +
-        '<div class="theme-picker-actions"><button class="reset-btn" type="button" id="themePickerReset">↺ ' + getTranslation('theme_reset') + '</button>' +
-        '<button type="button" id="themePickerDone">✓ ' + getTranslation('theme_done') + '</button></div>' +
-        '</div>';
+    overlay.innerHTML = `
+        <div class="theme-picker-panel" role="dialog" aria-label="Theme and background picker">
+            <div class="theme-picker-header">
+                <h2>🎨 Customize</h2>
+                <button class="theme-picker-close" type="button" aria-label="Close">✕</button>
+            </div>
+            <div class="theme-picker-tabs">
+                <button class="theme-picker-tab active" data-tab="colors" type="button">🎨 Color Theme</button>
+                <button class="theme-picker-tab" data-tab="backgrounds" type="button">🖼️ Background</button>
+            </div>
+            <div class="theme-picker-body">
+                <div class="theme-picker-section active" data-section="colors">
+                    <h3>Choose a color theme</h3>
+                    <div class="theme-swatch-grid" id="themeSwatchGrid"></div>
+                </div>
+                <div class="theme-picker-section" data-section="backgrounds">
+                    <h3>Gradients</h3>
+                    <div class="theme-bg-grid" id="themeBgGradients"></div>
+                    <h3 style="margin-top:1.2rem;">Photos</h3>
+                    <div class="theme-bg-grid" id="themeBgPhotos"></div>
+                </div>
+            </div>
+            <div class="theme-picker-actions">
+                <button class="reset-btn" type="button" id="themePickerReset">↺ Reset to default</button>
+                <button type="button" id="themePickerDone">✓ Done</button>
+            </div>
+        </div>
+    `;
     document.body.appendChild(overlay);
 
+    // Color swatches
     var swatchGrid = overlay.querySelector('#themeSwatchGrid');
     Object.keys(COLOR_THEMES).forEach(function (key) {
         var t = COLOR_THEMES[key];
@@ -6315,39 +6900,52 @@ function initThemePicker() {
         s.type = 'button';
         s.className = 'theme-swatch';
         s.dataset.theme = key;
-        s.innerHTML = '<span class="swatch-check">✓</span>' +
+        s.innerHTML =
+            '<span class="swatch-check">✓</span>' +
             '<div class="swatch-dots">' +
-            '<span class="swatch-dot" style="background:' + t.accent + '"></span>' +
-            '<span class="swatch-dot" style="background:' + t.brand + '"></span>' +
-            '<span class="swatch-dot" style="background:' + t.accent2 + '"></span>' +
+                '<span class="swatch-dot" style="background:' + t.accent + '"></span>' +
+                '<span class="swatch-dot" style="background:' + t.brand + '"></span>' +
+                '<span class="swatch-dot" style="background:' + t.accent2 + '"></span>' +
             '</div>' +
             '<div class="swatch-name">' + t.name + '</div>';
         s.addEventListener('click', function () {
             setColor(key);
             applyColorTheme(key);
+            // Re-apply the background so the themed glow updates instantly
             applyBackground(getBg());
             refreshSwatches();
         });
         swatchGrid.appendChild(s);
     });
 
+    // Background thumbnails
     var bgGradientsEl = overlay.querySelector('#themeBgGradients');
-    var bgPhotosEl = overlay.querySelector('#themeBgPhotos');
+    var bgPhotosEl    = overlay.querySelector('#themeBgPhotos');
 
     BACKGROUNDS.forEach(function (bg) {
-        if (bg.type === 'default') return;
+        if (bg.type === 'default') return; // skip default from thumbnails, reset button handles it
+
         var thumb = document.createElement('button');
         thumb.type = 'button';
         thumb.className = 'theme-bg-thumb';
         thumb.dataset.bg = bg.id;
-        if (bg.type === 'gradient') thumb.style.background = bg.css;
-        else if (bg.type === 'photo') thumb.style.background = 'url("' + bg.url + '") center/cover no-repeat';
-        thumb.innerHTML = '<span class="bg-check">✓</span><span class="bg-label">' + bg.name + '</span>';
+
+        if (bg.type === 'gradient') {
+            thumb.style.background = bg.css;
+        } else if (bg.type === 'photo') {
+            thumb.style.background = 'url("' + bg.url + '") center/cover no-repeat';
+        }
+
+        thumb.innerHTML =
+            '<span class="bg-check">✓</span>' +
+            '<span class="bg-label">' + bg.name + '</span>';
+
         thumb.addEventListener('click', function () {
             setBg(bg.id);
             applyBackground(bg.id);
             refreshBgThumbs();
         });
+
         if (bg.type === 'photo') bgPhotosEl.appendChild(thumb);
         else bgGradientsEl.appendChild(thumb);
     });
@@ -6367,6 +6965,7 @@ function initThemePicker() {
     refreshSwatches();
     refreshBgThumbs();
 
+    // Tabs
     overlay.querySelectorAll('.theme-picker-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
             overlay.querySelectorAll('.theme-picker-tab').forEach(function (t) { t.classList.remove('active'); });
@@ -6376,7 +6975,8 @@ function initThemePicker() {
         });
     });
 
-    function openPicker() { overlay.classList.add('open'); }
+    // Open / close
+    function openPicker()  { overlay.classList.add('open'); }
     function closePicker() { overlay.classList.remove('open'); }
     fab.addEventListener('click', openPicker);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closePicker(); });
@@ -6386,6 +6986,7 @@ function initThemePicker() {
         if (e.key === 'Escape' && overlay.classList.contains('open')) closePicker();
     });
 
+    // Reset
     overlay.querySelector('#themePickerReset').addEventListener('click', function () {
         if (!confirm('Reset theme and background to default?')) return;
         setColor('aurora');
@@ -6395,945 +6996,26 @@ function initThemePicker() {
         refreshSwatches();
         refreshBgThumbs();
     });
-}
 
+    // Public API
+    window.setStudyHubColorTheme = function (id) { setColor(id); applyColorTheme(id); applyBackground(getBg()); refreshSwatches(); };
+    window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
+})();
 // ================================================================
-// COMMAND PALETTE (Ctrl+K)
+// SEARCH SHORTCUTS — user-defined quick-launch tiles  (v4 · edit)
+//  • Add / Edit / Delete shortcuts with auto-fetched favicons
+//  • Blocks social media + shorteners + redirect wrappers
+//  • Deep-scans the FULL URL (path & query)
+//  • Purges any previously-saved shortcut that now matches the blocklist
+//  • Persists in localStorage
 // ================================================================
-function initCommandPalette() {
-    var CP_COMMANDS = [
-        { id: 'go.dash',    group: 'go', icon: '🚀', label: 'Dashboard',         hint: 'home · overview · stats',    action: function () { location.href = 'index.html'; } },
-        { id: 'go.notes',   group: 'go', icon: '✍️', label: 'Notes',             hint: 'jot · jotting · writing',   action: function () { location.href = 'notes.html'; } },
-        { id: 'go.habits',  group: 'go', icon: '🔥', label: 'Habits',            hint: 'streak · routine · daily',  action: function () { location.href = 'habits.html'; } },
-        { id: 'go.ai',      group: 'go', icon: '🤖', label: 'AI Tools',          hint: 'summarize · gpt · help',    action: function () { location.href = 'ai-tools.html'; } },
-        { id: 'go.files',   group: 'go', icon: '📂', label: 'Files',             hint: 'upload · storage · docs',   action: function () { location.href = 'files.html'; } },
-        { id: 'go.assign',  group: 'go', icon: '📋', label: 'Assignments',       hint: 'homework · deadline · due', action: function () { location.href = 'assignments.html'; } },
-        { id: 'go.planner', group: 'go', icon: '📅', label: 'Planner',           hint: 'schedule · timetable',      action: function () { location.href = 'planner.html'; } },
-        { id: 'go.flash',   group: 'go', icon: '🃏', label: 'Flashcards',        hint: 'cards · decks · review',    action: function () { location.href = 'flashcards.html'; } },
-        { id: 'go.read',    group: 'go', icon: '📖', label: 'Reading',           hint: 'articles · links · read',   action: function () { location.href = 'reading.html'; } },
-        { id: 'go.notice',  group: 'go', icon: '📢', label: 'Notice',            hint: 'pinboard · bulletin',       action: function () { location.href = 'notice.html'; } },
-        { id: 'do.pomoStart', group: 'do', icon: '▶', label: 'Start Pomodoro',   hint: 'timer · focus 25',    keywords: ['pomo','timer','focus'], action: function () { clickIfPresent('pomoStart'); } },
-        { id: 'do.pomoStop',  group: 'do', icon: '⏹', label: 'Stop Pomodoro',    hint: 'pause timer',         keywords: ['stop','pause','pomo'], action: function () { clickIfPresent('pomoStop'); } },
-        { id: 'do.dwStart',   group: 'do', icon: '⏱', label: 'Start Deep Work',  hint: 'flow · long focus',   keywords: ['deepwork','deep','flow'], action: function () { clickIfPresent('dwStart'); } },
-        { id: 'do.dwStop',    group: 'do', icon: '⏸', label: 'Stop Deep Work',   hint: 'end deep session',    keywords: ['deepwork','stop'], action: function () { clickIfPresent('dwStop'); } },
-        { id: 'do.focusOn',   group: 'do', icon: '🔓', label: 'Toggle Focus Mode', hint: 'do not disturb · zen', keywords: ['focus','zen','distraction'], action: function () { clickIfPresent('focusToggle'); } },
-        { id: 'do.blocker',   group: 'do', icon: '🛡️', label: 'Blocker Settings',  hint: 'block · distractions', keywords: ['block','shield','distraction'], action: function () { if (window.studyHubBlocker && window.studyHubBlocker.settings) window.studyHubBlocker.settings(); } },
-        { id: 'make.note',  group: 'make', icon: '📝', label: 'New Note',   hint: 'create · jot',     action: function () { goThenFocus('notes.html', 'noteInput'); } },
-        { id: 'make.habit', group: 'make', icon: '➕', label: 'New Habit',  hint: 'create · add',     action: function () { goThenFocus('habits.html', 'habitInput'); } },
-        { id: 'make.notice',group: 'make', icon: '📌', label: 'New Notice', hint: 'pin · announce',   action: function () { goThenFocus('notice.html', 'noticeInput'); } },
-        { id: 'tool.trash',    group: 'tool', icon: '🗑️', label: 'Open Trash',      hint: 'restore · deleted', action: function () { openTrashModal(); } },
-        { id: 'tool.calendar', group: 'tool', icon: '📅', label: 'Open Calendar',   hint: 'month · view',      action: function () { clickIfPresent('calendarExpandBtn'); } },
-        { id: 'tool.calc',     group: 'tool', icon: '🧮', label: 'Jump to Calculator', hint: 'math',           action: function () { var el = document.querySelector('.calculator-widget'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
-        { id: 'theme.picker',  group: 'theme', icon: '🎨', label: 'Customize Theme', hint: 'colors · wallpaper', action: function () { var b = document.querySelector('.theme-picker-fab'); if (b) b.click(); } }
-    ];
+(function () {
+    'use strict';
 
-    function clickIfPresent(id) { var el = document.getElementById(id); if (el) el.click(); }
-    function goThenFocus(url, inputId) {
-        location.href = url;
-        setTimeout(function () { var inp = document.getElementById(inputId); if (inp) inp.focus(); }, 400);
-    }
-
-    function fuzzyMatch(query, text) {
-        if (!query) return { score: 0, hits: [] };
-        var q = query.toLowerCase();
-        var t = text.toLowerCase();
-        var qi = 0, score = 0, hits = [], lastMatch = -1;
-        for (var ti = 0; ti < t.length && qi < q.length; ti++) {
-            if (t[ti] === q[qi]) {
-                if (lastMatch === ti - 1) score += 4;
-                if (ti === 0) score += 6;
-                score += 2;
-                hits.push(ti);
-                lastMatch = ti;
-                qi++;
-            }
-        }
-        if (qi < q.length) return { score: -1, hits: [] };
-        score += Math.max(0, 12 - text.length / 4);
-        return { score: score, hits: hits };
-    }
-
-    var GROUP_ORDER = ['recent', 'go', 'do', 'make', 'tool', 'theme'];
-    var GROUP_META = {
-        recent: { label: 'Recently Used', icon: '🕘' },
-        go:     { label: 'Go To',         icon: '🧭' },
-        do:     { label: 'Actions',       icon: '⚡' },
-        make:   { label: 'Create',        icon: '✨' },
-        tool:   { label: 'Tools',         icon: '🧰' },
-        theme:  { label: 'Appearance',    icon: '🎨' }
-    };
-
-    var RECENT_KEY = 'studyHubCmdRecent';
-    function loadRecent() { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { return []; } }
-    function pushRecent(id) {
-        var list = loadRecent().filter(function (x) { return x !== id; });
-        list.unshift(id);
-        try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 4))); } catch (e) {}
-    }
-
-    var cpActive = false;
-    var cpSelectedIdx = 0;
-    var cpFiltered = [];
-    var cpInput = null, cpResultsEl = null, cpPreviewEl = null;
-
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, function (ch) {
-            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
-        });
-    }
-
-    function openCommandPalette() {
-        if (cpActive) return;
-        cpActive = true;
-
-        var pal = document.createElement('div');
-        pal.className = 'command-palette';
-        pal.id = 'commandPalette';
-        pal.innerHTML = '<div class="cp-content" role="dialog" aria-label="Command palette">' +
-            '<div class="cp-input-wrap">' +
-            '<span class="cp-prompt" aria-hidden="true">›</span>' +
-            '<input type="text" id="cpInput" placeholder="Type a command or search…" autocomplete="off" spellcheck="false" />' +
-            '<span class="cp-kbd-hint"><kbd>Esc</kbd></span>' +
-            '</div>' +
-            '<div class="cp-body">' +
-            '<div class="cp-results" id="cpResults"></div>' +
-            '<div class="cp-preview" id="cpPreview"></div>' +
-            '</div>' +
-            '<div class="cp-footer">' +
-            '<span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>' +
-            '<span><kbd>↵</kbd> run</span>' +
-            '<span><kbd>Tab</kbd> autocomplete</span>' +
-            '<span class="cp-footer-spacer"></span>' +
-            '<span id="cpCounter"></span>' +
-            '</div>' +
-            '</div>';
-        document.body.appendChild(pal);
-
-        cpInput = document.getElementById('cpInput');
-        cpResultsEl = document.getElementById('cpResults');
-        cpPreviewEl = document.getElementById('cpPreview');
-
-        cpInput.addEventListener('input', onInput);
-        pal.addEventListener('click', function (e) { if (e.target === pal) closeCommandPalette(); });
-
-        onInput();
-        requestAnimationFrame(function () { cpInput.focus(); });
-    }
-
-    function closeCommandPalette() {
-        if (!cpActive) return;
-        cpActive = false;
-        var pal = document.getElementById('commandPalette');
-        if (pal) pal.remove();
-        cpInput = cpResultsEl = cpPreviewEl = null;
-    }
-
-    function onInput() {
-        var raw = cpInput.value.trim();
-        var query = raw.replace(/^[>#@]\s*/, '').trim();
-
-        var allowedGroups = null;
-        if (raw.charAt(0) === '>') allowedGroups = ['do', 'make'];
-        else if (raw.charAt(0) === '@') allowedGroups = ['go'];
-        else if (raw.charAt(0) === '#') allowedGroups = ['tool', 'theme'];
-
-        var recent = loadRecent();
-        var pool = CP_COMMANDS.filter(function (c) {
-            return !allowedGroups || allowedGroups.indexOf(c.group) !== -1;
-        });
-
-        var scored = pool.map(function (cmd) {
-            var haystack = [cmd.label, cmd.hint || '', (cmd.keywords || []).join(' ')].join(' ');
-            var m = fuzzyMatch(query, haystack);
-            var score = m.score;
-            if (!query && recent.indexOf(cmd.id) !== -1) score += 500 - recent.indexOf(cmd.id) * 10;
-            score += (GROUP_ORDER.length - GROUP_ORDER.indexOf(cmd.group)) * 0.5;
-            return { cmd: cmd, score: score, hits: m.hits };
-        }).filter(function (x) { return x.score >= 0; });
-
-        scored.sort(function (a, b) { return b.score - a.score; });
-
-        cpFiltered = [];
-        if (!query) {
-            recent.slice(0, 4).forEach(function (id) {
-                var found = scored.find(function (x) { return x.cmd.id === id; });
-                if (found) cpFiltered.push({ cmd: found.cmd, score: found.score, hits: [], group: 'recent' });
-            });
-            scored.forEach(function (x) {
-                if (!cpFiltered.some(function (y) { return y.cmd.id === x.cmd.id; })) {
-                    cpFiltered.push({ cmd: x.cmd, score: x.score, hits: x.hits, group: x.cmd.group });
-                }
-            });
-        } else {
-            cpFiltered = scored.map(function (x) {
-                return { cmd: x.cmd, score: x.score, hits: x.hits, group: x.cmd.group };
-            });
-        }
-
-        cpSelectedIdx = 0;
-        renderCpResults();
-    }
-
-    function moveSelection(delta) {
-        if (!cpFiltered.length) return;
-        cpSelectedIdx = (cpSelectedIdx + delta + cpFiltered.length) % cpFiltered.length;
-        renderCpResults();
-        var sel = cpResultsEl && cpResultsEl.querySelector('.cp-item.selected');
-        if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
-    }
-
-    function runSelected() {
-        var item = cpFiltered[cpSelectedIdx];
-        if (!item) return;
-        runCommand(item.cmd);
-    }
-
-    function runCommand(cmd) {
-        pushRecent(cmd.id);
-        closeCommandPalette();
-        setTimeout(function () {
-            try { cmd.action(); } catch (e) { console.error('[cmd]', cmd.id, e); }
-        }, 30);
-    }
-
-    function highlightLabel(label, hits) {
-        if (!hits || !hits.length) return escapeHtml(label);
-        var set = new Set(hits);
-        var out = '';
-        for (var i = 0; i < label.length; i++) {
-            var ch = label[i];
-            out += set.has(i) ? '<mark>' + escapeHtml(ch) + '</mark>' : escapeHtml(ch);
-        }
-        return out;
-    }
-
-    function renderCpResults() {
-        if (!cpResultsEl) return;
-        var counter = document.getElementById('cpCounter');
-        if (counter) counter.textContent = cpFiltered.length + ' result' + (cpFiltered.length === 1 ? '' : 's');
-
-        if (!cpFiltered.length) {
-            cpResultsEl.innerHTML = '<div class="cp-empty"><div class="cp-empty-icon">🔍</div><div class="cp-empty-title">No commands match</div><div class="cp-empty-hint">Try a different word, or press <kbd>Esc</kbd> to close.</div></div>';
-            if (cpPreviewEl) cpPreviewEl.innerHTML = '';
-            return;
-        }
-
-        var groups = [];
-        var current = null;
-        cpFiltered.forEach(function (item, idx) {
-            if (!current || current.key !== item.group) {
-                current = { key: item.group, items: [] };
-                groups.push(current);
-            }
-            current.items.push({ item: item, idx: idx });
-        });
-
-        var html = groups.map(function (g) {
-            var meta = GROUP_META[g.key] || { label: g.key, icon: '•' };
-            var rows = g.items.map(function (entry) {
-                var i = entry.idx;
-                var item = entry.item;
-                var selected = i === cpSelectedIdx;
-                var labelHtml = highlightLabel(item.cmd.label, item.hits);
-                return '<div class="cp-item' + (selected ? ' selected' : '') + '" data-idx="' + i + '" role="option" aria-selected="' + (selected ? 'true' : 'false') + '">' +
-                    '<span class="cp-icon" aria-hidden="true">' + (item.cmd.icon || '•') + '</span>' +
-                    '<span class="cp-label">' + labelHtml + '</span>' +
-                    '<span class="cp-hint">' + (item.cmd.hint || '') + '</span>' +
-                    '<span class="cp-enter" aria-hidden="true">↵</span>' +
-                    '</div>';
-            }).join('');
-            return '<div class="cp-group"><div class="cp-group-title"><span class="cp-group-icon">' + meta.icon + '</span><span>' + meta.label + '</span></div>' + rows + '</div>';
-        }).join('');
-
-        cpResultsEl.innerHTML = html;
-
-        cpResultsEl.querySelectorAll('.cp-item').forEach(function (el) {
-            el.addEventListener('mousemove', function () {
-                var idx = parseInt(el.dataset.idx, 10);
-                if (idx !== cpSelectedIdx) {
-                    cpSelectedIdx = idx;
-                    renderCpResults();
-                }
-            });
-            el.addEventListener('click', function () {
-                cpSelectedIdx = parseInt(el.dataset.idx, 10);
-                runSelected();
-            });
-        });
-
-        renderPreview();
-    }
-
-    function renderPreview() {
-        if (!cpPreviewEl) return;
-        var item = cpFiltered[cpSelectedIdx];
-        if (!item) { cpPreviewEl.innerHTML = ''; return; }
-        var c = item.cmd;
-        var meta = GROUP_META[c.group] || { label: c.group, icon: '•' };
-        cpPreviewEl.innerHTML = '<div class="cp-preview-icon">' + (c.icon || '•') + '</div>' +
-            '<div class="cp-preview-body">' +
-            '<div class="cp-preview-label">' + escapeHtml(c.label) + '</div>' +
-            (c.hint ? '<div class="cp-preview-hint">' + escapeHtml(c.hint) + '</div>' : '') +
-            '<div class="cp-preview-group"><span class="cp-preview-group-icon">' + meta.icon + '</span><span>' + meta.label + '</span></div>' +
-            '<div class="cp-preview-id">#' + escapeHtml(c.id) + '</div>' +
-            '</div>';
-    }
-
-    // Global key handler
-    document.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            cpActive ? closeCommandPalette() : openCommandPalette();
-            return;
-        }
-        if (!cpActive) return;
-
-        if (e.key === 'Escape') { e.preventDefault(); closeCommandPalette(); }
-        else if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); moveSelection(-1); }
-        else if (e.key === 'Home') { e.preventDefault(); cpSelectedIdx = 0; renderCpResults(); }
-        else if (e.key === 'End') { e.preventDefault(); cpSelectedIdx = Math.max(0, cpFiltered.length - 1); renderCpResults(); }
-        else if (e.key === 'Enter') { e.preventDefault(); runSelected(); }
-        else if (e.key === 'Tab') {
-            e.preventDefault();
-            if (cpFiltered[cpSelectedIdx]) {
-                cpInput.value = cpFiltered[cpSelectedIdx].cmd.label;
-                onInput();
-            }
-        }
-    });
-}
-
-// ================================================================
-// BLOCKER + FOCUS MODE (single implementation)
-// ================================================================
-function initBlockerAndFocus() {
-    var FOCUS_GOAL_DEFAULT = 60;
-
-    var CATS = {
-        social:   { label: '📱 Social Media',       domains: ['facebook.com','fb.com','fb.me','messenger.com','instagram.com','instagr.am','twitter.com','x.com','t.co','tiktok.com','douyin.com','snapchat.com','reddit.com','redd.it','pinterest.com','pin.it','tumblr.com','linkedin.com','lnkd.in','whatsapp.com','wa.me','telegram.org','telegram.me','t.me','telegram.dog','teleg.run','discord.com','discord.gg','wechat.com','vk.com','vkontakte.ru','weibo.com','threads.net','threads.com','mastodon.social','bsky.app','clubhouse.com','bereal.com','4chan.org','imgur.com','9gag.com','quora.com','flickr.com','meetup.com','nextdoor.com'] },
-        video:    { label: '🎬 Video & Streaming',  domains: ['netflix.com','hulu.com','disneyplus.com','primevideo.com','hbomax.com','max.com','peacocktv.com','twitch.tv','kick.com','rumble.com','dailymotion.com','vimeo.com','spotify.com','soundcloud.com','deezer.com','tidal.com'] },
-        gaming:   { label: '🎮 Gaming',             domains: ['steamcommunity.com','steampowered.com','epicgames.com','roblox.com','minecraft.net','playstation.com','xbox.com','ign.com','gamespot.com','polygon.com'] },
-        shopping: { label: '🛒 Shopping',           domains: ['amazon.com','ebay.com','aliexpress.com','alibaba.com','etsy.com','walmart.com','target.com','bestbuy.com','shein.com','temu.com','wish.com','daraz.com','flipkart.com'] }
-    };
-
-    var LOCKED_CATS = { social: true, video: true, gaming: true };
-
-    function isBlockerOn() {
-        if (window.__blockerEmergencyOff) return false;
-        return true;
-    }
-
-    function buildBlockedSet() {
-        var d = loadData();
-        var enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false };
-        var set = {};
-        Object.keys(CATS).forEach(function (k) {
-            if (LOCKED_CATS[k] || enabled[k]) {
-                CATS[k].domains.forEach(function (dom) { set[dom] = k; });
-            }
-        });
-        (d.blockerCustomBlocked || []).forEach(function (dom) {
-            set[String(dom).toLowerCase().replace(/^www\./, '')] = 'custom';
-        });
-        (d.blockerCustomAllowed || []).forEach(function (dom) {
-            delete set[String(dom).toLowerCase().replace(/^www\./, '')];
-        });
-        return set;
-    }
-
-    function matchBlocked(host) {
-        host = String(host || '').toLowerCase().replace(/^www\./, '');
-        var d = loadData();
-        var wl = d.blockerWhitelist || {};
-        if (wl[host] && wl[host] > Date.now()) return null;
-        var set = buildBlockedSet();
-        if (set[host]) return { domain: host, cat: set[host] };
-        var parts = host.split('.');
-        for (var i = 1; i < parts.length - 1; i++) {
-            var sub = parts.slice(i).join('.');
-            if (set[sub]) return { domain: sub, cat: set[sub] };
-        }
-        return null;
-    }
-
-    function logBlocked(domain, cat, source) {
-        var d = loadData();
-        if (!d.blockerLog) d.blockerLog = [];
-        d.blockerLog.push({ ts: Date.now(), domain: domain, cat: cat || 'other', src: source || 'click' });
-        if (d.blockerLog.length > 200) d.blockerLog.splice(0, d.blockerLog.length - 200);
-        if (!d.blockerStats) d.blockerStats = { today: 0, total: 0, lastReset: '' };
-        var today = todayStr();
-        if (d.blockerStats.lastReset !== today) { d.blockerStats.today = 0; d.blockerStats.lastReset = today; }
-        d.blockerStats.today++;
-        d.blockerStats.total++;
-        saveData(d);
-        updateBannerCount();
-    }
-
-    function updateBannerCount() {
-        var banner = document.getElementById('blockerBanner');
-        if (!banner) return;
-        var d = loadData();
-        var s = d.blockerStats || { today: 0, total: 0 };
-        var t = (s.lastReset === todayStr()) ? s.today : 0;
-        var el = banner.querySelector('.blocker-count');
-        if (el) el.textContent = t;
-    }
-
-    function showBlockerToast(msg, type) {
-        var old = document.getElementById('fbtToast');
-        if (old) old.remove();
-        var t = document.createElement('div');
-        t.className = 'fbt-toast' + (type ? ' ' + type : '');
-        t.id = 'fbtToast';
-        t.textContent = msg;
-        document.body.appendChild(t);
-        requestAnimationFrame(function () { t.classList.add('show'); });
-        setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 300); }, 2600);
-    }
-
-    function showBlockPopup(domain, cat) {
-        var old = document.getElementById('blockerModal');
-        if (old) old.remove();
-        var label = (CATS[cat] && CATS[cat].label) || '🚫 Blocked';
-        var modal = document.createElement('div');
-        modal.className = 'blocker-modal';
-        modal.id = 'blockerModal';
-        modal.innerHTML = '<div class="blocker-modal-panel">' +
-            '<div class="blocker-modal-icon">🛡️</div>' +
-            '<h3>' + getTranslation('blocked_alert_title') + '</h3>' +
-            '<p class="blocker-domain">' + domain + '</p>' +
-            '<p class="blocker-cat">' + label + '</p>' +
-            '<p class="blocker-msg">This site is on your distraction list. Stay focused — you can do this.</p>' +
-            '<div class="blocker-actions">' +
-            '<button class="btn-allow-once" data-domain="' + domain + '">Allow 5 min</button>' +
-            '<button class="btn-close-blocker">Got it</button>' +
-            '</div>' +
-            '</div>';
-        document.body.appendChild(modal);
-        requestAnimationFrame(function () { modal.classList.add('open'); });
-        modal.querySelector('.btn-close-blocker').addEventListener('click', function () {
-            modal.classList.remove('open');
-            setTimeout(function () { modal.remove(); }, 220);
-        });
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 220); }
-        });
-        modal.querySelector('.btn-allow-once').addEventListener('click', function () {
-            var d = loadData();
-            if (!d.blockerWhitelist) d.blockerWhitelist = {};
-            d.blockerWhitelist[domain] = Date.now() + 5 * 60 * 1000;
-            saveData(d);
-            modal.classList.remove('open');
-            setTimeout(function () { modal.remove(); }, 220);
-            showBlockerToast('Allowed ' + domain + ' for 5 minutes', 'ok');
-        });
-    }
-
-    function paintBlocker() {
-        document.body.classList.add('blocker-active');
-        var banner = document.getElementById('blockerBanner');
-        if (!banner) {
-            banner = document.createElement('div');
-            banner.className = 'blocker-banner';
-            banner.id = 'blockerBanner';
-            var main = document.querySelector('main.container') || document.body;
-            main.insertBefore(banner, main.firstChild);
-        }
-        if (!banner.querySelector('.blocker-banner-btn')) {
-            banner.innerHTML = '🛡️ <strong>Blocker is on.</strong>' +
-                '<span class="blocker-count-chip"><span class="blocker-count">0</span> blocked today</span>' +
-                '<button class="blocker-banner-btn" data-act="settings">⚙ Settings</button>' +
-                '<button class="blocker-banner-btn" data-act="log">📜 Log</button>';
-            banner.addEventListener('click', function (e) {
-                var b = e.target.closest('.blocker-banner-btn');
-                if (!b) return;
-                var act = b.dataset.act;
-                if (act === 'settings') openBlockerSettings();
-                else if (act === 'log') openBlockerLog();
-            });
-        }
-        banner.style.display = 'flex';
-        updateBannerCount();
-    }
-
-    function openBlockerSettings() {
-        var ex = document.getElementById('blockerSettingsModal');
-        if (ex) ex.remove();
-        var d = loadData();
-        var enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false };
-        var custom = d.blockerCustomBlocked || [];
-        var allowed = d.blockerCustomAllowed || [];
-
-        var modal = document.createElement('div');
-        modal.className = 'blocker-settings-modal';
-        modal.id = 'blockerSettingsModal';
-        var html = '<div class="blocker-settings-panel">';
-        html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
-        html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
-        html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">— 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
-        Object.keys(CATS).forEach(function (k) {
-            var locked = !!LOCKED_CATS[k];
-            html += '<label class="bs-cat' + (locked ? ' bs-cat-locked' : '') + '"' +
-                (locked ? ' title="This category is locked on and cannot be removed"' : '') + '>' +
-                '<input type="checkbox" data-cat="' + k + '" ' +
-                (locked || enabled[k] ? 'checked' : '') + ' ' + (locked ? 'disabled' : '') + '>' +
-                '<span>' + CATS[k].label + '</span>' +
-                (locked ? '<span class="bs-lock-badge">🔒 Locked</span>' : '') +
-                '<span class="bs-cat-count">' + CATS[k].domains.length + '</span></label>';
-        });
-        html += '</div></div>';
-        html += '<div class="bs-section"><h3>Custom blocklist</h3>';
-        html += '<div class="bs-add-row"><input type="text" id="bsAddInput" placeholder="e.g. example.com"><button class="bs-add-btn" type="button">+ Add</button></div>';
-        html += '<div class="bs-custom-list" id="bsCustomList">';
-        if (!custom.length) html += '<div class="bs-empty">No custom domains yet.</div>';
-        else custom.forEach(function (dom) {
-            html += '<div class="bs-custom-item"><span>' + dom + '</span><button data-remove="' + dom + '" type="button">✕</button></div>';
-        });
-        html += '</div></div>';
-        if (allowed.length) {
-            html += '<div class="bs-section"><h3>Always allowed</h3><div class="bs-custom-list">';
-            allowed.forEach(function (dom) {
-                html += '<div class="bs-custom-item bs-allowed"><span>' + dom + '</span><button data-unallow="' + dom + '" type="button">✕</button></div>';
-            });
-            html += '</div></div>';
-        }
-        html += '<div class="bs-section bs-stats">';
-        html += '<div class="bs-stat"><b>' + ((d.blockerStats && d.blockerStats.total) || 0) + '</b><span>total blocked</span></div>';
-        html += '<div class="bs-stat"><b>' + ((d.blockerLog && d.blockerLog.length) || 0) + '</b><span>recent events</span></div>';
-        html += '</div></div>';
-
-        modal.innerHTML = html;
-        document.body.appendChild(modal);
-        requestAnimationFrame(function () { modal.classList.add('open'); });
-
-        function close() {
-            modal.classList.remove('open');
-            setTimeout(function () { modal.remove(); }, 220);
-            paintBlocker();
-        }
-        modal.querySelector('.bs-close').addEventListener('click', function (e) {
-            e.preventDefault(); e.stopPropagation(); close();
-        });
-        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-        var escHandler = function (e) {
-            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
-        };
-        document.addEventListener('keydown', escHandler);
-
-        modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                var dd = loadData();
-                if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false };
-                dd.blockerCategories[cb.dataset.cat] = cb.checked;
-                saveData(dd);
-            });
-        });
-
-        var addInp = modal.querySelector('#bsAddInput');
-        function addCustom() {
-            var raw = addInp.value.trim().toLowerCase();
-            var val = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-            if (!val || val.indexOf('.') === -1) {
-                addInp.style.borderColor = '#fca5a5';
-                setTimeout(function () { addInp.style.borderColor = ''; }, 1200);
-                return;
-            }
-            var dd = loadData();
-            if (!dd.blockerCustomBlocked) dd.blockerCustomBlocked = [];
-            if (dd.blockerCustomBlocked.indexOf(val) === -1) dd.blockerCustomBlocked.push(val);
-            if (dd.blockerCustomAllowed) dd.blockerCustomAllowed = dd.blockerCustomAllowed.filter(function (x) { return x !== val; });
-            saveData(dd);
-            close();
-            setTimeout(openBlockerSettings, 250);
-        }
-        modal.querySelector('.bs-add-btn').addEventListener('click', addCustom);
-        addInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addCustom(); });
-
-        modal.querySelectorAll('[data-remove]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                var dd = loadData();
-                dd.blockerCustomBlocked = (dd.blockerCustomBlocked || []).filter(function (x) { return x !== b.dataset.remove; });
-                saveData(dd);
-                b.parentElement.remove();
-            });
-        });
-        modal.querySelectorAll('[data-unallow]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                var dd = loadData();
-                dd.blockerCustomAllowed = (dd.blockerCustomAllowed || []).filter(function (x) { return x !== b.dataset.unallow; });
-                saveData(dd);
-                b.parentElement.remove();
-            });
-        });
-    }
-
-    function openBlockerLog() {
-        var ex = document.getElementById('blockerLogModal');
-        if (ex) ex.remove();
-        var d = loadData();
-        var log = (d.blockerLog || []).slice().reverse();
-        var modal = document.createElement('div');
-        modal.className = 'blocker-settings-modal';
-        modal.id = 'blockerLogModal';
-        var html = '<div class="blocker-settings-panel">';
-        html += '<div class="blocker-settings-head"><h2>📜 Blocked attempts</h2><button class="bs-close" type="button">✕</button></div>';
-        html += '<p class="bs-desc">Every time you (or a link) tried to reach a blocked site.</p>';
-        if (!log.length) {
-            html += '<div class="bs-empty" style="padding:2rem 0;text-align:center;">🎉 No blocked attempts yet. Keep it up!</div>';
-        } else {
-            html += '<div class="blocker-log-list">';
-            log.forEach(function (item) {
-                var t = new Date(item.ts);
-                var time = t.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-                html += '<div class="blocker-log-item"><span class="bl-dot"></span><div class="bl-info">' +
-                    '<span class="bl-domain">' + item.domain + '</span>' +
-                    '<span class="bl-meta">' + time + ' · ' + (item.src || 'click') + '</span></div></div>';
-            });
-            html += '</div>';
-        }
-        html += '</div>';
-        modal.innerHTML = html;
-        document.body.appendChild(modal);
-        requestAnimationFrame(function () { modal.classList.add('open'); });
-
-        function close() {
-            modal.classList.remove('open');
-            setTimeout(function () { modal.remove(); }, 220);
-        }
-        modal.querySelector('.bs-close').addEventListener('click', function (e) {
-            e.preventDefault(); e.stopPropagation(); close();
-        });
-        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-        var escHandler = function (e) {
-            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
-        };
-        document.addEventListener('keydown', escHandler);
-    }
-
-    // ---- Focus mode ----
-    var focusTick = null;
-
-    function getFocusSession() { return loadData().focusSession || null; }
-    function setFocusSession(s) { var d = loadData(); d.focusSession = s; saveData(d); }
-    function getFocusGoal() { return loadData().focusGoalMin || FOCUS_GOAL_DEFAULT; }
-    function isFocusOn() { return document.body.classList.contains('focus-mode'); }
-
-    function startFocusSession() {
-        setFocusSession({
-            startTs: Date.now(),
-            distract: 0,
-            goalMin: getFocusGoal()
-        });
-    }
-
-    function endFocusSession() {
-        var s = getFocusSession();
-        if (!s) {
-            document.body.classList.remove('focus-mode');
-            paintFocusButton();
-            return;
-        }
-        var durMin = Math.round((Date.now() - s.startTs) / 60000);
-        if (durMin < 1) {
-            setFocusSession(null);
-            document.body.classList.remove('focus-mode');
-            paintFocusButton();
-            return;
-        }
-        var score = 100 - (s.distract * 5);
-        if (durMin < s.goalMin * 0.5) score -= 15;
-        if (durMin < 5) score -= 20;
-        score = Math.max(0, Math.min(100, score));
-        var goalMet = durMin >= s.goalMin;
-
-        var d = loadData();
-        if (!d.focusLog) d.focusLog = [];
-        d.focusLog.push({
-            date: todayStr(),
-            startTs: s.startTs,
-            endTs: Date.now(),
-            minutes: durMin,
-            distract: s.distract,
-            score: score,
-            goalMet: goalMet
-        });
-        if (d.focusLog.length > 500) d.focusLog.splice(0, d.focusLog.length - 500);
-        d.focusSession = null;
-        saveData(d);
-
-        document.body.classList.remove('focus-mode');
-        paintFocusButton();
-        showFocusSummary({ durMin: durMin, distract: s.distract, score: score, goalMet: goalMet, goalMin: s.goalMin });
-    }
-
-    function showFocusSummary(data) {
-        var streak = computeFocusStreak();
-        var todayMin = computeTodayFocusMin();
-        var msg = data.goalMet
-            ? '🏆 Goal crushed! You\'re on fire.'
-            : data.durMin >= data.goalMin * 0.5
-                ? '👍 Solid session. Keep going!'
-                : '💪 Every minute counts. Try again!';
-
-        var modal = document.createElement('div');
-        modal.className = 'focus-summary-modal';
-        modal.innerHTML = '<div class="focus-summary-panel">' +
-            '<div class="fs-icon">' + (data.goalMet ? '🏆' : '🎯') + '</div>' +
-            '<h2>Session Complete</h2>' +
-            '<div class="fs-grid">' +
-            '<div class="fs-stat"><span class="fs-label">Duration</span><span class="fs-val">' + data.durMin + '<small>min</small></span></div>' +
-            '<div class="fs-stat"><span class="fs-label">Goal</span><span class="fs-val">' + data.goalMin + '<small>min</small></span></div>' +
-            '<div class="fs-stat"><span class="fs-label">Distractions</span><span class="fs-val">' + data.distract + '</span></div>' +
-            '<div class="fs-stat"><span class="fs-label">Score</span><span class="fs-val">' + data.score + '<small>/100</small></span></div>' +
-            '</div>' +
-            '<div class="fs-badge' + (data.goalMet ? ' met' : '') + '">' + (data.goalMet ? '✅ Goal met' : '⚠️ Goal not met') + '</div>' +
-            '<div class="fs-extra"><span>🔥 ' + streak + ' day streak</span><span>📅 ' + todayMin + ' min today</span></div>' +
-            '<p class="fs-msg">' + msg + '</p>' +
-            '<button class="fs-close" type="button">Close</button>' +
-            '</div>';
-        document.body.appendChild(modal);
-        requestAnimationFrame(function () { modal.classList.add('open'); });
-        function close() { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 300); }
-        modal.querySelector('.fs-close').addEventListener('click', close);
-        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-    }
-
-    function computeFocusStreak() {
-        var log = loadData().focusLog || [];
-        if (!log.length) return 0;
-        var dates = Array.from(new Set(log.map(function (l) { return l.date; }))).sort().reverse();
-        if (!dates.length) return 0;
-        var t = todayStr();
-        var d = new Date();
-        d.setDate(d.getDate() - 1);
-        var y = d.toISOString().slice(0, 10);
-        var check = t;
-        if (dates[0] !== check) {
-            if (dates[0] !== y) return 0;
-            check = y;
-        }
-        var set = new Set(dates);
-        var cursor = new Date(check);
-        var streak = 0;
-        while (set.has(cursor.toISOString().slice(0, 10))) {
-            streak++;
-            cursor.setDate(cursor.getDate() - 1);
-        }
-        return streak;
-    }
-
-    function computeTodayFocusMin() {
-        var log = loadData().focusLog || [];
-        var t = todayStr();
-        return log.filter(function (l) { return l.date === t; }).reduce(function (s, l) { return s + l.minutes; }, 0);
-    }
-
-    function ensureFocusBar() {
-        var bar = document.getElementById('focusIndicatorBar');
-        if (bar) return bar;
-        bar = document.createElement('div');
-        bar.id = 'focusIndicatorBar';
-        bar.className = 'focus-indicator-bar';
-        bar.innerHTML = '<span>🔒</span>' +
-            '<span>FOCUS MODE</span>' +
-            '<span class="fb-timer" id="fbTimer">00:00</span>' +
-            '<span class="fb-sep">·</span>' +
-            '<span class="fb-stat">Goal <b id="fbGoal">60</b>m</span>' +
-            '<span class="fb-sep">·</span>' +
-            '<span class="fb-stat">👀 <b id="fbDist">0</b></span>' +
-            '<span class="fb-sep">·</span>' +
-            '<span class="fb-stat">⚡ <b id="fbScore">100</b></span>' +
-            '<button class="fb-icon-btn" id="fbGoalBtn" title="Change goal">⚙</button>' +
-            '<button class="fb-end" id="fbEndBtn" type="button">End</button>';
-        document.body.insertBefore(bar, document.body.firstChild);
-        bar.querySelector('#fbEndBtn').addEventListener('click', function () {
-            if (confirm('End this focus session?')) endFocusSession();
-        });
-        bar.querySelector('#fbGoalBtn').addEventListener('click', function () {
-            var cur = getFocusGoal();
-            var n = parseInt(prompt('Daily focus goal (minutes):', cur), 10);
-            if (!isNaN(n) && n > 0) {
-                var d = loadData();
-                d.focusGoalMin = Math.max(5, Math.min(480, n));
-                saveData(d);
-                var s = getFocusSession();
-                if (s) { s.goalMin = d.focusGoalMin; setFocusSession(s); }
-                tickFocusBar();
-            }
-        });
-        return bar;
-    }
-
-    function tickFocusBar() {
-        var s = getFocusSession();
-        if (!s || !isFocusOn()) return;
-        var elapsed = Math.floor((Date.now() - s.startTs) / 1000);
-        var m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        var sec = String(elapsed % 60).padStart(2, '0');
-        var t = document.getElementById('fbTimer'); if (t) t.textContent = m + ':' + sec;
-        var g = document.getElementById('fbGoal'); if (g) g.textContent = s.goalMin;
-        var dd = document.getElementById('fbDist'); if (dd) dd.textContent = s.distract;
-        var score = 100 - (s.distract * 5);
-        if (elapsed / 60 < 5) score = Math.min(score, 70);
-        var sc = document.getElementById('fbScore'); if (sc) sc.textContent = Math.max(0, score);
-    }
-
-    function paintFocusButton() {
-        var btn = document.getElementById('focusToggle');
-        if (!btn) return;
-        var on = isFocusOn();
-        btn.textContent = on ? '🔒 ' + getTranslation('focus_on') : '🔓 ' + getTranslation('focus_off');
-        btn.classList.toggle('active', on);
-    }
-
-    function setupFocusButton() {
-        var btn = document.getElementById('focusToggle');
-        if (!btn || btn.dataset.bound) return;
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', function () {
-            if (isFocusOn()) {
-                endFocusSession();
-            } else {
-                document.body.classList.add('focus-mode');
-                ensureFocusBar();
-                startFocusSession();
-                paintFocusButton();
-            }
-        });
-    }
-
-    document.addEventListener('visibilitychange', function () {
-        if (!isFocusOn()) return;
-        var s = getFocusSession();
-        if (!s) return;
-        if (document.hidden) {
-            window.__focusHiddenAt = Date.now();
-        } else {
-            if (window.__focusHiddenAt && (Date.now() - window.__focusHiddenAt) > 3000) {
-                var s2 = getFocusSession();
-                if (s2) {
-                    s2.distract = (s2.distract || 0) + 1;
-                    setFocusSession(s2);
-                    var bar = document.getElementById('focusIndicatorBar');
-                    if (bar) { bar.classList.add('warning'); setTimeout(function () { bar.classList.remove('warning'); }, 2500); }
-                }
-            }
-            window.__focusHiddenAt = 0;
-        }
-    });
-
-    // ---- Click and window.open interception ----
-    document.addEventListener('click', function (e) {
-        if (!isBlockerOn()) return;
-        var a = e.target.closest && e.target.closest('a');
-        if (!a) return;
-        var host = '';
-        try { host = new URL(a.href).hostname; } catch (err) { return; }
-        var m = matchBlocked(host);
-        if (!m) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        logBlocked(m.domain, m.cat, 'click');
-        showBlockPopup(m.domain, m.cat);
-    }, true);
-
-    if (!window.__fbOpenHooked) {
-        window.__fbOpenHooked = true;
-        var origOpen = window.open;
-        window.open = function (url) {
-            if (isBlockerOn() && url) {
-                var host = '';
-                try { host = new URL(url, location.href).hostname; } catch (err) {}
-                var m = matchBlocked(host);
-                if (m) {
-                    logBlocked(m.domain, m.cat, 'window.open');
-                    showBlockPopup(m.domain, m.cat);
-                    return null;
-                }
-            }
-            return origOpen.apply(window, arguments);
-        };
-    }
-
-    if (!window.__fbSubmitHooked) {
-        window.__fbSubmitHooked = true;
-        document.addEventListener('submit', function (e) {
-            if (!isBlockerOn()) return;
-            var form = e.target;
-            if (!form || !form.action) return;
-            var host = '';
-            try { host = new URL(form.action).hostname; } catch (err) { return; }
-            var m = matchBlocked(host);
-            if (!m) return;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            logBlocked(m.domain, m.cat, 'form');
-            showBlockPopup(m.domain, m.cat);
-        }, true);
-    }
-
-    // ---- Boot ----
-    paintBlocker();
-    setupFocusButton();
-    paintFocusButton();
-
-    if (focusTick) clearInterval(focusTick);
-    focusTick = setInterval(tickFocusBar, 1000);
-
-    setInterval(function () {
-        var d = loadData();
-        var today = todayStr();
-        if (d.blockerStats && d.blockerStats.lastReset !== today) {
-            d.blockerStats.today = 0;
-            d.blockerStats.lastReset = today;
-            saveData(d);
-            updateBannerCount();
-        }
-    }, 60000);
-
-    // ---- Public API ----
-    window.studyHubFocus = {
-        start: function () { if (!isFocusOn()) { var b = document.getElementById('focusToggle'); if (b) b.click(); } },
-        end: function () { if (isFocusOn()) endFocusSession(); },
-        isOn: isFocusOn,
-        setGoal: function (min) {
-            var d = loadData();
-            d.focusGoalMin = Math.max(5, Math.min(480, min));
-            saveData(d);
-        },
-        getStreak: computeFocusStreak,
-        getTodayMinutes: computeTodayFocusMin,
-        log: function () { return loadData().focusLog || []; }
-    };
-
-    window.studyHubBlocker = {
-        isOn: isBlockerOn,
-        toggle: function () {},
-        settings: openBlockerSettings,
-        log: openBlockerLog,
-        allowOnce: function (domain, min) {
-            var d = loadData();
-            if (!d.blockerWhitelist) d.blockerWhitelist = {};
-            d.blockerWhitelist[domain] = Date.now() + (min || 5) * 60000;
-            saveData(d);
-        },
-        emergencyDisable: function () {
-            if (!confirm('Disable the blocker for THIS SESSION only? Reload the page to restore it.')) return;
-            window.__blockerEmergencyOff = true;
-            if (typeof window.showToast === 'function') window.showToast('Blocker disabled for this session.', 'ok');
-        }
-    };
-}
-
-// ================================================================
-// SEARCH SHORTCUTS (quick-launch tiles on dashboard)
-// ================================================================
-function initShortcuts() {
     var SHORTCUTS_KEY = 'studyHubShortcuts';
-    var editingId = null;
+    var editingId = null;   // when set, submitShortcut updates in place
 
+    // ---- Hostname blocklist ----
     var SOCIAL_HOSTS = [
         'facebook.com', 'fb.com', 'fb.me', 'fb.watch', 'messenger.com', 'm.me', 'fbsbx.com',
         'instagram.com', 'instagr.am', 'igtv.com',
@@ -7366,6 +7048,7 @@ function initShortcuts() {
         'twitch.tv', 'kick.com', 'rumble.com', 'dailymotion.com',
         'vimeo.com', 'spotify.com', 'soundcloud.com', 'deezer.com'
     ];
+
     var SHORTENER_HOSTS = [
         'bit.ly', 'bitly.com', 'tinyurl.com', 'tiny.cc', 'cutt.ly', 'cutt.us',
         'shorturl.at', 'rebrand.ly', 'rebrandly.com', 'is.gd', 'v.gd',
@@ -7388,8 +7071,23 @@ function initShortcuts() {
         'shr.be', 'shr.link', 'shrt.li', 'short.am', 'zzb.bz',
         'tr.im', 'tweez.me', 'tinurl.com', 'tinylink.co', 'zpr.io'
     ];
-    var SOCIAL_KEYWORDS = ['telegram','facebook','instagram','twitter','tiktok','snapchat','reddit','pinterest','discord','whatsapp','tumblr','linkedin','wechat','weixin','vkontakte','mastodon','bluesky','threads.net','clubhouse','truthsocial','netflix','twitch.tv','spotify','soundcloud','dailymotion','shorte.st','linkvertise','shrinkme','gplinks','mdiskshort','mdisk.me'];
-    var SHORTENER_KEYWORDS = ['bit.ly','bitly.com','tinyurl','cutt.ly','cutt.us','shorturl.at','rebrand.ly','rebrandly','shorte.st','adf.ly','shrinkme','shrinkearn','linkvertise','linkshrink','urlcash','gplinks','mdiskshort','ouo.io','gestyy','corneey','destyy','hyperurl','shrtco.de','shorturl','shrinkforcloud'];
+
+    var SOCIAL_KEYWORDS = [
+        'telegram', 'facebook', 'instagram', 'twitter', 'tiktok', 'snapchat',
+        'reddit', 'pinterest', 'discord', 'whatsapp', 'tumblr', 'linkedin',
+        'wechat', 'weixin', 'vkontakte', 'mastodon', 'bluesky', 'threads.net',
+        'clubhouse', 'truthsocial', 'netflix', 'twitch.tv', 'spotify',
+        'soundcloud', 'dailymotion', 'shorte.st', 'linkvertise', 'shrinkme',
+        'gplinks', 'mdiskshort', 'mdisk.me'
+    ];
+
+    var SHORTENER_KEYWORDS = [
+        'bit.ly', 'bitly.com', 'tinyurl', 'cutt.ly', 'cutt.us',
+        'shorturl.at', 'rebrand.ly', 'rebrandly', 'shorte.st', 'adf.ly',
+        'shrinkme', 'shrinkearn', 'linkvertise', 'linkshrink', 'urlcash',
+        'gplinks', 'mdiskshort', 'ouo.io', 'gestyy', 'corneey', 'destyy',
+        'hyperurl', 'shrtco.de', 'shorturl', 'shrinkforcloud'
+    ];
 
     function matchHost(host, list) {
         var h = String(host || '').toLowerCase().replace(/^www\./, '');
@@ -7399,8 +7097,9 @@ function initShortcuts() {
         }
         return null;
     }
-    function isSocialHost(host) { return matchHost(host, SOCIAL_HOSTS); }
+    function isSocialHost(host)    { return matchHost(host, SOCIAL_HOSTS); }
     function isShortenerHost(host) { return matchHost(host, SHORTENER_HOSTS); }
+
     function deepScan(fullUrl) {
         var lower = String(fullUrl || '').toLowerCase();
         for (var i = 0; i < SOCIAL_KEYWORDS.length; i++) {
@@ -7412,12 +7111,13 @@ function initShortcuts() {
         return null;
     }
     function checkUrl(fullUrl, hostname) {
-        var s = isSocialHost(hostname); if (s) return { kind: 'social', domain: s };
+        var s = isSocialHost(hostname);    if (s) return { kind: 'social', domain: s };
         var h = isShortenerHost(hostname); if (h) return { kind: 'shortener', domain: h };
-        var d = deepScan(fullUrl); if (d) return d;
+        var d = deepScan(fullUrl);         if (d) return d;
         return null;
     }
 
+    // ---- Storage ----
     function loadShortcuts() {
         try {
             var raw = localStorage.getItem(SHORTCUTS_KEY);
@@ -7430,13 +7130,61 @@ function initShortcuts() {
         try { localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(list)); } catch (e) {}
     }
 
-    function showShortcutToast(kind, domain, extraCount, extraName) {
+    function purgeBlockedShortcuts() {
+        var list = loadShortcuts();
+        if (!list.length) return 0;
+        var kept = [], removed = 0, lastBlocked = null;
+        for (var i = 0; i < list.length; i++) {
+            var sc = list[i];
+            var host = '';
+            try { host = new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) {}
+            var verdict = checkUrl(sc.url, host);
+            if (verdict) { removed++; lastBlocked = { item: sc, verdict: verdict }; }
+            else kept.push(sc);
+        }
+        if (removed > 0) {
+            saveShortcuts(kept);
+            if (lastBlocked) {
+                setTimeout(function () {
+                    showToast('removed', lastBlocked.verdict.domain, removed, lastBlocked.item.name);
+                }, 500);
+            }
+        }
+        return removed;
+    }
+
+    // ---- URL parsing ----
+    function normalizeUrl(input) {
+        var u = String(input || '').trim();
+        if (!u) return null;
+        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+        try {
+            var parsed = new URL(u);
+            if (!parsed.hostname.includes('.')) return null;
+            return parsed;
+        } catch (e) { return null; }
+    }
+    function prettyName(host, given) {
+        if (given && given.trim()) return given.trim();
+        var h = String(host || '').replace(/^www\./, '');
+        var first = h.split('.')[0];
+        return first.charAt(0).toUpperCase() + first.slice(1);
+    }
+    function faviconFor(host) {
+        return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=64';
+    }
+
+    // ---- Toast ----
+    function showToast(kind, domain, extraCount, extraName) {
         var old = document.getElementById('shortcutBlockToast');
         if (old) old.remove();
         var icon, heading, body;
         if (kind === 'shortener') {
             icon = '⛓️'; heading = 'Shortened links aren\'t allowed.';
-            body = 'Please enter the site\'s real address — a shortener could be hiding anything.';
+            body = 'Please enter the site&rsquo;s real address — a shortener could be hiding anything.';
+        } else if (kind === 'redirect') {
+            icon = '🔁'; heading = 'Redirect links aren\'t allowed.';
+            body = 'Please enter the site&rsquo;s real address directly, not through a redirect service.';
         } else if (kind === 'removed') {
             icon = '🧹'; heading = 'Removed a blocked shortcut.';
             body = '"' + (extraName || domain) + '" matched our blocked list (' + domain + ').';
@@ -7448,7 +7196,8 @@ function initShortcuts() {
         var t = document.createElement('div');
         t.className = 'shortcut-block-toast';
         t.id = 'shortcutBlockToast';
-        t.innerHTML = '<span style="font-size:1.2rem;">' + icon + '</span>' +
+        t.innerHTML =
+            '<span style="font-size:1.2rem;">' + icon + '</span>' +
             '<span><strong>' + heading + '</strong><br>' + body + '</span>' +
             '<button class="toast-close" aria-label="Close">✕</button>';
         document.body.appendChild(t);
@@ -7464,53 +7213,12 @@ function initShortcuts() {
         }, 5200);
     }
 
-    function purgeBlockedShortcuts() {
-        var list = loadShortcuts();
-        if (!list.length) return;
-        var kept = [], removed = 0, lastBlocked = null;
-        for (var i = 0; i < list.length; i++) {
-            var sc = list[i];
-            var host = '';
-            try { host = new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) {}
-            var verdict = checkUrl(sc.url, host);
-            if (verdict) { removed++; lastBlocked = { item: sc, verdict: verdict }; }
-            else kept.push(sc);
-        }
-        if (removed > 0) {
-            saveShortcuts(kept);
-            if (lastBlocked) {
-                setTimeout(function () {
-                    showShortcutToast('removed', lastBlocked.verdict.domain, removed, lastBlocked.item.name);
-                }, 500);
-            }
-        }
-    }
-
-    function normalizeUrl(input) {
-        var u = String(input || '').trim();
-        if (!u) return null;
-        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-        try {
-            var parsed = new URL(u);
-            if (parsed.hostname.indexOf('.') === -1) return null;
-            return parsed;
-        } catch (e) { return null; }
-    }
-    function prettyName(host, given) {
-        if (given && given.trim()) return given.trim();
-        var h = String(host || '').replace(/^www\./, '');
-        var first = h.split('.')[0];
-        return first.charAt(0).toUpperCase() + first.slice(1);
-    }
-    function faviconFor(host) {
-        return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=64';
-    }
-
-    var grid = document.getElementById('shortcutsGrid');
-    var empty = document.getElementById('shortcutsEmpty');
-    if (!grid) return;
-
+    // ---- Render ----
     function renderShortcuts() {
+        var grid  = document.getElementById('shortcutsGrid');
+        var empty = document.getElementById('shortcutsEmpty');
+        if (!grid) return;
+
         var list = loadShortcuts();
         grid.innerHTML = '';
 
@@ -7522,6 +7230,7 @@ function initShortcuts() {
             tile.rel = 'noopener noreferrer';
             tile.title = sc.url;
 
+            // Logo
             var logo = document.createElement('div');
             logo.className = 'sc-logo';
             var img = document.createElement('img');
@@ -7533,27 +7242,32 @@ function initShortcuts() {
             };
             logo.appendChild(img);
 
+            // Name
             var name = document.createElement('div');
             name.className = 'sc-name';
             name.textContent = sc.name;
 
+            // Edit button (top-left)
             var editBtn = document.createElement('button');
             editBtn.className = 'sc-edit';
             editBtn.type = 'button';
             editBtn.title = 'Edit shortcut';
             editBtn.textContent = '✎';
             editBtn.addEventListener('click', function (e) {
-                e.preventDefault(); e.stopPropagation();
+                e.preventDefault();
+                e.stopPropagation();
                 openEditModal(sc);
             });
 
+            // Delete button (top-right)
             var delBtn = document.createElement('button');
             delBtn.className = 'sc-delete';
             delBtn.type = 'button';
             delBtn.title = 'Remove shortcut';
             delBtn.textContent = '✕';
             delBtn.addEventListener('click', function (e) {
-                e.preventDefault(); e.stopPropagation();
+                e.preventDefault();
+                e.stopPropagation();
                 if (!confirm('Remove "' + sc.name + '" shortcut?')) return;
                 var fresh = loadShortcuts().filter(function (x) { return x.id !== sc.id; });
                 saveShortcuts(fresh);
@@ -7577,22 +7291,31 @@ function initShortcuts() {
         if (empty) empty.style.display = list.length === 0 ? 'block' : 'none';
     }
 
+    // ---- Modal ----
     var modal = null;
     function buildModal() {
         if (modal) return modal;
         modal = document.createElement('div');
         modal.className = 'shortcut-modal';
         modal.id = 'shortcutModal';
-        modal.innerHTML = '<div class="shortcut-modal-panel" role="dialog" aria-label="Shortcut editor">' +
-            '<h3 id="scModalTitle">🔗 Add a shortcut</h3>' +
-            '<div class="field"><label for="scUrlInput">Website URL</label>' +
-            '<input type="text" id="scUrlInput" placeholder="e.g. khanacademy.org" autocomplete="off" />' +
-            '<div class="hint">Paste the site\'s real address — no shorteners, no redirects.</div></div>' +
-            '<div class="field"><label for="scNameInput">Display name <span style="opacity:.6;text-transform:none;letter-spacing:0;">(optional)</span></label>' +
-            '<input type="text" id="scNameInput" placeholder="e.g. Khan Academy" autocomplete="off" /></div>' +
-            '<div class="btn-row"><button type="button" class="btn-cancel" id="scCancelBtn">Cancel</button>' +
-            '<button type="button" class="btn-save" id="scSaveBtn">Save shortcut</button></div>' +
-            '</div>';
+        modal.innerHTML = `
+            <div class="shortcut-modal-panel" role="dialog" aria-label="Shortcut editor">
+                <h3 id="scModalTitle">🔗 Add a shortcut</h3>
+                <div class="field">
+                    <label for="scUrlInput">Website URL</label>
+                    <input type="text" id="scUrlInput" placeholder="e.g. khanacademy.org" autocomplete="off" />
+                    <div class="hint">Paste the site&rsquo;s real address — no shorteners, no redirects.</div>
+                </div>
+                <div class="field">
+                    <label for="scNameInput">Display name <span style="opacity:.6;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                    <input type="text" id="scNameInput" placeholder="e.g. Khan Academy" autocomplete="off" />
+                </div>
+                <div class="btn-row">
+                    <button type="button" class="btn-cancel" id="scCancelBtn">Cancel</button>
+                    <button type="button" class="btn-save" id="scSaveBtn">Save shortcut</button>
+                </div>
+            </div>
+        `;
         document.body.appendChild(modal);
 
         modal.addEventListener('click', function (e) { if (e.target === modal) closeAddModal(); });
@@ -7621,6 +7344,7 @@ function initShortcuts() {
         m.classList.add('open');
         setTimeout(function () { m.querySelector('#scUrlInput').focus(); }, 60);
     }
+
     function openEditModal(sc) {
         editingId = sc.id;
         var m = buildModal();
@@ -7632,9 +7356,11 @@ function initShortcuts() {
         m.classList.add('open');
         setTimeout(function () {
             var inp = m.querySelector('#scUrlInput');
-            inp.focus(); inp.select();
+            inp.focus();
+            inp.select();
         }, 60);
     }
+
     function closeAddModal() {
         if (modal) modal.classList.remove('open');
         editingId = null;
@@ -7642,7 +7368,7 @@ function initShortcuts() {
 
     function submitShortcut() {
         var m = buildModal();
-        var urlInp = m.querySelector('#scUrlInput');
+        var urlInp  = m.querySelector('#scUrlInput');
         var nameInp = m.querySelector('#scNameInput');
 
         var parsed = normalizeUrl(urlInp.value);
@@ -7652,729 +7378,801 @@ function initShortcuts() {
             setTimeout(function () { urlInp.style.borderColor = ''; }, 1400);
             return;
         }
+
         var host = parsed.hostname.replace(/^www\./, '');
         var verdict = checkUrl(parsed.href, host);
         if (verdict) {
-            showShortcutToast(verdict.kind, verdict.domain);
+            showToast(verdict.kind, verdict.domain);
             closeAddModal();
             return;
         }
+
         var list = loadShortcuts();
-        var dupe = list.some(function (s) { return s.host === host && s.id !== editingId; });
+
+        // Duplicate check — ignore the entry we're currently editing
+        var dupe = list.some(function (s) {
+            return s.host === host && s.id !== editingId;
+        });
         if (dupe) {
             urlInp.style.borderColor = '#fbbf24';
             setTimeout(function () { urlInp.style.borderColor = ''; }, 1400);
             return;
         }
+
         var newName = prettyName(host, nameInp.value);
+
         if (editingId) {
+            // ---- EDIT: update in place ----
             for (var i = 0; i < list.length; i++) {
                 if (list[i].id === editingId) {
                     list[i].name = newName;
-                    list[i].url = parsed.href;
+                    list[i].url  = parsed.href;
                     list[i].host = host;
                     break;
                 }
             }
         } else {
-            list.push({ id: uid(), name: newName, url: parsed.href, host: host });
+            // ---- ADD: new entry ----
+            list.push({
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                name: newName,
+                url: parsed.href,
+                host: host
+            });
         }
+
         saveShortcuts(list);
         renderShortcuts();
         closeAddModal();
     }
 
-    purgeBlockedShortcuts();
-    renderShortcuts();
+    // ---- Boot ----
+    function boot() {
+        if (!document.getElementById('shortcutsGrid')) return;
+        purgeBlockedShortcuts();
+        renderShortcuts();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
 
+    // Public API
     window.addStudyHubShortcut = function (url, name) {
         var parsed = normalizeUrl(url);
         if (!parsed) return false;
         var host = parsed.hostname.replace(/^www\./, '');
         var verdict = checkUrl(parsed.href, host);
-        if (verdict) { showShortcutToast(verdict.kind, verdict.domain); return false; }
+        if (verdict) { showToast(verdict.kind, verdict.domain); return false; }
         var list = loadShortcuts();
-        list.push({ id: uid(), name: prettyName(host, name), url: parsed.href, host: host });
+        list.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            name: prettyName(host, name),
+            url: parsed.href,
+            host: host
+        });
         saveShortcuts(list);
         renderShortcuts();
         return true;
     };
-}
-
+})();
 // ================================================================
-// BREAK REMINDER — every 50 minutes
+// FOCUS MODE + DISTRACTION BLOCKER — FULL POWER EDITION (v2)
 // ================================================================
-function initBreakReminder() {
-    var breakKey = 'studyHubLastBreakReminder';
-    var INTERVAL = 50 * 60 * 1000;
-    var breakTick = null;
+(function () {
+    'use strict';
 
-    function fireReminder() {
-        try {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('☕ Time for a break!', { body: 'You have been studying for 50 minutes. Stand up, stretch, and rest your eyes.' });
+    const STORAGE = 'studyHubData';
+    const FOCUS_GOAL_DEFAULT = 60;
+
+    function readD() { try { return JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch (e) { return {}; } }
+    function writeD(d) { try { localStorage.setItem(STORAGE, JSON.stringify(d)); } catch (e) {} }
+    function today() { return new Date().toISOString().slice(0,10); }
+    function yest() { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+
+    // ---------- Categories ----------
+    const CATS = {
+        social:   { label: '📱 Social Media',       domains: ['facebook.com','fb.com','fb.me','messenger.com','instagram.com','instagr.am','twitter.com','x.com','t.co','tiktok.com','douyin.com','snapchat.com','reddit.com','redd.it','pinterest.com','pin.it','tumblr.com','linkedin.com','lnkd.in','whatsapp.com','wa.me','telegram.org','telegram.me','t.me','telegram.dog','teleg.run','discord.com','discord.gg','wechat.com','vk.com','vkontakte.ru','weibo.com','threads.net','threads.com','mastodon.social','bsky.app','clubhouse.com','bereal.com','4chan.org','imgur.com','9gag.com','quora.com','flickr.com','meetup.com','nextdoor.com'] },
+        video:    { label: '🎬 Video & Streaming',  domains: ['netflix.com','hulu.com','disneyplus.com','primevideo.com','hbomax.com','max.com','peacocktv.com','twitch.tv','kick.com','rumble.com','dailymotion.com','vimeo.com','spotify.com','soundcloud.com','deezer.com','tidal.com'] },
+        gaming:   { label: '🎮 Gaming',             domains: ['steamcommunity.com','steampowered.com','epicgames.com','roblox.com','minecraft.net','playstation.com','xbox.com','ign.com','gamespot.com','polygon.com'] },
+        shopping: { label: '🛒 Shopping',           domains: ['amazon.com','ebay.com','aliexpress.com','alibaba.com','etsy.com','walmart.com','target.com','bestbuy.com','shein.com','temu.com','wish.com','daraz.com','flipkart.com'] }
+    };
+
+    // Categories that can NEVER be turned off
+    const LOCKED_CATS = { social: true, video: true, gaming: true };
+
+    function buildBlockedSet() {
+        const d = readD();
+        const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false };
+        const set = {};
+        Object.keys(CATS).forEach(function (k) {
+            // Locked categories are ALWAYS on, regardless of stored value
+            if (LOCKED_CATS[k] || enabled[k]) {
+                CATS[k].domains.forEach(function (dom) { set[dom] = k; });
             }
-        } catch (e) {}
-        try { localStorage.setItem(breakKey, String(Date.now())); } catch (e) {}
-        if (typeof window.showToast === 'function') {
-            try { window.showToast('☕ Time for a break! You have been studying for 50 minutes.', 'ok'); } catch (e) {}
-        }
+        });
+        (d.blockerCustomBlocked || []).forEach(function (dom) {
+            set[String(dom).toLowerCase().replace(/^www\./, '')] = 'custom';
+        });
+        (d.blockerCustomAllowed || []).forEach(function (dom) {
+            delete set[String(dom).toLowerCase().replace(/^www\./, '')];
+        });
+        return set;
     }
 
-    function startTimer() {
-        if (breakTick) clearInterval(breakTick);
-        breakTick = setInterval(fireReminder, INTERVAL);
+    function matchBlocked(host) {
+        host = String(host || '').toLowerCase().replace(/^www\./, '');
+        const d = readD();
+        const wl = d.blockerWhitelist || {};
+        if (wl[host] && wl[host] > Date.now()) return null;
+        const set = buildBlockedSet();
+        if (set[host]) return { domain: host, cat: set[host] };
+        const parts = host.split('.');
+        for (let i = 1; i < parts.length - 1; i++) {
+            const sub = parts.slice(i).join('.');
+            if (set[sub]) return { domain: sub, cat: set[sub] };
+        }
+        return null;
     }
 
-    var last = parseInt(localStorage.getItem(breakKey) || '0', 10);
-    var now = Date.now();
-    if (last && (now - last) >= INTERVAL) fireReminder();
-    else if (!last) try { localStorage.setItem(breakKey, String(now)); } catch (e) {}
+       // Blocker is permanently on. The optional console override lets you
+    // disable it for the current session only (resets on reload).
+    function isBlockerOn() {
+        if (window.__blockerEmergencyOff) return false;
+        return true;
+    }
 
-    startTimer();
+    function logBlocked(domain, cat, source) {
+        const d = readD();
+        if (!d.blockerLog) d.blockerLog = [];
+        d.blockerLog.push({ ts: Date.now(), domain: domain, cat: cat || 'other', src: source || 'click' });
+        if (d.blockerLog.length > 200) d.blockerLog.splice(0, d.blockerLog.length - 200);
+        if (!d.blockerStats) d.blockerStats = { today: 0, total: 0, lastReset: '' };
+        if (d.blockerStats.lastReset !== today()) { d.blockerStats.today = 0; d.blockerStats.lastReset = today(); }
+        d.blockerStats.today++;
+        d.blockerStats.total++;
+        writeD(d);
+        updateBannerCount();
+    }
 
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) {
-            if (breakTick) { clearInterval(breakTick); breakTick = null; }
-        } else {
-            startTimer();
+    function updateBannerCount() {
+        const banner = document.getElementById('blockerBanner');
+        if (!banner) return;
+        const d = readD();
+        const s = d.blockerStats || { today: 0, total: 0 };
+        const t = (s.lastReset === today()) ? s.today : 0;
+        const el = banner.querySelector('.blocker-count');
+        if (el) el.textContent = t;
+    }
+
+    // ---------- Intercepts ----------
+    function interceptClick(e) {
+        if (!isBlockerOn()) return;
+        const a = e.target.closest && e.target.closest('a');
+        if (!a) return;
+        let host = '';
+        try { host = new URL(a.href).hostname; } catch (err) { return; }
+        const m = matchBlocked(host);
+        if (!m) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        logBlocked(m.domain, m.cat, 'click');
+        showBlockPopup(m.domain, m.cat);
+    }
+
+    function interceptOpen() {
+        if (window.__fbOpenHooked) return;
+        window.__fbOpenHooked = true;
+        const orig = window.open;
+        window.open = function (url) {
+            if (isBlockerOn() && url) {
+                let host = '';
+                try { host = new URL(url, location.href).hostname; } catch (err) {}
+                const m = matchBlocked(host);
+                if (m) {
+                    logBlocked(m.domain, m.cat, 'window.open');
+                    showBlockPopup(m.domain, m.cat);
+                    return null;
+                }
+            }
+            return orig.apply(window, arguments);
+        };
+    }
+
+    function interceptSubmit() {
+        if (window.__fbSubmitHooked) return;
+        window.__fbSubmitHooked = true;
+        document.addEventListener('submit', function (e) {
+            if (!isBlockerOn()) return;
+            const form = e.target;
+            if (!form || !form.action) return;
+            let host = '';
+            try { host = new URL(form.action).hostname; } catch (err) { return; }
+            const m = matchBlocked(host);
+            if (!m) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            logBlocked(m.domain, m.cat, 'form');
+            showBlockPopup(m.domain, m.cat);
+        }, true);
+    }
+
+    // ---------- Popups ----------
+    function showBlockPopup(domain, cat) {
+        const old = document.getElementById('blockerModal');
+        if (old) old.remove();
+        const label = (CATS[cat] && CATS[cat].label) || '🚫 Blocked';
+        const modal = document.createElement('div');
+        modal.className = 'blocker-modal';
+        modal.id = 'blockerModal';
+        modal.innerHTML =
+            '<div class="blocker-modal-panel">' +
+                '<div class="blocker-modal-icon">🛡️</div>' +
+                '<h3>Blocked!</h3>' +
+                '<p class="blocker-domain">' + domain + '</p>' +
+                '<p class="blocker-cat">' + label + '</p>' +
+                '<p class="blocker-msg">This site is on your distraction list. Stay focused — you can do this.</p>' +
+                '<div class="blocker-actions">' +
+                    '<button class="btn-allow-once" data-domain="' + domain + '">Allow 5 min</button>' +
+                    '<button class="btn-close-blocker">Got it</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+        modal.querySelector('.btn-close-blocker').addEventListener('click', function () {
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+        });
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 220); }
+        });
+        modal.querySelector('.btn-allow-once').addEventListener('click', function () {
+            const d = readD();
+            if (!d.blockerWhitelist) d.blockerWhitelist = {};
+            d.blockerWhitelist[domain] = Date.now() + 5 * 60 * 1000;
+            writeD(d);
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+            showToast('Allowed ' + domain + ' for 5 minutes', 'ok');
+        });
+    }
+
+    function showToast(msg, type) {
+        const old = document.getElementById('fbtToast');
+        if (old) old.remove();
+        const t = document.createElement('div');
+        t.className = 'fbt-toast' + (type ? ' ' + type : '');
+        t.id = 'fbtToast';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        requestAnimationFrame(function () { t.classList.add('show'); });
+        setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 300); }, 2600);
+    }
+
+       function paintBlocker() {
+        // Blocker is always on — no button to update.
+        document.body.classList.add('blocker-active');
+
+        let banner = document.getElementById('blockerBanner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.className = 'blocker-banner';
+            banner.id = 'blockerBanner';
+            const main = document.querySelector('main.container') || document.body;
+            main.insertBefore(banner, main.firstChild);
         }
+
+        // (Re)build the banner's inner content if it doesn't already have our buttons.
+        // This handles the static banner that already exists inside index.html.
+        if (!banner.querySelector('.blocker-banner-btn')) {
+            banner.innerHTML =
+                '🛡️ <strong>Blocker is on.</strong>' +
+                '<span class="blocker-count-chip"><span class="blocker-count">0</span> blocked today</span>' +
+                '<button class="blocker-banner-btn" data-act="settings">⚙ Settings</button>' +
+                '<button class="blocker-banner-btn" data-act="log">📜 Log</button>';
+            banner.addEventListener('click', function (e) {
+                const b = e.target.closest('.blocker-banner-btn');
+                if (!b) return;
+                const act = b.dataset.act;
+                if (act === 'settings') openBlockerSettings();
+                else if (act === 'log') openBlockerLog();
+            });
+        }
+
+        banner.style.display = 'flex';
+        updateBannerCount();
+    }
+
+    function setupBlockerButton() {
+        const btn = document.getElementById('blockerToggle');
+        if (!btn || btn.dataset.fbtHooked) return;
+        btn.dataset.fbtHooked = '1';
+        btn.addEventListener('click', function (e) {
+            if (e.shiftKey) { openBlockerSettings(); return; }
+            const d = readD();
+            d.blockerOn = !d.blockerOn;
+            writeD(d);
+            paintBlocker();
+        });
+        btn.addEventListener('contextmenu', function (e) { e.preventDefault(); openBlockerSettings(); });
+    }
+
+    function openBlockerSettings() {
+    const ex = document.getElementById('blockerSettingsModal');
+    if (ex) ex.remove();
+    const d = readD();
+    const enabled = d.blockerCategories || { social: true, video: true, gaming: true, shopping: false };
+    const custom = d.blockerCustomBlocked || [];
+    const allowed = d.blockerCustomAllowed || [];
+
+    const modal = document.createElement('div');
+    modal.className = 'blocker-settings-modal';
+    modal.id = 'blockerSettingsModal';
+    let html = '<div class="blocker-settings-panel">';
+    html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
+    html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
+    html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">— 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
+    Object.keys(CATS).forEach(function (k) {
+        var locked = !!LOCKED_CATS[k];
+        html += '<label class="bs-cat' + (locked ? ' bs-cat-locked' : '') + '"' +
+                (locked ? ' title="This category is locked on and cannot be removed"' : '') + '>' +
+                '<input type="checkbox" data-cat="' + k + '" ' +
+                    (locked || enabled[k] ? 'checked' : '') + ' ' +
+                    (locked ? 'disabled' : '') + '>' +
+                '<span>' + CATS[k].label + '</span>' +
+                (locked ? '<span class="bs-lock-badge">🔒 Locked</span>' : '') +
+                '<span class="bs-cat-count">' + CATS[k].domains.length + '</span></label>';
+    });
+    html += '</div></div>';
+    html += '<div class="bs-section"><h3>Custom blocklist</h3>';
+    html += '<div class="bs-add-row"><input type="text" id="bsAddInput" placeholder="e.g. example.com"><button class="bs-add-btn" type="button">+ Add</button></div>';
+    html += '<div class="bs-custom-list" id="bsCustomList">';
+    if (!custom.length) html += '<div class="bs-empty">No custom domains yet.</div>';
+    else custom.forEach(function (dom) {
+        html += '<div class="bs-custom-item"><span>' + dom + '</span><button data-remove="' + dom + '" type="button">✕</button></div>';
+    });
+    html += '</div></div>';
+    if (allowed.length) {
+        html += '<div class="bs-section"><h3>Always allowed</h3><div class="bs-custom-list">';
+        allowed.forEach(function (dom) {
+            html += '<div class="bs-custom-item bs-allowed"><span>' + dom + '</span><button data-unallow="' + dom + '" type="button">✕</button></div>';
+        });
+        html += '</div></div>';
+    }
+    html += '<div class="bs-section bs-stats">';
+    html += '<div class="bs-stat"><b>' + ((d.blockerStats && d.blockerStats.total) || 0) + '</b><span>total blocked</span></div>';
+    html += '<div class="bs-stat"><b>' + ((d.blockerLog && d.blockerLog.length) || 0) + '</b><span>recent events</span></div>';
+    html += '</div></div>';
+
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+    requestAnimationFrame(function () { modal.classList.add('open'); });
+
+    // ---- Close behaviour ----
+    function close() {
+        modal.classList.remove('open');
+        setTimeout(function () { modal.remove(); }, 220);
+        paintBlocker();
+    }
+
+    // ✕ button
+    var closeBtn = modal.querySelector('.bs-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+        });
+    }
+
+    // Click backdrop to close
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) close();
     });
 
-    window.studyHubBreakReminder = {
-        reset: function () { try { localStorage.setItem(breakKey, String(Date.now())); } catch (e) {} },
-        fire: fireReminder,
-        stop: function () { if (breakTick) { clearInterval(breakTick); breakTick = null; } }
+    // ESC to close
+    var escHandler = function (e) {
+        if (e.key === 'Escape') {
+            close();
+            document.removeEventListener('keydown', escHandler);
+        }
     };
-}
+    document.addEventListener('keydown', escHandler);
 
-// ================================================================
-// AI PLANNER (planner.html — natural-language → schedule)
-// ================================================================
-function initAIPlanner() {
-    var inputEl = document.getElementById('plannerAiInput');
-    var btn = document.getElementById('plannerAiBtn');
-    var output = document.getElementById('plannerAiOutput');
-    if (!inputEl || !btn || !output) return;
-
-    var ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    var ALL_HOURS = ['7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
-    var MEAL_HOURS = { '12:00': 'Lunch', '13:00': 'Lunch', '19:00': 'Dinner', '20:00': 'Dinner' };
-    var DAY_NAMES = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
-        monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
-        friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
-
-    var SUBJECT_MAP = {
-        math: 'Math', maths: 'Math', mathematics: 'Math', algebra: 'Math', calculus: 'Math',
-        geometry: 'Math', trig: 'Math', trigonometry: 'Math', arithmetic: 'Math',
-        stats: 'Statistics', statistics: 'Statistics', probability: 'Statistics',
-        physics: 'Physics', phy: 'Physics',
-        chemistry: 'Chemistry', chem: 'Chemistry',
-        biology: 'Biology', bio: 'Biology',
-        science: 'Science', sci: 'Science',
-        coding: 'Coding', code: 'Coding', program: 'Coding', programming: 'Coding',
-        cs: 'Computer Science', 'computer science': 'Computer Science',
-        'data structures': 'Data Structures', dsa: 'Data Structures',
-        algorithms: 'Algorithms', algo: 'Algorithms',
-        'machine learning': 'Machine Learning', ml: 'Machine Learning',
-        'deep learning': 'Deep Learning', dl: 'Deep Learning',
-        ai: 'AI', 'artificial intelligence': 'AI',
-        web: 'Web Dev', 'web dev': 'Web Dev', html: 'Web Dev', css: 'Web Dev', js: 'Web Dev',
-        python: 'Python', java: 'Java', cpp: 'C++', 'c++': 'C++',
-        english: 'English', eng: 'English',
-        bangla: 'Bangla', bengali: 'Bangla',
-        spanish: 'Spanish', french: 'French', german: 'German',
-        arabic: 'Arabic', hindi: 'Hindi', chinese: 'Chinese',
-        japanese: 'Japanese', korean: 'Korean',
-        history: 'History', hist: 'History',
-        geography: 'Geography', geo: 'Geography',
-        economics: 'Economics', econ: 'Economics',
-        literature: 'Literature', lit: 'Literature',
-        philosophy: 'Philosophy', phil: 'Philosophy',
-        psychology: 'Psychology', psych: 'Psychology',
-        art: 'Art', drawing: 'Art', painting: 'Art',
-        music: 'Music',
-        writing: 'Writing', essay: 'Writing',
-        presentation: 'Presentation',
-        revision: 'Revision', revise: 'Revision', review: 'Revision',
-        homework: 'Homework', hw: 'Homework',
-        assignment: 'Homework',
-        reading: 'Reading', read: 'Reading',
-        notes: 'Note Review', 'note review': 'Note Review',
-        practice: 'Practice', problems: 'Practice', exercise: 'Practice',
-        project: 'Project', projects: 'Project'
-    };
-    var CATEGORY_OF = {
-        'Math': 'quant', 'Statistics': 'quant', 'Physics': 'quant', 'Chemistry': 'quant',
-        'Biology': 'sci', 'Science': 'sci',
-        'Computer Science': 'tech', 'Coding': 'tech', 'Data Structures': 'tech',
-        'Algorithms': 'tech', 'Machine Learning': 'tech', 'Deep Learning': 'tech',
-        'AI': 'tech', 'Web Dev': 'tech', 'Python': 'tech', 'Java': 'tech', 'C++': 'tech',
-        'English': 'lang', 'Bangla': 'lang', 'Spanish': 'lang', 'French': 'lang',
-        'German': 'lang', 'Arabic': 'lang', 'Hindi': 'lang', 'Chinese': 'lang',
-        'Japanese': 'lang', 'Korean': 'lang',
-        'History': 'hum', 'Geography': 'hum', 'Economics': 'hum',
-        'Literature': 'hum', 'Philosophy': 'hum', 'Psychology': 'hum',
-        'Art': 'creative', 'Music': 'creative', 'Writing': 'creative', 'Presentation': 'creative',
-        'Revision': 'meta', 'Homework': 'meta', 'Reading': 'meta',
-        'Note Review': 'meta', 'Practice': 'meta', 'Project': 'meta'
-    };
-    var DIFFICULTY = {
-        'Math': 3, 'Physics': 3, 'Chemistry': 3, 'Computer Science': 3, 'Algorithms': 3,
-        'Data Structures': 3, 'Machine Learning': 3, 'Deep Learning': 3,
-        'Statistics': 2, 'Biology': 2, 'Coding': 3, 'Python': 2, 'Java': 3, 'C++': 3, 'Web Dev': 2,
-        'English': 2, 'Bangla': 1, 'Spanish': 2, 'French': 2, 'German': 3,
-        'Arabic': 3, 'Hindi': 2, 'Chinese': 3, 'Japanese': 3, 'Korean': 3,
-        'History': 2, 'Geography': 2, 'Economics': 3, 'Literature': 2,
-        'Philosophy': 3, 'Psychology': 2,
-        'Art': 1, 'Music': 1, 'Writing': 2, 'Presentation': 1,
-        'Revision': 1, 'Homework': 2, 'Reading': 1, 'Note Review': 1,
-        'Practice': 2, 'Project': 2
-    };
-
-    function parseRequest(text) {
-        var t = ' ' + text.toLowerCase().replace(/\s+/g, ' ') + ' ';
-        var req = {
-            mode: 'balanced', scope: 'all', bias: 'all', hours: 0,
-            sessionMin: 60, breakMin: 0, subjects: [], pairs: [],
-            focus: null, avoidMeals: true, specificDay: null, raw: text
-        };
-        if (/\b(easy|light|chill|relaxed|casual|minimal|soft|few|small|simple|gentle)\b/.test(t)) req.mode = 'easy';
-        else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|serious|burn|marathon)\b/.test(t)) req.mode = 'intense';
-        else if (/\b(balanced|normal|moderate|regular|standard|medium|steady)\b/.test(t)) req.mode = 'balanced';
-
-        if (/\b(weekend|sat(urday)?|sun(day)?|week-end)\b/.test(t)) req.scope = 'weekend';
-        else if (/\b(weekday|weekdays|work\s?week|school\s?week)\b/.test(t)) req.scope = 'weekday';
-        else if (/\b(today|tonight|now)\b/.test(t)) req.scope = 'today';
-        else if (/\b(tomorrow)\b/.test(t)) req.scope = 'tomorrow';
-
-        var dayMatch = t.match(/\b(?:on|for|this)\s+(mon(day)?|tue(sday)?|wed(nesday)?|thu(rsday)?|fri(day)?|sat(urday)?|sun(day)?)\b/);
-        if (dayMatch) {
-            var short = dayMatch[1].slice(0, 3).toLowerCase();
-            if (DAY_NAMES[short]) {
-                req.scope = 'specific-day';
-                req.specificDay = DAY_NAMES[short];
-            }
-        }
-        if (/\b(morning|am|early|dawn)\b/.test(t)) req.bias = 'morning';
-        else if (/\b(afternoon|noon|midday|pm)\b/.test(t) && !/evening|night/.test(t)) req.bias = 'afternoon';
-        else if (/\b(evening|night|tonight|late)\b/.test(t)) req.bias = 'evening';
-
-        var mHrs = t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
-        var mMins = t.match(/(\d+)\s*(?:minutes?|mins?|m)\b/);
-        if (mHrs) req.hours = parseFloat(mHrs[1]);
-        else if (mMins) req.hours = parseFloat(mMins[1]) / 60;
-
-        var sessMatch = t.match(/(\d+)\s*(?:min(?:ute)?s?)?\s*(?:sessions?|blocks?|each|per\s*session)/);
-        if (sessMatch) req.sessionMin = parseInt(sessMatch[1], 10);
-        if (req.sessionMin < 20) req.sessionMin = 20;
-        if (req.sessionMin > 180) req.sessionMin = 180;
-
-        if (/\b(skip\s*lunch|no\s*lunch)\b/.test(t)) req.avoidMeals = false;
-
-        Object.keys(SUBJECT_MAP).forEach(function (key) {
-            var re = new RegExp('(?:^|\\s|[^a-z])' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|\\s|[^a-z])');
-            if (re.test(t)) {
-                var s = SUBJECT_MAP[key];
-                if (req.subjects.indexOf(s) === -1) req.subjects.push(s);
-            }
+    // ---- Category checkboxes ----
+    modal.querySelectorAll('input[data-cat]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            const dd = readD();
+            if (!dd.blockerCategories) dd.blockerCategories = { social: true, video: true, gaming: true, shopping: false };
+            dd.blockerCategories[cb.dataset.cat] = cb.checked;
+            writeD(dd);
         });
+    });
 
-        var focusMatch = t.match(/(?:focus on|concentrate on|mainly|mostly|emphasis on|prioritize|priority on)\s+([a-z ]+)/);
-        if (focusMatch) {
-            var fw = focusMatch[1];
-            Object.keys(SUBJECT_MAP).forEach(function (k) {
-                if (!req.focus && fw.indexOf(k) !== -1) req.focus = SUBJECT_MAP[k];
-            });
-        }
-        return req;
-    }
-
-    function shuffle(arr, seed) {
-        var a = arr.slice();
-        var s = seed || 1;
-        for (var i = a.length - 1; i > 0; i--) {
-            s = (s * 9301 + 49297) % 233280;
-            var j = Math.floor((s / 233280) * (i + 1));
-            var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
-        }
-        return a;
-    }
-    function energyOrder(pool, bias) {
-        var sorted = pool.slice().sort(function (a, b) {
-            var da = DIFFICULTY[a] || 2;
-            var db = DIFFICULTY[b] || 2;
-            return db - da;
-        });
-        if (bias === 'evening') return sorted.slice().reverse();
-        return sorted;
-    }
-    function interleave(pool) {
-        if (pool.length <= 1) return pool.slice();
-        var byCat = {};
-        pool.forEach(function (s) {
-            var c = CATEGORY_OF[s] || 'other';
-            if (!byCat[c]) byCat[c] = [];
-            byCat[c].push(s);
-        });
-        var cats = Object.keys(byCat);
-        var result = [];
-        var safety = 0;
-        while (result.length < pool.length && safety < 500) {
-            safety++;
-            var cat = cats[Math.floor(Math.random() * cats.length)];
-            if (byCat[cat] && byCat[cat].length > 0) {
-                var subj = byCat[cat].shift();
-                if (result.length >= 1 && result[result.length - 1] === subj && byCat[cat].length > 0) {
-                    byCat[cat].push(subj);
-                    continue;
-                }
-                result.push(subj);
-            }
-        }
-        pool.forEach(function (s) { if (result.indexOf(s) === -1) result.push(s); });
-        return result;
-    }
-    function shortDay(idx) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][idx]; }
-    function pickDays(req) {
-        if (req.scope === 'weekend') return ['Sat', 'Sun'];
-        if (req.scope === 'weekday') return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-        if (req.scope === 'today') return [shortDay(new Date().getDay())];
-        if (req.scope === 'tomorrow') return [shortDay((new Date().getDay() + 1) % 7)];
-        if (req.scope === 'specific-day') return [req.specificDay];
-        return ALL_DAYS.slice();
-    }
-    function pickHours(req) {
-        var pool = ALL_HOURS.slice();
-        if (req.bias === 'morning') pool = ['7:00', '8:00', '9:00', '10:00', '11:00'];
-        else if (req.bias === 'afternoon') pool = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-        else if (req.bias === 'evening') pool = ['17:00', '18:00', '19:00', '20:00', '21:00'];
-        if (req.avoidMeals) pool = pool.filter(function (h) { return !MEAL_HOURS[h]; });
-        return pool;
-    }
-
-    function buildPlan(req, variant) {
-        variant = variant || { name: 'Balanced', intensity: 'balanced', hoursPerDay: 0, seedMult: 1 };
-        var seed = variant.seedMult * 7919 + (req.raw || '').length;
-        var days = pickDays(req);
-        var hourPool = pickHours(req);
-
-        var targetPerDay;
-        if (req.hours > 0) targetPerDay = Math.max(1, Math.ceil(req.hours));
-        else if (req.mode === 'easy' || variant.intensity === 'relaxed') targetPerDay = Math.max(1, Math.floor(hourPool.length / 3));
-        else if (req.mode === 'intense' || variant.intensity === 'intense') targetPerDay = hourPool.length;
-        else targetPerDay = Math.max(2, Math.floor(hourPool.length * 0.6));
-        if (variant.hoursPerDay > 0) targetPerDay = variant.hoursPerDay;
-        targetPerDay = Math.min(targetPerDay, hourPool.length);
-
-        var pool = req.subjects.slice();
-        if (req.focus && pool.indexOf(req.focus) === -1) pool.unshift(req.focus);
-        if (pool.length === 0) {
-            if (req.mode === 'intense') pool = ['Math', 'Physics', 'Revision', 'Practice', 'Reading'];
-            else if (req.mode === 'easy') pool = ['Reading', 'Revision', 'Note Review', 'Practice'];
-            else pool = ['Math', 'Science', 'English', 'Reading', 'Revision', 'Practice'];
-        }
-        var shuffled = shuffle(pool, seed + 13);
-        var ordered = interleave(energyOrder(shuffled, req.bias));
-
-        var plan = {};
-        var dayOf = {};
-        days.forEach(function (day, dayIdx) {
-            var dayHours = shuffle(hourPool, seed + dayIdx * 37).slice(0, targetPerDay).sort();
-            var subjectIdx = 0;
-            dayOf[day] = { hours: dayHours, subjects: [] };
-            dayHours.forEach(function (hour, hourIdx) {
-                var subj;
-                if (req.focus && (dayIdx + hourIdx) % 4 === 0) subj = req.focus;
-                else {
-                    subj = ordered[subjectIdx % ordered.length];
-                    subjectIdx++;
-                }
-                plan[day + '_' + hour] = subj;
-                dayOf[day].subjects.push(subj);
-            });
-        });
-
-        return { plan: plan, days: days, dayOf: dayOf, pool: ordered, variant: variant, sessionMin: req.sessionMin, breakMin: req.breakMin };
-    }
-
-    function analyze(result) {
-        var totalSessions = Object.keys(result.plan).length;
-        var perSubject = {};
-        Object.keys(result.plan).forEach(function (k) {
-            var s = result.plan[k];
-            perSubject[s] = (perSubject[s] || 0) + 1;
-        });
-        var perDay = {};
-        result.days.forEach(function (d) {
-            perDay[d] = (result.dayOf[d] ? result.dayOf[d].hours.length : 0);
-        });
-
-        var warnings = [];
-        var dayValues = Object.keys(perDay).map(function (k) { return perDay[k]; });
-        var maxPerDay = dayValues.length ? Math.max.apply(null, dayValues) : 0;
-        var minPerDay = dayValues.length ? Math.min.apply(null, dayValues) : 0;
-        if (maxPerDay >= 6) warnings.push('⚠️ ' + maxPerDay + ' sessions on your busiest day — that\'s a marathon.');
-        if (dayValues.length > 1 && minPerDay < 1) warnings.push('ℹ️ Some days are empty (rest days).');
-        Object.keys(result.dayOf).forEach(function (d) {
-            var cnt = {};
-            result.dayOf[d].subjects.forEach(function (s) { cnt[s] = (cnt[s] || 0) + 1; });
-            Object.keys(cnt).forEach(function (s) {
-                if (cnt[s] >= 3) warnings.push('⚠️ ' + cnt[s] + '× ' + s + ' on ' + d + ' — mix it up?');
-            });
-        });
-
-        return {
-            totalSessions: totalSessions,
-            totalHours: (totalSessions * result.sessionMin / 60).toFixed(1),
-            perSubject: perSubject,
-            perDay: perDay,
-            warnings: warnings
-        };
-    }
-
-    var SUBJ_COLORS = ['#5eead4', '#7dd3fc', '#c4b5fd', '#f472b6', '#fdba74', '#6ee7b7', '#f9a8d4', '#a78bfa', '#22d3ee', '#fbbf24'];
-    function colorFor(subject, pool) {
-        var idx = pool.indexOf(subject);
-        if (idx < 0) idx = subject.charCodeAt(0) % SUBJ_COLORS.length;
-        return SUBJ_COLORS[idx % SUBJ_COLORS.length];
-    }
-
-    var lastResult = null;
-    var lastRequest = null;
-    var lastThree = [];
-
-    function renderAnalytics(analysis) {
-        var html = '<div class="planner-analytics">';
-        html += '<div class="pa-stat"><span class="pa-label">Sessions</span><span class="pa-val">' + analysis.totalSessions + '</span></div>';
-        html += '<div class="pa-stat"><span class="pa-label">Hours</span><span class="pa-val">' + analysis.totalHours + 'h</span></div>';
-        html += '<div class="pa-stat"><span class="pa-label">Subjects</span><span class="pa-val">' + Object.keys(analysis.perSubject).length + '</span></div>';
-        html += '<div class="pa-stat"><span class="pa-label">Days</span><span class="pa-val">' + Object.keys(analysis.perDay).length + '</span></div>';
-        html += '</div>';
-        if (analysis.warnings.length) {
-            html += '<div class="planner-warnings">';
-            analysis.warnings.forEach(function (w) { html += '<div class="pw-item">' + w + '</div>'; });
-            html += '</div>';
-        }
-        return html;
-    }
-    function renderPreview(result) {
-        var days = result.days;
-        var used = {};
-        Object.keys(result.plan).forEach(function (k) { used[k.split('_')[1]] = true; });
-        var usedHours = ALL_HOURS.filter(function (h) { return used[h]; });
-        var minIdx = ALL_HOURS.indexOf(usedHours[0]);
-        var maxIdx = ALL_HOURS.indexOf(usedHours[usedHours.length - 1]);
-        var showHours = ALL_HOURS.slice(Math.max(0, minIdx - 1), Math.min(ALL_HOURS.length, maxIdx + 2));
-
-        var gridStyle = 'grid-template-columns: 60px repeat(' + days.length + ', minmax(80px, 1fr));';
-        var html = '<div class="planner-ai-preview" style="' + gridStyle + '">';
-        html += '<div class="ai-label"></div>';
-        days.forEach(function (d) { html += '<div class="ai-label">' + d + '</div>'; });
-        showHours.forEach(function (h) {
-            var isMeal = !!MEAL_HOURS[h];
-            html += '<div class="ai-label' + (isMeal ? ' ai-meal' : '') + '">' + h + (isMeal ? ' 🍽️' : '') + '</div>';
-            days.forEach(function (d) {
-                var v = result.plan[d + '_' + h] || '';
-                var color = v ? colorFor(v, result.pool) : '';
-                var style = v ? 'background:' + color + '20;border-color:' + color + '60;color:' + color + ';' : '';
-                html += '<div class="ai-cell' + (v ? '' : ' empty') + (isMeal && !v ? ' ai-meal-cell' : '') + '" style="' + style + '">' + v + '</div>';
-            });
-        });
-        html += '</div>';
-        return html;
-    }
-    function renderDescription(req, result) {
-        var modeLabel = { easy: 'Easy / light', balanced: 'Balanced', intense: 'Intense' }[req.mode];
-        var scopeLabel = { all: 'Full week', weekend: 'Weekend only', weekday: 'Weekdays only', today: 'Today only', tomorrow: 'Tomorrow only', 'specific-day': (req.specificDay || 'One day') }[req.scope];
-        var biasLabel = { all: 'any time of day', morning: 'mornings', afternoon: 'afternoons', evening: 'evenings' }[req.bias];
-        var subjectText = result.pool.slice(0, 8).join(', ');
-        if (result.pool.length > 8) subjectText += '…';
-
-        var html = '<div class="planner-ai-summary">';
-        html += '<strong>🧠 Here\'s your plan:</strong> ';
-        html += '<span class="tag">' + modeLabel + '</span> · ';
-        html += '<span class="tag">' + scopeLabel + '</span> · ';
-        html += '<span class="tag">' + biasLabel + '</span>';
-        if (req.hours > 0) html += ' · <span class="tag">' + req.hours + 'h total</span>';
-        if (req.sessionMin !== 60) html += ' · <span class="tag">' + req.sessionMin + '-min sessions</span>';
-        html += '<br><strong>📚 Subjects:</strong> ' + subjectText + '.';
-        if (req.focus) html += ' <em>Focus on ' + req.focus + '.</em>';
-        html += '</div>';
-        return html;
-    }
-    function renderLegend(result, analysis) {
-        var html = '<div class="planner-legend">';
-        Object.keys(analysis.perSubject).forEach(function (s) {
-            var c = colorFor(s, result.pool);
-            var count = analysis.perSubject[s];
-            html += '<span class="legend-pill" style="background:' + c + '20;border-color:' + c + '60;color:' + c + '">' + s + ' × ' + count + '</span>';
-        });
-        html += '</div>';
-        return html;
-    }
-
-    function renderOutput(req, result, analysis) {
-        var html = renderDescription(req, result);
-        html += renderAnalytics(analysis);
-        html += renderPreview(result);
-        html += renderLegend(result, analysis);
-
-        html += '<div class="planner-variants">';
-        html += '<div class="pv-label">Try another style:</div>';
-        html += '<button class="pv-btn" data-variant="balanced">⚖️ Balanced</button>';
-        html += '<button class="pv-btn" data-variant="intense">🔥 Intense</button>';
-        html += '<button class="pv-btn" data-variant="relaxed">🌿 Relaxed</button>';
-        html += '</div>';
-
-        html += '<div class="planner-ai-actions">';
-        html += '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner</button>';
-        html += '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,0.15);color:#fca5a5;border-color:rgba(252,165,165,0.3);">🔁 Replace Planner</button>';
-        html += '<button id="aiUndoBtn" class="btn-danger" ' + (lastThree.length > 1 ? '' : 'disabled style="opacity:.4;cursor:not-allowed;"') + '>↩ Undo</button>';
-        html += '</div>';
-
-        output.innerHTML = html;
-
-        document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
-        document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
-        var undo = document.getElementById('aiUndoBtn');
-        if (undo && lastThree.length > 1) undo.addEventListener('click', undoLast);
-
-        output.querySelectorAll('.pv-btn').forEach(function (b) {
-            b.addEventListener('click', function () {
-                var which = this.dataset.variant;
-                var freshReq = parseRequest(lastRequest);
-                var newResult = buildPlan(freshReq, variantPreset(which));
-                lastResult = newResult;
-                lastThree.push(newResult);
-                if (lastThree.length > 3) lastThree.shift();
-                renderOutput(freshReq, newResult, analyze(newResult));
-            });
-        });
-    }
-
-    function variantPreset(name) {
-        if (name === 'intense') return { name: 'Intense', intensity: 'intense', hoursPerDay: 0, seedMult: 3 };
-        if (name === 'relaxed') return { name: 'Relaxed', intensity: 'relaxed', hoursPerDay: 3, seedMult: 5 };
-        return { name: 'Balanced', intensity: 'balanced', hoursPerDay: 0, seedMult: 1 };
-    }
-
-    function generate() {
-        var text = inputEl.value.trim();
-        if (!text) {
-            output.innerHTML = '<div class="planner-ai-summary">📝 ' + getTranslation('please_type_plan') + '</div>';
+    // ---- Custom blocklist ----
+    const addInp = modal.querySelector('#bsAddInput');
+    function addCustom() {
+        const raw = modal.querySelector('#bsAddInput').value.trim().toLowerCase();
+        const val = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+        if (!val || val.indexOf('.') === -1) {
+            addInp.style.borderColor = '#fca5a5';
+            setTimeout(function () { addInp.style.borderColor = ''; }, 1200);
             return;
         }
-        lastRequest = text;
-        var req = parseRequest(text);
-        var result = buildPlan(req, variantPreset('balanced'));
-        lastResult = result;
-        lastThree = [result];
-        renderOutput(req, result, analyze(result));
+        const dd = readD();
+        if (!dd.blockerCustomBlocked) dd.blockerCustomBlocked = [];
+        if (dd.blockerCustomBlocked.indexOf(val) === -1) dd.blockerCustomBlocked.push(val);
+        if (dd.blockerCustomAllowed) dd.blockerCustomAllowed = dd.blockerCustomAllowed.filter(function (x) { return x !== val; });
+        writeD(dd);
+        close();
+        setTimeout(openBlockerSettings, 250);
     }
+    modal.querySelector('.bs-add-btn').addEventListener('click', addCustom);
+    addInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addCustom(); });
 
-    function undoLast() {
-        if (lastThree.length <= 1) return;
-        lastThree.pop();
-        var prev = lastThree[lastThree.length - 1];
-        if (!prev) return;
-        var req = parseRequest(lastRequest);
-        lastResult = prev;
-        renderOutput(req, prev, analyze(prev));
-    }
-
-    function applyPlan(replace) {
-        if (!lastResult) return;
-        var data = loadData();
-        if (!data.planner) data.planner = {};
-        if (!data.plannerUndoStack) data.plannerUndoStack = [];
-        data.plannerUndoStack.push(JSON.parse(JSON.stringify(data.planner)));
-        if (data.plannerUndoStack.length > 5) data.plannerUndoStack.shift();
-
-        if (replace) data.planner = {};
-        Object.keys(lastResult.plan).forEach(function (k) { data.planner[k] = lastResult.plan[k]; });
-        saveData(data);
-
-        addActivity(data, 'planner_ai', replace ? 'Replaced planner with AI plan' : 'Merged AI plan into planner');
-        saveData(data);
-
-        setupPlanner();
-
-        var toast = document.createElement('div');
-        toast.className = 'fbt-toast show';
-        toast.textContent = replace ? '✅ Planner replaced' : '✅ Plan merged into planner';
-        toast.style.borderColor = '#6ee7b7';
-        document.body.appendChild(toast);
-        setTimeout(function () { toast.classList.remove('show'); setTimeout(function () { toast.remove(); }, 400); }, 2200);
-    }
-
-    btn.addEventListener('click', generate);
-    document.querySelectorAll('.planner-chip').forEach(function (chip) {
-        chip.addEventListener('click', function () {
-            inputEl.value = this.dataset.prompt;
-            generate();
+    modal.querySelectorAll('[data-remove]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            const dd = readD();
+            dd.blockerCustomBlocked = (dd.blockerCustomBlocked || []).filter(function (x) { return x !== b.dataset.remove; });
+            writeD(dd);
+            b.parentElement.remove();
         });
     });
-    inputEl.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); generate(); }
-    });
 
-    var resetBtn = document.getElementById('resetPlannerBtn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
-            if (!confirm(getTranslation('reset_confirm'))) return;
-            var data = loadData();
-            data.planner = {};
-            addActivity(data, 'planner_reset', 'Reset the planner');
-            saveData(data);
-            setupPlanner();
+    modal.querySelectorAll('[data-unallow]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            const dd = readD();
+            dd.blockerCustomAllowed = (dd.blockerCustomAllowed || []).filter(function (x) { return x !== b.dataset.unallow; });
+            writeD(dd);
+            b.parentElement.remove();
+        });
+    });
+}
+
+    function openBlockerLog() {
+        const ex = document.getElementById('blockerLogModal');
+        if (ex) ex.remove();
+        const d = readD();
+        const log = (d.blockerLog || []).slice().reverse();
+        const modal = document.createElement('div');
+        modal.className = 'blocker-settings-modal';
+        modal.id = 'blockerLogModal';
+        let html = '<div class="blocker-settings-panel">';
+        html += '<div class="blocker-settings-head"><h2>📜 Blocked attempts</h2><button class="bs-close" type="button">✕</button></div>';
+        html += '<p class="bs-desc">Every time you (or a link) tried to reach a blocked site.</p>';
+        if (!log.length) {
+            html += '<div class="bs-empty" style="padding:2rem 0;text-align:center;">🎉 No blocked attempts yet. Keep it up!</div>';
+        } else {
+            html += '<div class="blocker-log-list">';
+            log.forEach(function (item) {
+                const t = new Date(item.ts);
+                const time = t.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                html += '<div class="blocker-log-item"><span class="bl-dot"></span><div class="bl-info">' +
+                        '<span class="bl-domain">' + item.domain + '</span>' +
+                        '<span class="bl-meta">' + time + ' · ' + (item.src || 'click') + '</span></div></div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+             modal.innerHTML = html;
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+
+        function close() {
+            modal.classList.remove('open');
+            setTimeout(function () { modal.remove(); }, 220);
+        }
+
+        // ✅ Attach close handlers AFTER the modal is in the DOM
+        var logCloseBtn = modal.querySelector('.bs-close');
+        if (logCloseBtn) {
+            logCloseBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+            });
+        }
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+
+        // Also allow ESC to close
+        var logEscHandler = function (e) {
+            if (e.key === 'Escape') {
+                close();
+                document.removeEventListener('keydown', logEscHandler);
+            }
+        };
+        document.addEventListener('keydown', logEscHandler);
+      }
+    // ---------- FOCUS MODE ----------
+    let focusTick = null;
+
+    function getFocusSession() { return readD().focusSession || null; }
+    function setFocusSession(s) { const d = readD(); d.focusSession = s; writeD(d); }
+    function getFocusGoal() { return readD().focusGoalMin || FOCUS_GOAL_DEFAULT; }
+    function isFocusOn() { return document.body.classList.contains('focus-mode'); }
+
+    function startFocusSession() {
+        const session = {
+            startTs: Date.now(),
+            distract: 0,
+            goalMin: getFocusGoal(),
+            blockerWasOn: isBlockerOn()
+        };
+        setFocusSession(session);
+        const d = readD();
+        if (!d.blockerOn) { d.blockerOn = true; writeD(d); paintBlocker(); }
+    }
+
+        function endFocusSession() {
+        const s = getFocusSession();
+
+        // No session → just clean up UI and bail
+        if (!s) {
+            document.body.classList.remove('focus-mode');
+            paintFocusButton();
+            return;
+        }
+
+        const durMin = Math.round((Date.now() - s.startTs) / 60000);
+
+        // Very short session (< 1 min) → discard, no summary, but still repaint
+        if (durMin < 1) {
+            setFocusSession(null);
+            document.body.classList.remove('focus-mode');
+            if (s.blockerWasOn === false) {
+                const d = readD();
+                if (d.blockerOn) { d.blockerOn = false; writeD(d); paintBlocker(); }
+            }
+            paintFocusButton();   // ← FIX
+            return;
+        }
+
+        let score = 100 - (s.distract * 5);
+        if (durMin < s.goalMin * 0.5) score -= 15;
+        if (durMin < 5) score -= 20;
+        score = Math.max(0, Math.min(100, score));
+        const goalMet = durMin >= s.goalMin;
+
+        const d = readD();
+        if (!d.focusLog) d.focusLog = [];
+        d.focusLog.push({
+            date: today(),
+            startTs: s.startTs,
+            endTs: Date.now(),
+            minutes: durMin,
+            distract: s.distract,
+            score: score,
+            goalMet: goalMet
+        });
+        if (d.focusLog.length > 500) d.focusLog.splice(0, d.focusLog.length - 500);
+        d.focusSession = null;
+        writeD(d);
+
+        if (s.blockerWasOn === false) {
+            const dd = readD();
+            if (dd.blockerOn) { dd.blockerOn = false; writeD(dd); paintBlocker(); }
+        }
+
+        document.body.classList.remove('focus-mode');
+        paintFocusButton();   // ← FIX
+        showFocusSummary({ durMin: durMin, distract: s.distract, score: score, goalMet: goalMet, goalMin: s.goalMin });
+    }
+
+    function showFocusSummary(data) {
+        const streak = computeFocusStreak();
+        const todayMin = computeTodayFocusMin();
+        const msg = data.goalMet
+            ? '🏆 Goal crushed! You\'re on fire.'
+            : data.durMin >= data.goalMin * 0.5
+                ? '👍 Solid session. Keep going!'
+                : '💪 Every minute counts. Try again!';
+
+        const modal = document.createElement('div');
+        modal.className = 'focus-summary-modal';
+        modal.innerHTML =
+            '<div class="focus-summary-panel">' +
+                '<div class="fs-icon">' + (data.goalMet ? '🏆' : '🎯') + '</div>' +
+                '<h2>Session Complete</h2>' +
+                '<div class="fs-grid">' +
+                    '<div class="fs-stat"><span class="fs-label">Duration</span><span class="fs-val">' + data.durMin + '<small>min</small></span></div>' +
+                    '<div class="fs-stat"><span class="fs-label">Goal</span><span class="fs-val">' + data.goalMin + '<small>min</small></span></div>' +
+                    '<div class="fs-stat"><span class="fs-label">Distractions</span><span class="fs-val">' + data.distract + '</span></div>' +
+                    '<div class="fs-stat"><span class="fs-label">Score</span><span class="fs-val">' + data.score + '<small>/100</small></span></div>' +
+                '</div>' +
+                '<div class="fs-badge ' + (data.goalMet ? 'met' : '') + '">' + (data.goalMet ? '✅ Goal met' : '⚠️ Goal not met') + '</div>' +
+                '<div class="fs-extra"><span>🔥 ' + streak + ' day streak</span><span>📅 ' + todayMin + ' min today</span></div>' +
+                '<p class="fs-msg">' + msg + '</p>' +
+                '<button class="fs-close" type="button">Close</button>' +
+            '</div>';
+        document.body.appendChild(modal);
+        requestAnimationFrame(function () { modal.classList.add('open'); });
+        function close() { modal.classList.remove('open'); setTimeout(function () { modal.remove(); }, 300); }
+        modal.querySelector('.fs-close').addEventListener('click', close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    }
+
+    function computeFocusStreak() {
+        const log = readD().focusLog || [];
+        if (!log.length) return 0;
+        const dates = Array.from(new Set(log.map(function (l) { return l.date; }))).sort().reverse();
+        if (!dates.length) return 0;
+        let check = today();
+        if (dates[0] !== check) {
+            if (dates[0] !== yest()) return 0;
+            check = yest();
+        }
+        let streak = 0;
+        const set = new Set(dates);
+        const cursor = new Date(check);
+        while (set.has(cursor.toISOString().slice(0,10))) {
+            streak++;
+            cursor.setDate(cursor.getDate() - 1);
+        }
+        return streak;
+    }
+
+    function computeTodayFocusMin() {
+        const log = readD().focusLog || [];
+        const t = today();
+        return log.filter(function (l) { return l.date === t; }).reduce(function (s, l) { return s + l.minutes; }, 0);
+    }
+
+    function ensureFocusBar() {
+        let bar = document.getElementById('focusIndicatorBar');
+        if (bar && bar.dataset.v2) return bar;
+        if (bar) bar.remove();
+        bar = document.createElement('div');
+        bar.id = 'focusIndicatorBar';
+        bar.className = 'focus-indicator-bar';
+        bar.dataset.v2 = '1';
+        bar.innerHTML =
+            '<span>🔒</span>' +
+            '<span>FOCUS MODE</span>' +
+            '<span class="fb-timer" id="fbTimer">00:00</span>' +
+            '<span class="fb-sep">·</span>' +
+            '<span class="fb-stat">Goal <b id="fbGoal">60</b>m</span>' +
+            '<span class="fb-sep">·</span>' +
+            '<span class="fb-stat">👀 <b id="fbDist">0</b></span>' +
+            '<span class="fb-sep">·</span>' +
+            '<span class="fb-stat">⚡ <b id="fbScore">100</b></span>' +
+            '<button class="fb-icon-btn" id="fbGoalBtn" title="Change goal">⚙</button>' +
+            '<button class="fb-end" id="fbEndBtn" type="button">End</button>';
+        document.body.insertBefore(bar, document.body.firstChild);
+        bar.querySelector('#fbEndBtn').addEventListener('click', function () {
+            if (confirm('End this focus session?')) endFocusSession();
+        });
+        bar.querySelector('#fbGoalBtn').addEventListener('click', function () {
+            const cur = getFocusGoal();
+            const n = parseInt(prompt('Daily focus goal (minutes):', cur), 10);
+            if (!isNaN(n) && n > 0) {
+                const d = readD();
+                d.focusGoalMin = Math.max(5, Math.min(480, n));
+                writeD(d);
+                const s = getFocusSession();
+                if (s) { s.goalMin = d.focusGoalMin; setFocusSession(s); }
+                tickFocusBar();
+            }
+        });
+        return bar;
+    }
+
+    function tickFocusBar() {
+        const s = getFocusSession();
+        if (!s || !isFocusOn()) return;
+        const elapsed = Math.floor((Date.now() - s.startTs) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const sec = String(elapsed % 60).padStart(2, '0');
+        const t = document.getElementById('fbTimer');
+        if (t) t.textContent = m + ':' + sec;
+        const g = document.getElementById('fbGoal');
+        if (g) g.textContent = s.goalMin;
+        const dd = document.getElementById('fbDist');
+        if (dd) dd.textContent = s.distract;
+        let score = 100 - (s.distract * 5);
+        if (elapsed / 60 < 5) score = Math.min(score, 70);
+        const sc = document.getElementById('fbScore');
+        if (sc) sc.textContent = Math.max(0, score);
+    }
+
+    function paintFocusButton() {
+        const btn = document.getElementById('focusToggle');
+        if (!btn) return;
+        const on = isFocusOn();
+        btn.textContent = on ? '🔒 Focus On' : '🔓 Focus Off';
+        btn.classList.toggle('active', on);
+    }
+
+    function setupFocusButton() {
+        const btn = document.getElementById('focusToggle');
+        if (!btn || btn.dataset.fbtHooked) return;
+        btn.dataset.fbtHooked = '1';
+        btn.addEventListener('click', function () {
+            if (isFocusOn()) {
+                endFocusSession();
+                paintFocusButton();
+            } else {
+                document.body.classList.add('focus-mode');
+                ensureFocusBar();
+                startFocusSession();
+                paintFocusButton();
+            }
         });
     }
-}
 
-// ================================================================
-// REFRESH NEW UI ELEMENTS AFTER LANGUAGE CHANGE
-// ================================================================
-function refreshNewElements() {
-    var blocker = document.getElementById('blockerToggle');
-    if (blocker) {
-        var on = blocker.classList.contains('active');
-        blocker.textContent = on ? '🛡️ ' + getTranslation('blocker_on') : '🛡️ ' + getTranslation('blocker_off');
-    }
-    var trash = document.getElementById('trashBtn');
-    if (trash) {
-        var m = trash.textContent.match(/\((\d+)\)/);
-        var n = m ? m[1] : '0';
-        trash.textContent = '🗑️ ' + getTranslation('trash_label') + ' (' + n + ')';
-    }
-    var clockBtn = document.getElementById('clockToggleBtn');
-    if (clockBtn) {
-        var isAnalog = document.getElementById('analogClock') && document.getElementById('analogClock').classList.contains('active');
-        var label = isAnalog ? getTranslation('switch_digital') : getTranslation('switch_analog');
-        clockBtn.innerHTML = '⏰ ' + label;
-    }
-    var h2s = document.querySelectorAll('.planner-ai-section h2');
-    if (h2s.length) {
-        h2s[0].innerHTML = '<span class="hl-purple">🧠</span> <span class="neon-text">' + getTranslation('ai_planner_title') + '</span>';
-    }
-    var aiDesc = document.querySelector('.planner-ai-section p');
-    if (aiDesc) aiDesc.textContent = getTranslation('ai_planner_desc');
-    var aiInput = document.getElementById('plannerAiInput');
-    if (aiInput) aiInput.placeholder = getTranslation('ai_planner_placeholder');
-    var aiBtn = document.getElementById('plannerAiBtn');
-    if (aiBtn) aiBtn.textContent = '✨ ' + getTranslation('generate_plan_btn');
-
-    var chipKeys = ['chip_auto', 'chip_easy', 'chip_exam', 'chip_weekend', 'chip_math_physics', 'chip_surprise', 'chip_3h'];
-    var chipEmojis = ['🎲', '☕', '🔥', '🏖️', '📚', '🎁', '⏱'];
-    document.querySelectorAll('.planner-chip').forEach(function (c, i) {
-        if (i < chipKeys.length) c.textContent = chipEmojis[i] + ' ' + getTranslation(chipKeys[i]);
+    document.addEventListener('visibilitychange', function () {
+        if (!isFocusOn()) return;
+        const s = getFocusSession();
+        if (!s) return;
+        if (document.hidden) {
+            window.__focusHiddenAt = Date.now();
+        } else {
+            if (window.__focusHiddenAt && (Date.now() - window.__focusHiddenAt) > 3000) {
+                const s2 = getFocusSession();
+                if (s2) {
+                    s2.distract = (s2.distract || 0) + 1;
+                    setFocusSession(s2);
+                    const bar = document.getElementById('focusIndicatorBar');
+                    if (bar) { bar.classList.add('warning'); setTimeout(function () { bar.classList.remove('warning'); }, 2500); }
+                }
+            }
+            window.__focusHiddenAt = 0;
+        }
     });
-    var resetBtn = document.getElementById('resetPlannerBtn');
-    if (resetBtn) resetBtn.textContent = '🔄 ' + getTranslation('reset_planner_btn');
-    var genQuiz = document.getElementById('generateQuizBtn');
-    if (genQuiz) genQuiz.textContent = '⚡ ' + getTranslation('generate_quiz_btn');
-    var clearQuiz = document.getElementById('clearQuizBtn');
-    if (clearQuiz) clearQuiz.textContent = getTranslation('clear_quiz_btn');
-    var autoFc = document.getElementById('autoGenFlashcardsBtn');
-    if (autoFc) autoFc.textContent = '⚡ ' + getTranslation('auto_flashcards_btn');
-}
-window.refreshNewElements = refreshNewElements;
 
-// ================================================================
-// SINGLE BOOT — one DOMContentLoaded for the whole app
-// ================================================================
-document.addEventListener('DOMContentLoaded', function () {
-    // Universal (runs on every page)
-    initBurger();
-    setActiveNavLink();
-    updateNavDate();
-    initClock();
-    initTranslations();
-    initMelodyTimer();
-    initCalendar();
-    initThemePicker();
-    initCommandPalette();
-    initBlockerAndFocus();
-    initBreakReminder();
-    setupTrash();
+    // ---------- BOOT ----------
+    function boot() {
+        setupBlockerButton();
+        paintBlocker();
+        document.addEventListener('click', interceptClick, true);
+        interceptOpen();
+        interceptSubmit();
+        setupFocusButton();
+        paintFocusButton();
+        if (focusTick) clearInterval(focusTick);
+        focusTick = setInterval(tickFocusBar, 1000);
+        setInterval(function () {
+            const d = readD();
+            if (d.blockerStats && d.blockerStats.lastReset !== today()) {
+                d.blockerStats.today = 0;
+                d.blockerStats.lastReset = today();
+                writeD(d);
+                updateBannerCount();
+            }
+        }, 60000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
 
-    var path = window.location.pathname.split('/').pop() || 'index.html';
-
-    // --- Dashboard ---
-    if (path === 'index.html' || path === '') {
-        renderDashboard();
-        initPomodoro();
-        setupSearch();
-        setupPriorityMatrix();
-        initDeepWork();
-        initShortcuts();
-
-        var dToday = document.getElementById('deleteTodayBtn');
-        if (dToday) dToday.addEventListener('click', deleteTodayHistory);
-        var dAll = document.getElementById('deleteAllBtn');
-        if (dAll) dAll.addEventListener('click', deleteAllHistory);
-
-        var journal = document.getElementById('journalText');
-        if (journal) {
-            journal.addEventListener('input', function () {
-                var data = loadData();
-                data.journal[todayStr()] = this.value;
-                saveData(data);
-            });
+    // Public API
+    window.studyHubFocus = {
+        start: function () { if (!isFocusOn()) document.getElementById('focusToggle').click(); },
+        end: function () { if (isFocusOn()) { endFocusSession(); paintFocusButton(); } },
+        isOn: isFocusOn,
+        setGoal: function (min) { const d = readD(); d.focusGoalMin = Math.max(5, Math.min(480, min)); writeD(d); },
+        getStreak: computeFocusStreak,
+        getTodayMinutes: computeTodayFocusMin,
+        log: function () { return readD().focusLog || []; }
+    };
+       window.studyHubBlocker = {
+        isOn: isBlockerOn,
+        // Blocker cannot be toggled off — this is a no-op.
+        toggle: function () { /* locked */ },
+        settings: openBlockerSettings,
+        log: openBlockerLog,
+        allowOnce: function (domain, min) {
+            const d = readD();
+            if (!d.blockerWhitelist) d.blockerWhitelist = {};
+            d.blockerWhitelist[domain] = Date.now() + (min || 5) * 60000;
+            writeD(d);
+        },
+        // Emergency session-only disable. Resets on next page reload.
+        // Use only if the blocker is breaking something you truly need.
+        emergencyDisable: function () {
+            if (!confirm('Disable the blocker for THIS SESSION only? Reload the page to restore it.')) return;
+            window.__blockerEmergencyOff = true;
+            paintBlocker();
+            if (typeof showToast === 'function') showToast('Blocker disabled for this session.', 'ok');
         }
-    }
-    // --- Files ---
-    else if (path === 'files.html') {
-        setupFileUpload();
-        renderFileList();
-    }
-    // --- Habits ---
-    else if (path === 'habits.html') {
-        setupHabits();
-    }
-    // --- Notice ---
-    else if (path === 'notice.html') {
-        setupNotice();
-    }
-    // --- Notes ---
-    else if (path === 'notes.html') {
-        setupNotes();
-        var genQuizBtn = document.getElementById('generateQuizBtn');
-        if (genQuizBtn) genQuizBtn.addEventListener('click', generateQuizFromNotes);
-        var clearQuizBtn = document.getElementById('clearQuizBtn');
-        if (clearQuizBtn) {
-            clearQuizBtn.addEventListener('click', function () {
-                var c = document.getElementById('quizContainer');
-                if (c) c.innerHTML = '';
-            });
-        }
-    }
-    // --- AI Tools ---
-    else if (path === 'ai-tools.html') {
-        setupAIRecommendation();
-        setupSummarizer();
-    }
-    // --- Assignments ---
-    else if (path === 'assignments.html') {
-        setupAssignments();
-    }
-    // --- Planner ---
-    else if (path === 'planner.html') {
-        setupPlanner();
-        initAIPlanner();
-    }
-    // --- Flashcards ---
-    else if (path === 'flashcards.html') {
-        setupFlashcards();
-        var autoFcBtn = document.getElementById('autoGenFlashcardsBtn');
-        if (autoFcBtn) autoFcBtn.addEventListener('click', autoGenerateFlashcards);
-    }
-    // --- Reading ---
-    else if (path === 'reading.html') {
-        setupReading();
-    }
-
-    // Populate any dynamic counts that need a final pass
-    updateTrashCount();
-    resetDailyIfNeeded(loadData());
-});
+    };
+})();
