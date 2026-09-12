@@ -4915,52 +4915,7 @@ function autoGenerateFlashcards() {
     alert('Added ' + newCards.length + ' flashcards to "Auto from Notes" deck!');
 }
 
-// ================================================================
-// DISTRACTION BLOCKER
-// ================================================================
-var BLOCKED_SITES = ['facebook.com','instagram.com','twitter.com','x.com','tiktok.com','reddit.com','whatsapp.com','snapchat.com','discord.com','twitch.tv','netflix.com','pinterest.com','tumblr.com','linkedin.com'];
-var blockerActive = false;
 
-function setupBlocker() {
-    var btn = document.getElementById('blockerToggle');
-    if (!btn) return;
-    var data = loadData();
-    blockerActive = !!data.blockerOn;
-    updateBlockerUI();
-
-    btn.addEventListener('click', function() {
-        blockerActive = !blockerActive;
-        var d = loadData();
-        d.blockerOn = blockerActive;
-        saveData(d);
-        updateBlockerUI();
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!blockerActive) return;
-        var a = e.target.closest('a');
-        if (!a) return;
-        var href = a.href || '';
-        for (var i = 0; i < BLOCKED_SITES.length; i++) {
-            if (href.indexOf(BLOCKED_SITES[i]) !== -1) {
-                e.preventDefault();
-                alert('🛡️ Blocked!\n\n"' + BLOCKED_SITES[i] + '" is on your distraction list.\nTurn off the Blocker to visit it.');
-                return;
-            }
-        }
-    }, true);
-}
-
-function updateBlockerUI() {
-    var btn = document.getElementById('blockerToggle');
-    var banner = document.getElementById('blockerBanner');
-    if (btn) {
-        btn.textContent = blockerActive ? '🛡️ Blocker On' : '🛡️ Blocker Off';
-        btn.classList.toggle('active', blockerActive);
-    }
-    if (banner) banner.style.display = blockerActive ? 'flex' : 'none';
-    document.body.classList.toggle('blocker-active', blockerActive);
-}
 
 // ================================================================
 // TRASH / UNDO (soft delete, 24h retention)
