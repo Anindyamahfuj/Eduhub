@@ -6422,9 +6422,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.setStudyHubBackground = function (id) { setBg(id); applyBackground(id); refreshBgThumbs(); };
 })();
 // ================================================================
-// SEARCH SHORTCUTS — user-defined quick-launch tiles  (v3)
+// SEARCH SHORTCUTS — user-defined quick-launch tiles  (v4 · edit)
+//  • Add / Edit / Delete shortcuts with auto-fetched favicons
 //  • Blocks social media + shorteners + redirect wrappers
-//  • Deep-scans the FULL URL (path & query), not just the host
+//  • Deep-scans the FULL URL (path & query)
 //  • Purges any previously-saved shortcut that now matches the blocklist
 //  • Persists in localStorage
 // ================================================================
@@ -6432,8 +6433,9 @@ document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
     var SHORTCUTS_KEY = 'studyHubShortcuts';
+    var editingId = null;   // when set, submitShortcut updates in place
 
-    // ---- Hostname blocklist (exact match or subdomain) ----
+    // ---- Hostname blocklist ----
     var SOCIAL_HOSTS = [
         'facebook.com', 'fb.com', 'fb.me', 'fb.watch', 'messenger.com', 'm.me', 'fbsbx.com',
         'instagram.com', 'instagr.am', 'igtv.com',
@@ -6467,7 +6469,6 @@ document.addEventListener('DOMContentLoaded', function() {
         'vimeo.com', 'spotify.com', 'soundcloud.com', 'deezer.com'
     ];
 
-    // ---- Shortener hostnames ----
     var SHORTENER_HOSTS = [
         'bit.ly', 'bitly.com', 'tinyurl.com', 'tiny.cc', 'cutt.ly', 'cutt.us',
         'shorturl.at', 'rebrand.ly', 'rebrandly.com', 'is.gd', 'v.gd',
@@ -6491,7 +6492,6 @@ document.addEventListener('DOMContentLoaded', function() {
         'tr.im', 'tweez.me', 'tinurl.com', 'tinylink.co', 'zpr.io'
     ];
 
-    // ---- Long keyword substrings — safe to scan the FULL URL for these ----
     var SOCIAL_KEYWORDS = [
         'telegram', 'facebook', 'instagram', 'twitter', 'tiktok', 'snapchat',
         'reddit', 'pinterest', 'discord', 'whatsapp', 'tumblr', 'linkedin',
@@ -6517,38 +6517,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return null;
     }
+    function isSocialHost(host)    { return matchHost(host, SOCIAL_HOSTS); }
+    function isShortenerHost(host) { return matchHost(host, SHORTENER_HOSTS); }
 
-    // Hostname checks
-    function isSocialHost(host)     { return matchHost(host, SOCIAL_HOSTS); }
-    function isShortenerHost(host)  { return matchHost(host, SHORTENER_HOSTS); }
-
-    // Deep scan — check the WHOLE url string for long keywords
     function deepScan(fullUrl) {
         var lower = String(fullUrl || '').toLowerCase();
         for (var i = 0; i < SOCIAL_KEYWORDS.length; i++) {
-            if (lower.indexOf(SOCIAL_KEYWORDS[i]) !== -1) {
-                return { kind: 'social', domain: SOCIAL_KEYWORDS[i] };
-            }
+            if (lower.indexOf(SOCIAL_KEYWORDS[i]) !== -1) return { kind: 'social', domain: SOCIAL_KEYWORDS[i] };
         }
         for (var j = 0; j < SHORTENER_KEYWORDS.length; j++) {
-            if (lower.indexOf(SHORTENER_KEYWORDS[j]) !== -1) {
-                return { kind: 'shortener', domain: SHORTENER_KEYWORDS[j] };
-            }
+            if (lower.indexOf(SHORTENER_KEYWORDS[j]) !== -1) return { kind: 'shortener', domain: SHORTENER_KEYWORDS[j] };
         }
         return null;
     }
-
-    // Master check — returns null if allowed, or { kind, domain } if blocked
     function checkUrl(fullUrl, hostname) {
-        var social = isSocialHost(hostname);
-        if (social) return { kind: 'social', domain: social };
-
-        var short = isShortenerHost(hostname);
-        if (short) return { kind: 'shortener', domain: short };
-
-        var deep = deepScan(fullUrl);
-        if (deep) return deep;
-
+        var s = isSocialHost(hostname);    if (s) return { kind: 'social', domain: s };
+        var h = isShortenerHost(hostname); if (h) return { kind: 'shortener', domain: h };
+        var d = deepScan(fullUrl);         if (d) return d;
         return null;
     }
 
@@ -6565,31 +6550,20 @@ document.addEventListener('DOMContentLoaded', function() {
         try { localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(list)); } catch (e) {}
     }
 
-    // Purge any saved shortcut that now matches the blocklist.
-    // Returns the number removed.
     function purgeBlockedShortcuts() {
         var list = loadShortcuts();
         if (!list.length) return 0;
-        var kept = [];
-        var removed = 0;
-        var lastBlocked = null;
-
+        var kept = [], removed = 0, lastBlocked = null;
         for (var i = 0; i < list.length; i++) {
             var sc = list[i];
             var host = '';
             try { host = new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) {}
             var verdict = checkUrl(sc.url, host);
-            if (verdict) {
-                removed++;
-                lastBlocked = { item: sc, verdict: verdict };
-            } else {
-                kept.push(sc);
-            }
+            if (verdict) { removed++; lastBlocked = { item: sc, verdict: verdict }; }
+            else kept.push(sc);
         }
-
         if (removed > 0) {
             saveShortcuts(kept);
-            // Notify the user once, mentioning the first offender
             if (lastBlocked) {
                 setTimeout(function () {
                     showToast('removed', lastBlocked.verdict.domain, removed, lastBlocked.item.name);
@@ -6624,28 +6598,21 @@ document.addEventListener('DOMContentLoaded', function() {
     function showToast(kind, domain, extraCount, extraName) {
         var old = document.getElementById('shortcutBlockToast');
         if (old) old.remove();
-
         var icon, heading, body;
-
         if (kind === 'shortener') {
-            icon = '⛓️';
-            heading = 'Shortened links aren\'t allowed.';
+            icon = '⛓️'; heading = 'Shortened links aren\'t allowed.';
             body = 'Please enter the site&rsquo;s real address — a shortener could be hiding anything.';
         } else if (kind === 'redirect') {
-            icon = '🔁';
-            heading = 'Redirect links aren\'t allowed.';
+            icon = '🔁'; heading = 'Redirect links aren\'t allowed.';
             body = 'Please enter the site&rsquo;s real address directly, not through a redirect service.';
         } else if (kind === 'removed') {
-            icon = '🧹';
-            heading = 'Removed a blocked shortcut.';
+            icon = '🧹'; heading = 'Removed a blocked shortcut.';
             body = '"' + (extraName || domain) + '" matched our blocked list (' + domain + ').';
             if (extraCount > 1) body += ' ' + extraCount + ' shortcuts were removed.';
         } else {
-            icon = '🛡️';
-            heading = 'Social media is banned here.';
+            icon = '🛡️'; heading = 'Social media is banned here.';
             body = '"' + domain + '" can\'t be added. StudyHub is a distraction-free space for students.';
         }
-
         var t = document.createElement('div');
         t.className = 'shortcut-block-toast';
         t.id = 'shortcutBlockToast';
@@ -6683,6 +6650,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tile.rel = 'noopener noreferrer';
             tile.title = sc.url;
 
+            // Logo
             var logo = document.createElement('div');
             logo.className = 'sc-logo';
             var img = document.createElement('img');
@@ -6694,16 +6662,30 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             logo.appendChild(img);
 
+            // Name
             var name = document.createElement('div');
             name.className = 'sc-name';
             name.textContent = sc.name;
 
-            var del = document.createElement('button');
-            del.className = 'sc-delete';
-            del.type = 'button';
-            del.title = 'Remove shortcut';
-            del.textContent = '✕';
-            del.addEventListener('click', function (e) {
+            // Edit button (top-left)
+            var editBtn = document.createElement('button');
+            editBtn.className = 'sc-edit';
+            editBtn.type = 'button';
+            editBtn.title = 'Edit shortcut';
+            editBtn.textContent = '✎';
+            editBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openEditModal(sc);
+            });
+
+            // Delete button (top-right)
+            var delBtn = document.createElement('button');
+            delBtn.className = 'sc-delete';
+            delBtn.type = 'button';
+            delBtn.title = 'Remove shortcut';
+            delBtn.textContent = '✕';
+            delBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 if (!confirm('Remove "' + sc.name + '" shortcut?')) return;
@@ -6712,7 +6694,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderShortcuts();
             });
 
-            tile.appendChild(del);
+            tile.appendChild(editBtn);
+            tile.appendChild(delBtn);
             tile.appendChild(logo);
             tile.appendChild(name);
             grid.appendChild(tile);
@@ -6736,8 +6719,8 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.className = 'shortcut-modal';
         modal.id = 'shortcutModal';
         modal.innerHTML = `
-            <div class="shortcut-modal-panel" role="dialog" aria-label="Add shortcut">
-                <h3>🔗 Add a shortcut</h3>
+            <div class="shortcut-modal-panel" role="dialog" aria-label="Shortcut editor">
+                <h3 id="scModalTitle">🔗 Add a shortcut</h3>
                 <div class="field">
                     <label for="scUrlInput">Website URL</label>
                     <input type="text" id="scUrlInput" placeholder="e.g. khanacademy.org" autocomplete="off" />
@@ -6755,9 +6738,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         document.body.appendChild(modal);
 
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) closeAddModal();
-        });
+        modal.addEventListener('click', function (e) { if (e.target === modal) closeAddModal(); });
         modal.querySelector('#scCancelBtn').addEventListener('click', closeAddModal);
         modal.querySelector('#scSaveBtn').addEventListener('click', submitShortcut);
         modal.querySelector('#scUrlInput').addEventListener('keydown', function (e) {
@@ -6773,17 +6754,36 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openAddModal() {
+        editingId = null;
         var m = buildModal();
+        m.querySelector('#scModalTitle').innerHTML = '🔗 Add a shortcut';
+        m.querySelector('#scSaveBtn').textContent = 'Save shortcut';
+        m.querySelector('#scUrlInput').value = '';
+        m.querySelector('#scNameInput').value = '';
+        m.querySelector('#scUrlInput').style.borderColor = '';
         m.classList.add('open');
-        var urlInp  = m.querySelector('#scUrlInput');
-        var nameInp = m.querySelector('#scNameInput');
-        urlInp.value = '';
-        nameInp.value = '';
-        urlInp.style.borderColor = '';
-        setTimeout(function () { urlInp.focus(); }, 60);
+        setTimeout(function () { m.querySelector('#scUrlInput').focus(); }, 60);
     }
+
+    function openEditModal(sc) {
+        editingId = sc.id;
+        var m = buildModal();
+        m.querySelector('#scModalTitle').innerHTML = '✎ Edit shortcut';
+        m.querySelector('#scSaveBtn').textContent = 'Save changes';
+        m.querySelector('#scUrlInput').value = sc.url;
+        m.querySelector('#scNameInput').value = sc.name;
+        m.querySelector('#scUrlInput').style.borderColor = '';
+        m.classList.add('open');
+        setTimeout(function () {
+            var inp = m.querySelector('#scUrlInput');
+            inp.focus();
+            inp.select();
+        }, 60);
+    }
+
     function closeAddModal() {
         if (modal) modal.classList.remove('open');
+        editingId = null;
     }
 
     function submitShortcut() {
@@ -6801,29 +6801,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var host = parsed.hostname.replace(/^www\./, '');
         var verdict = checkUrl(parsed.href, host);
-
         if (verdict) {
             showToast(verdict.kind, verdict.domain);
             closeAddModal();
             return;
         }
 
-        // Duplicate check
-        var existing = loadShortcuts();
-        if (existing.some(function (s) { return s.host === host; })) {
+        var list = loadShortcuts();
+
+        // Duplicate check — ignore the entry we're currently editing
+        var dupe = list.some(function (s) {
+            return s.host === host && s.id !== editingId;
+        });
+        if (dupe) {
             urlInp.style.borderColor = '#fbbf24';
             setTimeout(function () { urlInp.style.borderColor = ''; }, 1400);
             return;
         }
 
-        var name = prettyName(host, nameInp.value);
-        existing.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            name: name,
-            url: parsed.href,
-            host: host
-        });
-        saveShortcuts(existing);
+        var newName = prettyName(host, nameInp.value);
+
+        if (editingId) {
+            // ---- EDIT: update in place ----
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].id === editingId) {
+                    list[i].name = newName;
+                    list[i].url  = parsed.href;
+                    list[i].host = host;
+                    break;
+                }
+            }
+        } else {
+            // ---- ADD: new entry ----
+            list.push({
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                name: newName,
+                url: parsed.href,
+                host: host
+            });
+        }
+
+        saveShortcuts(list);
         renderShortcuts();
         closeAddModal();
     }
@@ -6831,7 +6849,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ---- Boot ----
     function boot() {
         if (!document.getElementById('shortcutsGrid')) return;
-        purgeBlockedShortcuts();   // remove any previously-saved blocked entries
+        purgeBlockedShortcuts();
         renderShortcuts();
     }
     if (document.readyState === 'loading') {
