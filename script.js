@@ -6973,8 +6973,7 @@ document.addEventListener('DOMContentLoaded', function() {
         video:    { label: '🎬 Video & Streaming',  domains: ['netflix.com','hulu.com','disneyplus.com','primevideo.com','hbomax.com','max.com','peacocktv.com','twitch.tv','kick.com','rumble.com','dailymotion.com','vimeo.com','spotify.com','soundcloud.com','deezer.com','tidal.com'] },
         gaming:   { label: '🎮 Gaming',             domains: ['steamcommunity.com','steampowered.com','epicgames.com','roblox.com','minecraft.net','playstation.com','xbox.com','ign.com','gamespot.com','polygon.com'] },
         shopping: { label: '🛒 Shopping',           domains: ['amazon.com','ebay.com','aliexpress.com','alibaba.com','etsy.com','walmart.com','target.com','bestbuy.com','shein.com','temu.com','wish.com','daraz.com','flipkart.com'] },
-        news:     { label: '📰 News & Forums',      domains: ['cnn.com','bbc.com','nytimes.com','theguardian.com','foxnews.com','dailymail.co.uk','buzzfeed.com','boredpanda.com','distractify.com','ranker.com'] }
-    };
+       
 
        // Categories that can NEVER be turned off
     var LOCKED_CATS = { social: true, video: true, gaming: true };
