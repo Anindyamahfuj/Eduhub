@@ -7949,8 +7949,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<button class="news-nav-btn" id="newsNext" type="button" title="Next">›</button>' +
             '<span class="news-counter" id="newsCounter">—/—</span>' +
             '<span class="news-source-chip" id="newsSource">—</span>' +
-            '<button class="news-refresh-btn" id="newsRefresh" type="button" title="Refresh now">↻</button>' +
-            '<button class="news-close-btn" id="newsClose" type="button" title="Hide for this session">✕</button>';
+            '<button class="news-refresh-btn" id="newsRefresh" type="button" title="Refresh now">↻</button>';
 
         document.body.insertBefore(bar, document.body.firstChild);
         wireButtons();
