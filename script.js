@@ -7613,3 +7613,324 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 })();
+// ================================================================
+// DAILY NEWS TICKER
+//  • Top bar that rotates through 10 daily headlines
+//  • Pulled from BBC / NPR / Al Jazeera RSS feeds
+//  • Cached in localStorage for 24h
+//  • Falls back to a static list if offline
+//  • Auto-advances every 7s, pauses on hover
+// ================================================================
+(function () {
+    'use strict';
+
+    var CACHE_KEY  = 'studyHubNewsCache_v1';
+    var HIDDEN_KEY = 'studyHubNewsHidden';
+    var CACHE_TTL  = 24 * 60 * 60 * 1000;   // 24h
+    var ROTATE_MS  = 7000;                  // 7s per headline
+    var MAX_ITEMS  = 10;
+
+    // ---------- Sources (RSS 2.0) ----------
+    var FEEDS = [
+        { name: 'BBC News',    url: 'http://feeds.bbci.co.uk/news/rss.xml' },
+        { name: 'NPR',         url: 'https://feeds.npr.org/1001/rss.xml' },
+        { name: 'Al Jazeera',  url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+        { name: 'BBC Tech',    url: 'http://feeds.bbci.co.uk/news/technology/rss.xml' }
+    ];
+
+    // CORS proxies — try in order until one works
+    var PROXIES = [
+        'https://api.allorigins.win/raw?url=',
+        'https://api.codetabs.com/v1/proxy/?quest='
+    ];
+
+    // ---------- Offline fallback ----------
+    var FALLBACK = [
+        { title: 'Welcome to StudyHub — your distraction-free study hub', source: 'StudyHub', link: '#' },
+        { title: 'Tip: Use Focus Mode for a timed, distraction-free session', source: 'StudyHub', link: '#' },
+        { title: 'Try the AI Planner to build a weekly study schedule', source: 'StudyHub', link: '#' },
+        { title: 'Add your favourite study sites as shortcuts below search', source: 'StudyHub', link: '#' },
+        { title: 'Customise your theme with the 🎨 picker (bottom-right)', source: 'StudyHub', link: '#' },
+        { title: 'Track habits daily to build a study streak', source: 'StudyHub', link: '#' },
+        { title: 'The Blocker keeps social media out of your study space', source: 'StudyHub', link: '#' },
+        { title: 'Break reminder fires every 50 minutes — stretch!', source: 'StudyHub', link: '#' },
+        { title: 'Use the scientific calculator for advanced math', source: 'StudyHub', link: '#' },
+        { title: 'Save articles to your Reading List for later', source: 'StudyHub', link: '#' }
+    ];
+
+    // ---------- State ----------
+    var currentIndex = 0;
+    var items = [];
+    var rotateTimer = null;
+    var bar = null;
+
+    // ---------- Cached news ----------
+    function loadCache() {
+        try {
+            var raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            if (!parsed || !Array.isArray(parsed.items) || !parsed.fetchedAt) return null;
+            if (Date.now() - parsed.fetchedAt > CACHE_TTL) return null;
+            return parsed;
+        } catch (e) { return null; }
+    }
+    function saveCache(list) {
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+                items: list,
+                fetchedAt: Date.now()
+            }));
+        } catch (e) {}
+    }
+
+    // ---------- RSS parsing ----------
+    function parseRSS(xmlText, sourceName) {
+        try {
+            var doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+            if (doc.querySelector('parsererror')) return [];
+            var nodes = doc.querySelectorAll('item');
+            var out = [];
+            for (var i = 0; i < nodes.length && out.length < 6; i++) {
+                var node = nodes[i];
+                var titleEl = node.querySelector('title');
+                var linkEl  = node.querySelector('link');
+                var dateEl  = node.querySelector('pubDate');
+                var title = titleEl ? titleEl.textContent.trim() : '';
+                var link  = linkEl  ? linkEl.textContent.trim()  : '';
+                var pub   = dateEl  ? dateEl.textContent.trim()  : '';
+                // Clean CDATA / HTML entities
+                title = title.replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+                title = title.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                if (title && link && link.indexOf('http') === 0) {
+                    out.push({ title: title, link: link, source: sourceName, pubDate: pub });
+                }
+            }
+            return out;
+        } catch (e) { return []; }
+    }
+
+    // ---------- Fetch ----------
+    function fetchOneFeed(feed, proxyIdx) {
+        if (proxyIdx >= PROXIES.length) return Promise.reject(new Error('all proxies failed'));
+        var proxy = PROXIES[proxyIdx];
+        var fullUrl = proxy + encodeURIComponent(feed.url);
+        return fetch(fullUrl, { mode: 'cors' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then(function (txt) {
+                if (txt.indexOf('<rss') === -1 && txt.indexOf('<item') === -1) {
+                    throw new Error('not RSS');
+                }
+                return parseRSS(txt, feed.name);
+            })
+            .catch(function (e) {
+                return fetchOneFeed(feed, proxyIdx + 1);
+            });
+    }
+
+    function fetchAllNews() {
+        return Promise.allSettled(FEEDS.map(function (f) { return fetchOneFeed(f, 0); }))
+            .then(function (results) {
+                var all = [];
+                results.forEach(function (r) {
+                    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                        all = all.concat(r.value);
+                    }
+                });
+                // De-dupe by title prefix, keep order, take MAX_ITEMS
+                var seen = {};
+                var picked = [];
+                for (var i = 0; i < all.length && picked.length < MAX_ITEMS; i++) {
+                    var key = all[i].title.toLowerCase().slice(0, 50);
+                    if (!seen[key]) { seen[key] = true; picked.push(all[i]); }
+                }
+                return picked;
+            });
+    }
+
+    // ---------- Relative time ----------
+    function relativeTime(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        var diff = (Date.now() - d.getTime()) / 1000;
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    // ---------- Build the bar ----------
+    function buildBar() {
+        if (document.getElementById('newsBar')) return;
+        bar = document.createElement('div');
+        bar.className = 'news-bar loading';
+        bar.id = 'newsBar';
+        bar.innerHTML =
+            '<div class="news-badge"><span class="live-dot"></span><span>LIVE</span></div>' +
+            '<button class="news-nav-btn" id="newsPrev" type="button" title="Previous">‹</button>' +
+            '<div class="news-headline-wrap">' +
+                '<a class="news-headline" id="newsHeadline" href="#" target="_blank" rel="noopener">' +
+                    '<span class="news-title">Loading today\'s headlines</span>' +
+                '</a>' +
+            '</div>' +
+            '<button class="news-nav-btn" id="newsNext" type="button" title="Next">›</button>' +
+            '<span class="news-counter" id="newsCounter">—/—</span>' +
+            '<span class="news-source-chip" id="newsSource">—</span>' +
+            '<button class="news-refresh-btn" id="newsRefresh" type="button" title="Refresh">↻</button>' +
+            '<button class="news-close-btn" id="newsClose" type="button" title="Hide for this session">✕</button>';
+
+        document.body.insertBefore(bar, document.body.firstChild);
+        wireButtons();
+    }
+
+    function wireButtons() {
+        document.getElementById('newsPrev').addEventListener('click', function () { goto(currentIndex - 1); });
+        document.getElementById('newsNext').addEventListener('click', function () { goto(currentIndex + 1); });
+        document.getElementById('newsClose').addEventListener('click', function () {
+            try { sessionStorage.setItem(HIDDEN_KEY, '1'); } catch (e) {}
+            if (bar) bar.remove();
+            if (rotateTimer) clearInterval(rotateTimer);
+        });
+        document.getElementById('newsRefresh').addEventListener('click', function () {
+            var btn = this;
+            btn.classList.add('loading');
+            fetchAllNews().then(function (list) {
+                btn.classList.remove('loading');
+                if (list.length > 0) {
+                    items = list;
+                    saveCache(items);
+                    currentIndex = 0;
+                    paint();
+                    restartRotation();
+                }
+            }).catch(function () {
+                btn.classList.remove('loading');
+            });
+        });
+
+        var wrap = document.querySelector('.news-headline-wrap');
+        if (wrap) {
+            wrap.addEventListener('mouseenter', function () { if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; } });
+            wrap.addEventListener('mouseleave', function () { restartRotation(); });
+        }
+    }
+
+    // ---------- Paint current headline ----------
+    function paint() {
+        if (!bar || items.length === 0) return;
+        bar.classList.remove('loading');
+        var item = items[currentIndex];
+        var link = document.getElementById('newsHeadline');
+        var title = document.getElementById('newsTitle');
+        if (!title) {
+            // Rebuild inner span each time to retrigger the fade animation
+            link.innerHTML = '<span class="news-title">' + escapeHtml(item.title) + '</span>';
+        } else {
+            // Replace whole anchor to retrigger animation cleanly
+            var fresh = '<span class="news-title">' + escapeHtml(item.title) + '</span>';
+            link.innerHTML = fresh;
+        }
+        link.href = item.link || '#';
+        link.style.animation = 'none';
+        void link.offsetWidth;             // force reflow
+        link.style.animation = '';
+
+        var src = document.getElementById('newsSource');
+        if (src) {
+            var t = relativeTime(item.pubDate);
+            src.innerHTML = '<b>' + escapeHtml(item.source || 'News') + '</b>' + (t ? ' · ' + t : '');
+        }
+        var cnt = document.getElementById('newsCounter');
+        if (cnt) cnt.textContent = (currentIndex + 1) + '/' + items.length;
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+
+    // ---------- Navigation ----------
+    function goto(idx) {
+        if (items.length === 0) return;
+        currentIndex = ((idx % items.length) + items.length) % items.length;
+        paint();
+        restartRotation();
+    }
+
+    function restartRotation() {
+        if (rotateTimer) clearInterval(rotateTimer);
+        rotateTimer = setInterval(function () {
+            if (items.length > 1) goto(currentIndex + 1);
+        }, ROTATE_MS);
+    }
+
+    // ---------- Boot ----------
+    function boot() {
+        // Respect session-hide
+        try { if (sessionStorage.getItem(HIDDEN_KEY) === '1') return; } catch (e) {}
+
+        buildBar();
+
+        var cached = loadCache();
+        if (cached) {
+            items = cached.items;
+            currentIndex = 0;
+            paint();
+            restartRotation();
+            // If cache is stale-ish (>20h) refetch in the background
+            if (Date.now() - cached.fetchedAt > 20 * 60 * 60 * 1000) {
+                fetchAllNews().then(function (list) {
+                    if (list.length > 0) {
+                        items = list;
+                        saveCache(items);
+                        currentIndex = 0;
+                        paint();
+                        restartRotation();
+                    }
+                }).catch(function () {});
+            }
+            return;
+        }
+
+        // No cache → fetch fresh
+        fetchAllNews().then(function (list) {
+            if (list.length === 0) list = FALLBACK.slice();
+            items = list.slice(0, MAX_ITEMS);
+            saveCache(items);
+            currentIndex = 0;
+            paint();
+            restartRotation();
+        }).catch(function () {
+            items = FALLBACK.slice(0, MAX_ITEMS);
+            currentIndex = 0;
+            paint();
+            restartRotation();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    // Public API
+    window.studyHubNews = {
+        refresh: function () {
+            var btn = document.getElementById('newsRefresh');
+            if (btn) btn.click();
+        },
+        clearCache: function () {
+            try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+        },
+        show: function () {
+            try { sessionStorage.removeItem(HIDDEN_KEY); } catch (e) {}
+            boot();
+        }
+    };
+})();
