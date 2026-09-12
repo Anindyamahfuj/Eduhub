@@ -5299,7 +5299,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initCalculator();
     setupPriorityMatrix();
     initDeepWork();
-    setupBlocker();
+    
     setupTrash();
     initCommandPalette();
     initBreakReminder();
