@@ -5354,56 +5354,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     ready(function () {
 
-        // ---------- BLOCKER ----------
-        var blockerBtn = document.getElementById('blockerToggle');
-        if (blockerBtn) {
-            var BLOCKED = ['facebook.com','instagram.com','twitter.com','x.com','tiktok.com','reddit.com','whatsapp.com','snapchat.com','discord.com','twitch.tv','netflix.com','pinterest.com','tumblr.com','linkedin.com'];
-
-            function readState() {
-                try { return JSON.parse(localStorage.getItem('studyHubData') || '{}'); }
-                catch (e) { return {}; }
-            }
-            function writeState(d) {
-                localStorage.setItem('studyHubData', JSON.stringify(d));
-            }
-            function isOn() {
-                return !!readState().blockerOn;
-            }
-            function paint() {
-                var on = isOn();
-                blockerBtn.textContent = on ? '🛡️ Blocker On' : '🛡️ Blocker Off';
-                if (on) blockerBtn.classList.add('active');
-                else blockerBtn.classList.remove('active');
-                var banner = document.getElementById('blockerBanner');
-                if (banner) banner.style.display = on ? 'flex' : 'none';
-                document.body.classList.toggle('blocker-active', on);
-            }
-
-            paint();
-            blockerBtn.addEventListener('click', function () {
-                var d = readState();
-                d.blockerOn = !d.blockerOn;
-                writeState(d);
-                paint();
-            });
-
-            // Intercept clicks on any blocked link
-            document.addEventListener('click', function (e) {
-                if (!isOn()) return;
-                var a = e.target.closest('a');
-                if (!a) return;
-                var href = a.href || '';
-                for (var i = 0; i < BLOCKED.length; i++) {
-                    if (href.indexOf(BLOCKED[i]) !== -1) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        alert('🛡️ Blocked!  "' + BLOCKED[i] + '" is on your distraction list.\n\nTurn the Blocker off to visit it.');
-                        return;
-                    }
-                }
-            }, true);
-        }
-
+       
         // ---------- TRASH ----------
         var trashBtn = document.getElementById('trashBtn');
         if (trashBtn) {
