@@ -6876,38 +6876,37 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 300); }, 2600);
     }
 
-    // ---------- Blocker UI ----------
-    function paintBlocker() {
-        const btn = document.getElementById('blockerToggle');
-        if (!btn) return;
-        const on = isBlockerOn();
-        btn.textContent = on ? '🛡️ Blocker On' : '🛡️ Blocker Off';
-        btn.classList.toggle('active', on);
-        document.body.classList.toggle('blocker-active', on);
+       function paintBlocker() {
+        // Blocker is always on — no button to update.
+        document.body.classList.add('blocker-active');
 
         let banner = document.getElementById('blockerBanner');
         if (!banner) {
             banner = document.createElement('div');
             banner.className = 'blocker-banner';
             banner.id = 'blockerBanner';
-            banner.innerHTML =
-                '🛡️ <strong>Distraction Blocker is ON.</strong>' +
-                '<span class="blocker-count-chip"><span class="blocker-count">0</span> blocked today</span>' +
-                '<button class="blocker-banner-btn" data-act="settings">⚙ Settings</button>' +
-                '<button class="blocker-banner-btn" data-act="log">📜 Log</button>' +
-                '<button class="blocker-banner-btn" data-act="off">Turn off</button>';
             const main = document.querySelector('main.container') || document.body;
             main.insertBefore(banner, main.firstChild);
+        }
+
+        // (Re)build the banner's inner content if it doesn't already have our buttons.
+        // This handles the static banner that already exists inside index.html.
+        if (!banner.querySelector('.blocker-banner-btn')) {
+            banner.innerHTML =
+                '🛡️ <strong>Blocker is on.</strong>' +
+                '<span class="blocker-count-chip"><span class="blocker-count">0</span> blocked today</span>' +
+                '<button class="blocker-banner-btn" data-act="settings">⚙ Settings</button>' +
+                '<button class="blocker-banner-btn" data-act="log">📜 Log</button>';
             banner.addEventListener('click', function (e) {
                 const b = e.target.closest('.blocker-banner-btn');
                 if (!b) return;
                 const act = b.dataset.act;
                 if (act === 'settings') openBlockerSettings();
                 else if (act === 'log') openBlockerLog();
-                else if (act === 'off') { const d = readD(); d.blockerOn = false; writeD(d); paintBlocker(); }
             });
         }
-        banner.style.display = on ? 'flex' : 'none';
+
+        banner.style.display = 'flex';
         updateBannerCount();
     }
 
