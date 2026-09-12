@@ -299,7 +299,7 @@ h1, h2, h3 {
 }
 .digital-clock.active { display: block; }
 
-}
+
 .clock-date {
     display: none;      /* hidden — the calendar pill already shows the date */
 }
