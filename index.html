@@ -110,9 +110,8 @@
             <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-info"><span class="stat-label" data-i18n="stat_streak">Longest Streak</span><span class="stat-number" id="statStreak">0</span></div></div>
             <div class="stat-card"><div class="stat-icon">🍅</div><div class="stat-info"><span class="stat-label" data-i18n="stat_pomodoros">Pomodoros Today</span><span class="stat-number" id="pomoCount">0</span></div></div>
         </section>
-
-        <!-- Search -->
-        <section class="search-section glass-card">
+<!-- ===== Search ===== -->
+                <section class="search-section glass-card">
             <div class="search-container">
                 <h3 style="margin-bottom:0.5rem;"><span class="hl-blue">🔍</span> <span data-i18n="quick_search">Quick Search</span></h3>
                 <div class="search-box">
@@ -125,6 +124,13 @@
                 <button id="keyboardToggle" class="keyboard-toggle"><span data-i18n="show_keyboard">Show Keyboard</span></button>
                 <div id="keyboardContainer" class="keyboard-container"></div>
                 <div class="search-tip"><small data-i18n="search_tip">All searches are logged in your history.</small></div>
+
+                <!--  SHORTCUTS -->
+                <div class="shortcuts-block" id="shortcutsBlock">
+                    <div class="shortcuts-title">⚡ Shortcuts</div>
+                    <div class="shortcuts-grid" id="shortcutsGrid"></div>
+                    <div class="shortcuts-empty" id="shortcutsEmpty">No shortcuts yet — add your first one 👇</div>
+                </div>
             </div>
         </section>
 
