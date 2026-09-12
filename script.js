@@ -7716,10 +7716,13 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     // CORS proxies — try each until one works (fetched fresh each request)
+        // CORS proxies — tried in order until one works
     var PROXIES = [
+        'https://r.jina.ai/',
         'https://api.allorigins.win/raw?url=',
         'https://api.codetabs.com/v1/proxy/?quest=',
-        'https://corsproxy.io/?'
+        'https://corsproxy.io/?',
+        'https://thingproxy.freeboard.io/fetch/'
     ];
 
     // Weighted keywords — bumped score = higher priority in the daily 10
