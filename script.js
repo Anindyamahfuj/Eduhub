@@ -5341,7 +5341,6 @@ var CP_COMMANDS = [
     { label: '➕ New Note', action: function() { window.location.href = 'notes.html'; setTimeout(function() { var i = document.getElementById('noteInput'); if (i) i.focus(); }, 400); } },
     { label: '➕ New Habit', action: function() { window.location.href = 'habits.html'; setTimeout(function() { var i = document.getElementById('habitInput'); if (i) i.focus(); }, 400); } },
     { label: '📅 Open Calendar', action: function() { var b = document.getElementById('calendarExpandBtn'); if (b) b.click(); } },
-    { label: '🛡️ Toggle Blocker', action: function() { var b = document.getElementById('blockerToggle'); if (b) b.click(); } },
     { label: '🗑️ Open Trash', action: function() { openTrashModal(); } },
     { label: '🔓 Toggle Focus Mode', action: function() { var b = document.getElementById('focusToggle'); if (b) b.click(); } }
 ];
