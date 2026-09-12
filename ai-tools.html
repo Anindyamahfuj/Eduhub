@@ -6,16 +6,16 @@
     <title>StudyHub · AI Tools</title>
     <link rel="stylesheet" href="style.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
-      <link rel="icon" type="image/x-icon" href="logoedu.png">
+    <link rel="icon" type="image/x-icon" href="logoedu.png">
 </head>
 <body>
-        <nav class="navbar">
+    <nav class="navbar">
         <div class="nav-container">
             <a href="index.html" class="nav-brand"><span class="neon-text">📘</span> <span class="brand-highlight">Study</span>Hub</a>
             <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu">☰</button>
             <ul class="nav-links">
-                <li><a href="index.html" class="active"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span> 🚀</a></li>
-                <li><a href="ai-tools.html"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span> 🤖</a></li>
+                <li><a href="index.html"><span class="hl-purple">◆</span> <span data-i18n="dash_title">Dashboard</span> 🚀</a></li>
+                <li><a href="ai-tools.html" class="active"><span class="hl-magenta">◆</span> <span data-i18n="ai_tools">AI Tools</span> 🤖</a></li>
                 <li><a href="calculator.html"><span class="hl-cyan">◆</span> Calculator 🧮</a></li>
                 <li><a href="files.html"><span class="hl-green">◆</span> <span data-i18n="files">Files</span> 📂</a></li>
                 <li><a href="habits.html"><span class="hl-orange">◆</span> <span data-i18n="habits">Habits</span> 🔥</a></li>
@@ -44,13 +44,12 @@
                     <option value="sw">🇰🇪 Kiswahili</option>
                     <option value="tr">🇹🇷 Türkçe</option>
                 </select>
-           
                 <button id="trashBtn" class="focus-toggle">🗑️ Trash (0)</button>
-     
                 <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
             </div>
         </div>
     </nav>
+
     <main class="container">
         <section class="clock-section mini-clock">
             <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle">⏰ <span data-i18n="switch_analog">Switch to Analog</span></button></div>
@@ -58,8 +57,6 @@
                 <div id="digitalClock" class="digital-clock active">00:00:00</div>
                 <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
             </div>
-           
-
             <div class="calendar-widget">
                 <div class="calendar-compact">
                     <div class="cal-day" id="calCompactDay">—</div>
@@ -68,8 +65,6 @@
                 </div>
                 <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar">📅</button>
             </div>
-
-            
         </section>
 
         <div class="calendar-modal" id="calendarModal" style="display:none;">
@@ -91,6 +86,7 @@
             <p data-i18n="ai_subtitle">Curated AI assistants + built‑in text summarizer.</p>
         </header>
 
+        <!-- AI Recommendation -->
         <section class="ai-recommend-section glass-card">
             <div class="ai-recommend-card">
                 <div class="ai-recommend-header">
@@ -106,8 +102,9 @@
             </div>
         </section>
 
+        <!-- AI Summarizer -->
         <section class="glass-card">
-            <h2><span class="hl-green">📄</span> <span data-i18n="summarizer_title">AI Summarizer</span></h2>
+            <h2 class="card-title"><span class="hl-green">📄</span> <span data-i18n="summarizer_title">AI Summarizer</span></h2>
             <p data-i18n="summarizer_desc">Paste any text and get a concise summary (works offline).</p>
             <div style="margin-top:0.8rem;">
                 <textarea id="summarizeInput" class="input-dark" rows="6" data-i18n-placeholder="summarize_placeholder" placeholder="Paste your text here..."></textarea>
@@ -116,28 +113,235 @@
             </div>
         </section>
 
-        <section class="tools-grid">
-            <a href="https://deepseek.com" target="_blank" class="tool-card"><div class="tool-icon">🧮</div><h3><span class="hl-cyan">DeepSeek</span></h3><p data-i18n="deepseek_desc">Advanced math solver.</p><span class="tool-tag" data-i18n="math_tag">Math</span></a>
-            <a href="https://cursor.sh" target="_blank" class="tool-card"><div class="tool-icon">💻</div><h3><span class="hl-green">Cursor</span></h3><p data-i18n="cursor_desc">AI-powered code editor.</p><span class="tool-tag" data-i18n="coding_tag">Coding</span></a>
-            <a href="https://chatgpt.com" target="_blank" class="tool-card"><div class="tool-icon">✍️</div><h3><span class="hl-magenta">ChatGPT</span></h3><p data-i18n="chatgpt_desc">Versatile writing assistant.</p><span class="tool-tag" data-i18n="writing_tag">Writing</span></a>
-            <a href="https://perplexity.ai" target="_blank" class="tool-card"><div class="tool-icon">🔬</div><h3><span class="hl-purple">Perplexity</span></h3><p data-i18n="perplexity_desc">AI-powered research.</p><span class="tool-tag" data-i18n="research_tag">Research</span></a>
-            <a href="https://claude.ai" target="_blank" class="tool-card"><div class="tool-icon">📊</div><h3><span class="hl-orange">Claude</span></h3><p data-i18n="claude_desc">Data analysis & reasoning.</p><span class="tool-tag" data-i18n="data_tag">Data</span></a>
-            <a href="https://www.midjourney.com" target="_blank" class="tool-card"><div class="tool-icon">🎨</div><h3><span class="hl-pink">Midjourney</span></h3><p data-i18n="midjourney_desc">AI image generation.</p><span class="tool-tag" data-i18n="design_tag">Design</span></a>
-            <a href="https://www.duolingo.com" target="_blank" class="tool-card"><div class="tool-icon">🌍</div><h3><span class="hl-cyan">Duolingo</span></h3><p data-i18n="duolingo_desc">AI-driven language learning.</p><span class="tool-tag" data-i18n="language_tag">Language</span></a>
-            <a href="https://www.notion.so" target="_blank" class="tool-card"><div class="tool-icon">📋</div><h3><span class="hl-purple">Notion AI</span></h3><p data-i18n="notion_desc">AI-powered productivity.</p><span class="tool-tag" data-i18n="productivity_tag">Productivity</span></a>
-            <a href="https://www.wolframalpha.com" target="_blank" class="tool-card"><div class="tool-icon">⚛️</div><h3><span class="hl-orange">Wolfram Alpha</span></h3><p data-i18n="wolfram_desc">Computational STEM engine.</p><span class="tool-tag" data-i18n="stem_tag">STEM</span></a>
-            <a href="https://www.canva.com" target="_blank" class="tool-card" data-category="design">
-                <div class="tool-icon">🖌️</div>
-                <h3><span class="hl-pink">Canva</span></h3>
-                <p data-i18n="canva_desc">AI-powered design for presentations, posters, and social media.</p>
-                <span class="tool-tag" data-i18n="design_tag">Design</span>
-            </a>
-            <a href="https://www.youtube.com" target="_blank" class="tool-card" style="border-color: rgba(255,0,0,0.3);">
-                <div class="tool-icon">📺</div>
-                <h3><span class="hl-red">YouTube</span></h3>
-                <p data-i18n="youtube_desc">Educational videos, tutorials, and lectures.</p>
-                <span class="tool-tag" style="background: rgba(255,0,0,0.15); color: #f87171;"><span data-i18n="allowed">Allowed</span></span>
-            </a>
+        <!-- ============ AI TOOLS CATEGORIES ============ -->
+
+        <!-- 📚 Study & Research -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">📚</span>
+                <h2 class="cat-title">Study &amp; Research</h2>
+                <span class="cat-count">2 tools</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">✨</div>
+                    <h3><span class="hl-blue">Gemini</span></h3>
+                    <p>Google's AI assistant for research, brainstorming, and studying.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">Research</span>
+                        <span class="tool-tag">Study</span>
+                        <span class="tool-tag">Writing</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://notebooklm.google.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">📓</div>
+                    <h3><span class="hl-green">NotebookLM</span></h3>
+                    <p>Study from your own sources — summarize notes, docs, and PDFs.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">Study</span>
+                        <span class="tool-tag">Summarize</span>
+                        <span class="tool-tag">Research</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 💻 Coding & Development -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">💻</span>
+                <h2 class="cat-title">Coding &amp; Development</h2>
+                <span class="cat-count">4 tools</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://replit.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🛠️</div>
+                    <h3><span class="hl-orange">Replit Agent</span></h3>
+                    <p>Build and prototype apps with an AI coding agent.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">Coding</span>
+                        <span class="tool-tag">Prototyping</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://cursor.sh" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">💻</div>
+                    <h3><span class="hl-green">Cursor</span></h3>
+                    <p data-i18n="cursor_desc">AI-powered code editor.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="coding_tag">Coding</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://github.com/features/copilot" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🐙</div>
+                    <h3><span class="hl-purple">GitHub Copilot</span></h3>
+                    <p>AI pair-programmer for code completion and suggestions.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">Coding</span>
+                        <span class="tool-tag">Autocomplete</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://copilot.microsoft.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🪟</div>
+                    <h3><span class="hl-cyan">Microsoft Copilot</span></h3>
+                    <p>General AI assistance for productivity, writing, and code.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">Productivity</span>
+                        <span class="tool-tag">Writing</span>
+                        <span class="tool-tag">Coding</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- ✍️ Writing & Productivity -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">✍️</span>
+                <h2 class="cat-title">Writing &amp; Productivity</h2>
+                <span class="cat-count">3 tools</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">✍️</div>
+                    <h3><span class="hl-magenta">ChatGPT</span></h3>
+                    <p data-i18n="chatgpt_desc">Versatile writing assistant.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="writing_tag">Writing</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">📊</div>
+                    <h3><span class="hl-orange">Claude</span></h3>
+                    <p data-i18n="claude_desc">Data analysis &amp; reasoning.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="data_tag">Data</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://www.notion.so/product/ai" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">📋</div>
+                    <h3><span class="hl-purple">Notion AI</span></h3>
+                    <p data-i18n="notion_desc">AI-powered productivity.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="productivity_tag">Productivity</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 🧮 STEM & Math -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">🧮</span>
+                <h2 class="cat-title">STEM &amp; Math</h2>
+                <span class="cat-count">3 tools</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://deepseek.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🧮</div>
+                    <h3><span class="hl-cyan">DeepSeek</span></h3>
+                    <p data-i18n="deepseek_desc">Advanced math solver.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="math_tag">Math</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://www.wolframalpha.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">⚛️</div>
+                    <h3><span class="hl-orange">Wolfram Alpha</span></h3>
+                    <p data-i18n="wolfram_desc">Computational STEM engine.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="stem_tag">STEM</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://perplexity.ai" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🔬</div>
+                    <h3><span class="hl-purple">Perplexity</span></h3>
+                    <p data-i18n="perplexity_desc">AI-powered research.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="research_tag">Research</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 🎨 Design & Creativity -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">🎨</span>
+                <h2 class="cat-title">Design &amp; Creativity</h2>
+                <span class="cat-count">2 tools</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://www.midjourney.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🎨</div>
+                    <h3><span class="hl-pink">Midjourney</span></h3>
+                    <p data-i18n="midjourney_desc">AI image generation.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="design_tag">Design</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+                <a href="https://www.canva.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🖌️</div>
+                    <h3><span class="hl-pink">Canva</span></h3>
+                    <p data-i18n="canva_desc">AI-powered design for presentations, posters, and social media.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="design_tag">Design</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 🌍 Language Learning -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">🌍</span>
+                <h2 class="cat-title">Language Learning</h2>
+                <span class="cat-count">1 tool</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://www.duolingo.com" target="_blank" rel="noopener noreferrer" class="tool-card">
+                    <div class="tool-icon">🌍</div>
+                    <h3><span class="hl-cyan">Duolingo</span></h3>
+                    <p data-i18n="duolingo_desc">AI-driven language learning.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" data-i18n="language_tag">Language</span>
+                    </div>
+                    <span class="tool-open">Open AI →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 📺 Video Learning -->
+        <section class="tools-category">
+            <div class="tools-category-header">
+                <span class="cat-icon">📺</span>
+                <h2 class="cat-title">Video Learning</h2>
+                <span class="cat-count">1 tool</span>
+            </div>
+            <div class="tools-grid">
+                <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="tool-card" style="border-color: rgba(255,0,0,0.3);">
+                    <div class="tool-icon">📺</div>
+                    <h3><span class="hl-red">YouTube</span></h3>
+                    <p data-i18n="youtube_desc">Educational videos, tutorials, and lectures.</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag" style="background: rgba(255,0,0,0.15); color: #f87171;" data-i18n="allowed">Allowed</span>
+                    </div>
+                    <span class="tool-open">Open →</span>
+                </a>
+            </div>
         </section>
 
         <section class="block-warning glass-card non-essential">
