@@ -46,6 +46,14 @@ console.log('--------------');
 copyTree(src, out);
 console.log(`  copied   frontend/ -> public/`);
 
+// 1b. Preserve the original .html URLs.
+// Cloudflare Pages otherwise 308-redirects /notes.html -> /notes, which
+// changes the site's URLs and breaks the frontend's own path checks
+// (setActiveNavLink / refreshCurrentPage compare location.pathname to
+// 'notes.html'). A rewrite (status 200) serves the file at the original URL.
+writeFileSync(join(out, '_redirects'), '/*.html /:splat 200\n');
+console.log(`  wrote    public/_redirects (.html URLs preserved)`);
+
 // 2. Append the storage shim to the served script.js.
 const originalScript = readFileSync(join(src, 'script.js'));
 const shim = readFileSync(shimPath);

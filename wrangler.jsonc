@@ -4,12 +4,13 @@
   "compatibility_date": "2026-09-08",
   "pages_build_output_dir": "./public",
   "compatibility_flags": ["nodejs_compat"],
-  // Serve the .html files EXACTLY as they were originally served. Pages
-  // otherwise redirects /notes.html -> /notes, which would change the URLs
-  // and break the frontend's own path checks (refreshCurrentPage /
-  // setActiveNavLink compare location.pathname against 'notes.html').
-  "html_handling": "none",
-  "not_found_handling": "none",
+  // NOTE ON URLS: Cloudflare Pages by default redirects /notes.html -> /notes.
+  // That would change the site's URLs and break the frontend's own path
+  // checks (refreshCurrentPage / setActiveNavLink compare location.pathname
+  // against 'notes.html'). scripts/build.mjs therefore emits a public/_redirects
+  // file that serves every .html path directly with a 200, preserving the
+  // original URLs exactly. (wrangler's Pages config rejects html_handling at
+  // the top level, so _redirects is the supported mechanism here.)
   "d1_databases": [
     {
       "binding": "DB",
