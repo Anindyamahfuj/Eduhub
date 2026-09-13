@@ -3668,148 +3668,6 @@ function setupSummarizer() {
 }
 
 // ================================================================
-// HABITS
-// ================================================================
-function setupHabits() {
-    var input = document.getElementById('habitInput');
-    var addBtn = document.getElementById('addHabitBtn');
-    var list = document.getElementById('habitList');
-    var delBtn = document.getElementById('deleteAllHabitsBtn');
-    var streakDisplay = document.getElementById('streakDisplay');
-
-    function renderHabits() {
-        var data = loadData();
-        if (data.habits.length === 0) {
-            list.innerHTML = '<p class="empty-state">' + getTranslation('no_habits') + '</p>';
-        } else {
-            var today = new Date().toISOString().slice(0, 10);
-            list.innerHTML = data.habits.map(function(h) {
-                var done = h.completedDates.includes(today);
-                return '<div class="habit-item"><span class="habit-text">' + h.text + (done ? ' ✅' : '') + '</span><div class="habit-actions"><button class="complete-btn ' + (done ? 'done' : '') + '" data-id="' + h.id + '">' + (done ? getTranslation('done') : getTranslation('complete')) + '</button><button class="delete-item-btn" data-id="' + h.id + '" data-action="delete-habit">✕</button></div></div>';
-            }).join('');
-            list.querySelectorAll('.complete-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var id = this.dataset.id;
-                    var data = loadData();
-                    var habit = data.habits.find(function(h) { return h.id === id; });
-                    if (habit) {
-                        var today = new Date().toISOString().slice(0, 10);
-                        if (!habit.completedDates.includes(today)) {
-                            habit.completedDates.push(today);
-                            addActivity(data, 'habit_complete', 'Completed habit: "' + habit.text + '"');
-                            saveData(data);
-                            renderHabits();
-                            updateStreak();
-                            if (document.getElementById('statTasks')) renderDashboard();
-                        }
-                    }
-                });
-            });
-        }
-        updateStreak();
-    }
-
-    function updateStreak() {
-        var data = loadData();
-        var streak = 0;
-        if (data.habits.length > 0) {
-            var allDates = new Set();
-            data.habits.forEach(function(h) {
-                h.completedDates.forEach(function(d) { allDates.add(d); });
-            });
-            var sorted = Array.from(allDates).sort();
-            if (sorted.length > 0) {
-                var current = 1;
-                var maxStreak = 1;
-                for (var i = 1; i < sorted.length; i++) {
-                    var prev = new Date(sorted[i - 1]);
-                    var curr = new Date(sorted[i]);
-                    var diff = (curr - prev) / (1000 * 60 * 60 * 24);
-                    if (diff === 1) {
-                        current++;
-                        maxStreak = Math.max(maxStreak, current);
-                    } else {
-                        current = 1;
-                    }
-                }
-                streak = maxStreak;
-            }
-        }
-        if (streakDisplay) streakDisplay.textContent = streak;
-    }
-
-// ---------- PIN NOTICE handler (bulletproof) ----------
-function pinNotice() {
-    var inp = document.getElementById('noticeInput');
-    if (!inp) return;
-    var text = inp.value.trim();
-    if (!text) {
-        // visual nudge when empty
-        inp.style.borderColor = '#fca5a5';
-        inp.style.boxShadow = '0 0 0 3px rgba(252, 165, 165, 0.18)';
-        inp.focus();
-        setTimeout(function () {
-            inp.style.borderColor = '';
-            inp.style.boxShadow = '';
-        }, 1200);
-        return;
-    }
-    var data = loadData();
-    data.notices.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        text: text,
-        date: new Date().toISOString()
-    });
-    if (typeof addActivity === 'function') {
-        addActivity(data, 'notice_add', 'Added notice: "' + text + '"');
-    }
-    saveData(data);
-    inp.value = '';
-    renderNotices();
-    if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
-        renderDashboard();
-    }
-}
-
-// Attach to the button (idempotent)
-if (addBtn && !addBtn.dataset.noticeHooked) {
-    addBtn.dataset.noticeHooked = '1';
-    addBtn.addEventListener('click', pinNotice);
-}
-
-if (input && !input.dataset.noticeHooked) {
-    input.dataset.noticeHooked = '1';
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            pinNotice();
-        }
-    });
-}
-
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') addBtn.click();
-    });
-
-    delBtn.addEventListener('click', function() {
-        if (confirm('Move all habits to Trash? They will be recoverable for 24 hours.')) {
-            var data = loadData();
-            data.habits.forEach(function(h) { pushToTrash(data, 'habit', h); });
-            data.habits = [];
-            addActivity(data, 'delete', 'Moved all habits to trash');
-            saveData(data);
-            renderHabits();
-            updateTrashCount();
-            if (document.getElementById('statTasks')) renderDashboard();
-        }
-    });
-    renderHabits();
-}
-
-// ================================================================
-// NOTICE
-// ================================================================
-// ================================================================
 // HABITS  (event-delegation — delete + complete work on every render)
 // ================================================================
 function setupHabits() {
@@ -4019,8 +3877,157 @@ function setupHabits() {
 }
 
 // ================================================================
-// NOTES
+// NOTICE — pinned announcements  (idempotent, safe to call twice)
 // ================================================================
+function setupNotice() {
+    var input   = document.getElementById('noticeInput');
+    var addBtn  = document.getElementById('addNoticeBtn');
+    var list    = document.getElementById('noticeList');
+    var delBtn  = document.getElementById('deleteAllNoticesBtn');
+    var countEl = document.getElementById('noticeCount');
+
+    if (!list) return;
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+        });
+    }
+
+    // ---------- RENDER ----------
+    function renderNotices() {
+        var data = loadData();
+
+        if (data.notices.length === 0) {
+            list.innerHTML = '<p class="empty-state">' + getTranslation('no_notices') + '</p>';
+        } else {
+            list.innerHTML = data.notices.map(function(n) {
+                var dateStr = new Date(n.date).toLocaleDateString();
+                return '<div class="notice-item">' +
+                           '<span>' + escapeHtml(n.text) + '</span>' +
+                           '<span class="time">' + dateStr +
+                               ' <button class="delete-item-btn" type="button" ' +
+                                       'data-id="' + n.id + '" data-action="delete-notice" ' +
+                                       'title="Delete notice">✕</button>' +
+                           '</span>' +
+                       '</div>';
+            }).join('');
+        }
+
+        if (countEl) countEl.textContent = data.notices.length + ' ' + getTranslation('notices_count');
+    }
+
+    // ---------- PIN ----------
+    function pinNotice() {
+        if (!input) return;
+        var text = input.value.trim();
+        if (!text) {
+            input.style.borderColor = '#fca5a5';
+            input.style.boxShadow = '0 0 0 3px rgba(252, 165, 165, 0.18)';
+            input.focus();
+            setTimeout(function () {
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+            }, 1200);
+            return;
+        }
+        var data = loadData();
+        data.notices.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            text: text,
+            date: new Date().toISOString()
+        });
+        if (typeof addActivity === 'function') {
+            addActivity(data, 'notice_add', 'Added notice: "' + text + '"');
+        }
+        saveData(data);
+        input.value = '';
+        renderNotices();
+        if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+            renderDashboard();
+        }
+    }
+
+    // Expose globally so an inline onclick attribute also works
+    window.__pinNotice = pinNotice;
+
+    // ---------- ONE delegated listener on the list (delete) ----------
+    if (!list.dataset.noticeHooked) {
+        list.dataset.noticeHooked = '1';
+
+        list.addEventListener('click', function(e) {
+            var btn = e.target.closest('.delete-item-btn[data-action="delete-notice"]');
+            if (!btn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            var id = btn.dataset.id;
+            if (!id) return;
+            if (!confirm('Delete this notice? It will go to Trash for 24 hours.')) return;
+
+            var data = loadData();
+            var item = data.notices.find(function(n) { return n.id === id; });
+            if (!item) return;
+
+            if (typeof pushToTrash === 'function') pushToTrash(data, 'notice', item);
+            data.notices = data.notices.filter(function(n) { return n.id !== id; });
+
+            if (typeof addActivity === 'function') addActivity(data, 'delete', 'Moved notice to trash');
+            saveData(data);
+
+            renderNotices();
+            if (typeof updateTrashCount === 'function') updateTrashCount();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
+    // ---------- PIN BUTTON ----------
+    if (addBtn && !addBtn.dataset.noticePinHooked) {
+        addBtn.dataset.noticePinHooked = '1';
+        addBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            pinNotice();
+        });
+    }
+
+    // ---------- ENTER KEY ----------
+    if (input && !input.dataset.noticeInputHooked) {
+        input.dataset.noticeInputHooked = '1';
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                pinNotice();
+            }
+        });
+    }
+
+    // ---------- DELETE ALL ----------
+    if (delBtn && !delBtn.dataset.noticeDelAllHooked) {
+        delBtn.dataset.noticeDelAllHooked = '1';
+        delBtn.addEventListener('click', function() {
+            if (!confirm('Move all notices to Trash? They will be recoverable for 24 hours.')) return;
+            var data = loadData();
+            data.notices.forEach(function(n) {
+                if (typeof pushToTrash === 'function') pushToTrash(data, 'notice', n);
+            });
+            data.notices = [];
+            if (typeof addActivity === 'function') addActivity(data, 'delete', 'Moved all notices to trash');
+            saveData(data);
+            renderNotices();
+            if (typeof updateTrashCount === 'function') updateTrashCount();
+            if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+        });
+    }
+
+    renderNotices();
+}
+
+
 // ================================================================
 // NOTES  (event-delegation — delete works reliably on every render)
 // ================================================================
