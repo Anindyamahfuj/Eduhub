@@ -3041,8 +3041,9 @@ function checkReminders(data) {
 function renderDashboard() {
     const data = loadData();
     resetDailyIfNeeded(data);
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('todayDate').textContent = today;
+   const today = new Date().toISOString().slice(0, 10);
+var todayEl = document.getElementById('todayDate');
+if (todayEl) todayEl.textContent = today;
 
     const todaySearches = data.searches.filter(function(s) { return s.date.startsWith(today); }).length;
     const todayFiles = data.files.filter(function(f) { return f.date && f.date.startsWith(today); }).length;
