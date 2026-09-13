@@ -8,6 +8,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
 <link rel="icon" type="image/x-icon" href="logoedu.png">
 <style>
+  /* ============================================================
+     CALCULATOR PAGE — compact, device-like layout
+     (This block is scoped to calculator.html only.)
+     ============================================================ */
+
+  /* ---- Original calculator styles ---- */
   .calc-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.2rem;border-bottom:1px solid var(--line);padding-bottom:.8rem}
   .calc-tab{background:var(--surface-2);border:1px solid var(--line);color:var(--muted);padding:.5rem 1rem;border-radius:999px;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .2s}
   .calc-tab:hover{border-color:var(--accent);color:var(--accent)}
@@ -62,16 +68,125 @@
   .matrix-grid input:focus{outline:none;border-color:var(--accent)}
   .matrix-block{display:inline-block;padding:.6rem;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.15);margin-right:1rem;margin-bottom:.6rem;vertical-align:top}
   .matrix-block h4{font-size:.75rem;color:var(--muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.1em}
-  @media (max-width:700px){
-    .sci-grid{grid-template-columns:repeat(5,1fr);gap:.3rem}
-    .sci-btn{padding:.6rem .1rem;font-size:.78rem;min-height:42px}
-    .sci-result{font-size:1.6rem}
-    .sci-expr{font-size:.95rem}
+
+  /* ---- COMPACT LAYOUT — scoped to calculator page only ---- */
+
+  /* Center & cap the page to device-like width */
+  body .container {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
   }
-  @media (max-width:420px){
-    .sci-grid{grid-template-columns:repeat(4,1fr)}
-    .sci-btn{font-size:.72rem}
+
+  /* Calculator card looks like a device chassis */
+  body .glass-card {
+    padding: 1rem;
+    border-radius: 22px;
   }
+
+  /* Compact header */
+  body .page-header {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  body .page-header h1 {
+    font-size: 1.6rem;
+  }
+  body .page-header p {
+    font-size: 0.82rem;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Tabs — centered, compact */
+  body .calc-tabs {
+    justify-content: center;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.65rem;
+  }
+  body .calc-tab {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    border-radius: 10px;
+  }
+
+  /* Display — smaller, tighter */
+  body .sci-display {
+    padding: 0.75rem 0.9rem;
+    border-radius: 14px;
+    margin-bottom: 0.75rem;
+  }
+  body .sci-display-top { font-size: 0.65rem; margin-bottom: 0.35rem; }
+  body .sci-expr { font-size: 0.9rem; min-height: 1.2rem; }
+  body .sci-result { font-size: 1.6rem; min-height: 2rem; margin-top: 0.2rem; }
+
+  /* Keypad — 5 columns, key-like proportions */
+  body .sci-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+  }
+  body .sci-btn {
+    padding: 0.55rem 0.2rem;
+    min-height: 42px;
+    font-size: 0.82rem;
+    border-radius: 9px;
+  }
+  body .sci-btn.op { font-size: 0.95rem; }
+  body .sci-btn.eq { font-size: 1.05rem; }
+
+  /* Memory row — compact */
+  body .mem-row { gap: 0.3rem; margin-top: 0.4rem; padding-top: 0.6rem; font-size: 0.75rem; }
+  body .mem-row button { padding: 0.28rem 0.55rem; font-size: 0.7rem; border-radius: 7px; }
+
+  /* History — shorter */
+  body .hist-box { margin-top: 0.7rem; max-height: 140px; border-radius: 10px; padding: 0.5rem; }
+  body .hist-box h4 { font-size: 0.68rem; margin-bottom: 0.3rem; }
+  body .hist-item { padding: 0.3rem 0.5rem; font-size: 0.75rem; border-radius: 6px; }
+
+  /* Tool panels — tighter */
+  body .tool-panel .row { gap: 0.45rem; margin-bottom: 0.55rem; }
+  body .tool-panel label { font-size: 0.75rem; min-width: 55px; }
+  body .tool-panel input,
+  body .tool-panel select,
+  body .tool-panel textarea { padding: 0.4rem 0.65rem; font-size: 0.82rem; border-radius: 8px; }
+  body .tool-panel input.num { width: 72px; }
+  body .tool-panel textarea { min-height: 65px; font-size: 0.78rem; }
+  body .tool-result { padding: 0.65rem 0.8rem; font-size: 0.82rem; border-radius: 0 9px 9px 0; min-height: 2rem; margin-top: 0.7rem; }
+
+  /* Matrix inputs */
+  body .matrix-grid.m2 { grid-template-columns: repeat(2, 56px); }
+  body .matrix-grid.m3 { grid-template-columns: repeat(3, 56px); }
+  body .matrix-grid input { width: 56px; padding: 0.32rem; font-size: 0.78rem; border-radius: 6px; }
+  body .matrix-block { padding: 0.45rem; border-radius: 9px; margin-right: 0.65rem; margin-bottom: 0.45rem; }
+  body .matrix-block h4 { font-size: 0.68rem; margin-bottom: 0.35rem; }
+
+  /* Hide the clock on the calculator page only — it wastes vertical space */
+  body .clock-section { display: none; }
+
+  /* Hide the calendar modal unless triggered */
+  body .calendar-modal { display: none; }
+
+  /* Responsive tweaks — still scoped to calculator page */
+  @media (max-width: 900px) {
+    body .container { max-width: 560px; }
+  }
+  @media (max-width: 640px) {
+    body .container { max-width: 100%; padding-left: 0.6rem; padding-right: 0.6rem; }
+    body .glass-card { padding: 0.75rem; border-radius: 16px; }
+    body .sci-btn { min-height: 40px; font-size: 0.78rem; padding: 0.5rem 0.15rem; }
+    body .sci-result { font-size: 1.4rem; }
+    body .sci-expr { font-size: 0.82rem; }
+    body .calc-tab { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
+  }
+  @media (max-width: 420px) {
+    body .sci-grid { grid-template-columns: repeat(4, 1fr); }
+    body .sci-btn { font-size: 0.72rem; min-height: 38px; }
+    body .sci-result { font-size: 1.25rem; }
+  }
+</style>
 </style>
 </head>
 <body>
