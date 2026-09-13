@@ -7119,7 +7119,27 @@ document.addEventListener('DOMContentLoaded', function() {
         { id: 'bg-warmrock', name: 'Red Rocks',   type: 'photo', url: 'https://picsum.photos/id/1058/1920/1080' },
         // Mist & Trees
         { id: 'bg-mist',     name: 'Misty Forest',type: 'photo', url: 'https://picsum.photos/id/1088/1920/1080' },
-        { id: 'bg-lonepine', name: 'Lone Pine',   type: 'photo', url: 'https://picsum.photos/id/1069/1920/1080' }
+        { id: 'bg-lonepine', name: 'Lone Pine',   type: 'photo', url: 'https://picsum.photos/id/1069/1920/1080' },
+        { id: 'bg-machu-picchu',   name: 'Machu Picchu',    type: 'photo', url: 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-milky-way',      name: 'Milky Way',       type: 'photo', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-norway-fjord',   name: 'Norwegian Fjord', type: 'photo', url: 'https://images.unsplash.com/photo-1601439678777-b2b3c56fa627?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-lavender',       name: 'Lavender Fields', type: 'photo', url: 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-tropical',       name: 'Tropical Island', type: 'photo', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-sakura',         name: 'Cherry Blossom',  type: 'photo', url: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-banff',          name: 'Lake Louise',     type: 'photo', url: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-iceland',        name: 'Iceland Canyon',  type: 'photo', url: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-dolomites',      name: 'Dolomites',       type: 'photo', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-bamboo',         name: 'Bamboo Forest',   type: 'photo', url: 'https://images.unsplash.com/photo-1522444195799-478538b28823?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-autumn',         name: 'Autumn Forest',   type: 'photo', url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-santorini',      name: 'Santorini Sunset',type: 'photo', url: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-maldives',       name: 'Maldives Water',  type: 'photo', url: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-swiss-alps',     name: 'Swiss Alps',      type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-blue-mountains', name: 'Blue Mountains',  type: 'photo', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-desert-dunes',   name: 'Desert Dunes',    type: 'photo', url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-northern',       name: 'Northern Lights', type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop&sat=-30' },
+        { id: 'bg-yosemite',       name: 'Yosemite Valley', type: 'photo', url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-venice-canal',   name: 'Venice Canals',   type: 'photo', url: 'https://images.unsplash.com/photo-1514890547357-a9ee288728e0?w=1920&q=80&auto=format&fit=crop' },
+        { id: 'bg-tuscany',        name: 'Tuscany Hills',   type: 'photo', url: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=1920&q=80&auto=format&fit=crop' },
     ];
 
     // ---------- Storage helpers ----------
