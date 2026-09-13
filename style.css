@@ -4040,15 +4040,36 @@ body.theme-light textarea { color-scheme: light; }
 /* ============================================================
    DASHBOARD REDESIGN v3 — structured, minimal, hierarchical
    ============================================================ */
+html body .overview-strip,
 .overview-strip {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.5rem;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    margin-bottom: 1.4rem;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: 1.4rem !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+}
+html body .overview-strip .ov-item,
+.overview-strip .ov-item {
+    flex: initial !important;
+    width: auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--dur), transform var(--dur), box-shadow var(--dur);
 }
 .ov-item {
     min-width: 0;
