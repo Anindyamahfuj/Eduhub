@@ -12,7 +12,7 @@ This repository is the **full-stack** version. The original project was a purely
 | API | Hono on Cloudflare Pages Functions |
 | Database | Cloudflare D1 (SQLite) |
 | Auth | Email + password, PBKDF2-HMAC-SHA256, D1-backed sessions |
-| File storage | Local disk during development; R2-ready abstraction |
+| File storage | Local (D1-backed blobs) during development; R2-ready abstraction |
 | AI | OpenAI-compatible scaffold — no LLM call enabled yet |
 
 ## URLs
@@ -20,14 +20,30 @@ This repository is the **full-stack** version. The original project was a purely
 - **Local**: http://localhost:3000
 - **Production**: https://studyhub-b3t.pages.dev
 - **Cloudflare project**: studyhub
-- **Repository**: https://github.com/Anindyamahfuj/Eduhub
+- **Original upstream**: https://github.com/Anindyamahfuj/Eduhub
+
+## How the frontend stays unchanged
+
+`frontend/` holds the original StudyHub files **byte-for-byte**. At build time
+`scripts/build.mjs` copies them to `public/` and appends `src/client/storage-shim.js`
+to `script.js`. The build hard-fails unless the original 430,574 bytes remain an
+exact prefix of the shipped file, so drift is impossible.
+
+The shim overrides **only** `window.loadData` / `window.saveData`
+(`script.js` is a classic script, so its top-level declarations are global
+properties; reassigning them redirects all ~112 existing call sites). No HTML,
+CSS, DOM id/class, markup or interaction is altered.
+
+`public/_redirects` preserves the original `.html` URLs (Pages would otherwise
+308-redirect `/notes.html` → `/notes`, breaking the frontend's own
+`location.pathname` checks).
 
 ## Data architecture
 
-- **Users** — email + password hash, one row per account.
-- **Sessions** — random 256-bit token; only its SHA-256 hash is stored.
+- **Users** — email + password hash (PBKDF2-HMAC-SHA256, 100k iterations), one row per account.
+- **Sessions** — random 256-bit token; only its SHA-256 hash is stored. Delivered as an HttpOnly, SameSite=Lax cookie.
 - **Workspaces** — one row per user containing the entire `studyHubData` document as JSON, mirroring the frontend's existing state shape.
-- **Files** — metadata rows; bytes are handled by the storage driver.
+- **Files** — one row per file. `data` holds the base64 payload for the local driver; `storage_key` holds the R2 object key once `STORAGE_DRIVER=r2`. The API re-hydrates `files[].data` as a data URL on read, so `openFile()` is untouched.
 
 Every data route is authenticated and strictly scoped to the requesting user, so accounts are isolated from one another.
 

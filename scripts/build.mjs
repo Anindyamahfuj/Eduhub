@@ -51,7 +51,13 @@ console.log(`  copied   frontend/ -> public/`);
 // changes the site's URLs and breaks the frontend's own path checks
 // (setActiveNavLink / refreshCurrentPage compare location.pathname to
 // 'notes.html'). A rewrite (status 200) serves the file at the original URL.
-writeFileSync(join(out, '_redirects'), '/*.html /:splat 200\n');
+//
+// The /index.html rule must come first: Pages treats the root index specially
+// and would otherwise redirect it to "/" before the wildcard rule is reached.
+writeFileSync(
+  join(out, '_redirects'),
+  ['/index.html / 200', '/*.html /:splat 200', ''].join('\n')
+);
 console.log(`  wrote    public/_redirects (.html URLs preserved)`);
 
 // 2. Append the storage shim to the served script.js.
