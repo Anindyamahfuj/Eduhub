@@ -3738,21 +3738,54 @@ function setupHabits() {
         if (streakDisplay) streakDisplay.textContent = streak;
     }
 
-    addBtn.addEventListener('click', function() {
-        var text = input.value.trim();
-        if (!text) return;
-        var data = loadData();
-        data.habits.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            text: text,
-            completedDates: []
-        });
-        addActivity(data, 'habit_add', 'Created habit: "' + text + '"');
-        saveData(data);
-        input.value = '';
-        renderHabits();
-        if (document.getElementById('statTasks')) renderDashboard();
+// ---------- PIN NOTICE handler (bulletproof) ----------
+function pinNotice() {
+    var inp = document.getElementById('noticeInput');
+    if (!inp) return;
+    var text = inp.value.trim();
+    if (!text) {
+        // visual nudge when empty
+        inp.style.borderColor = '#fca5a5';
+        inp.style.boxShadow = '0 0 0 3px rgba(252, 165, 165, 0.18)';
+        inp.focus();
+        setTimeout(function () {
+            inp.style.borderColor = '';
+            inp.style.boxShadow = '';
+        }, 1200);
+        return;
+    }
+    var data = loadData();
+    data.notices.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        text: text,
+        date: new Date().toISOString()
     });
+    if (typeof addActivity === 'function') {
+        addActivity(data, 'notice_add', 'Added notice: "' + text + '"');
+    }
+    saveData(data);
+    inp.value = '';
+    renderNotices();
+    if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
+        renderDashboard();
+    }
+}
+
+// Attach to the button (idempotent)
+if (addBtn && !addBtn.dataset.noticeHooked) {
+    addBtn.dataset.noticeHooked = '1';
+    addBtn.addEventListener('click', pinNotice);
+}
+
+if (input && !input.dataset.noticeHooked) {
+    input.dataset.noticeHooked = '1';
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            pinNotice();
+        }
+    });
+}
 
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') addBtn.click();
