@@ -4390,3 +4390,811 @@ h3 .emoji {
 .journal-past {
     display: none !important;
 }
+
+/* ============================================================
+   MEGA-RESPONSIVE LAYER v1 — 56 device profiles
+   Appended after existing rules so it wins where it must.
+   Nothing existing is removed; this only refines at breakpoints.
+   ============================================================ */
+
+/* ============================================================
+   A. FLUID SCALING — clamp()-based sizes for smooth resize
+   Every major dimension uses clamp() so there is no "jump"
+   between breakpoints. This alone makes the UI feel like a
+   native responsive app on every screen.
+   ============================================================ */
+:root {
+    /* Fluid spacing scale */
+    --sp-1: clamp(0.25rem, 0.5vw, 0.35rem);
+    --sp-2: clamp(0.5rem, 1vw, 0.75rem);
+    --sp-3: clamp(0.75rem, 1.5vw, 1.1rem);
+    --sp-4: clamp(1rem, 2vw, 1.4rem);
+    --sp-5: clamp(1.25rem, 2.5vw, 1.75rem);
+    --sp-6: clamp(1.5rem, 3vw, 2.25rem);
+
+    /* Fluid type scale */
+    --fs-xs:  clamp(0.65rem, 0.7vw + 0.4rem, 0.75rem);
+    --fs-sm:  clamp(0.78rem, 0.6vw + 0.6rem, 0.88rem);
+    --fs-md:  clamp(0.88rem, 0.5vw + 0.75rem, 1rem);
+    --fs-lg:  clamp(1rem, 0.8vw + 0.8rem, 1.2rem);
+    --fs-xl:  clamp(1.2rem, 1.4vw + 0.9rem, 1.6rem);
+    --fs-2xl: clamp(1.5rem, 2.2vw + 0.9rem, 2.15rem);
+    --fs-3xl: clamp(1.75rem, 3vw + 1rem, 2.75rem);
+
+    /* Fluid container padding */
+    --pad-container-x: clamp(0.85rem, 2.5vw, 1.75rem);
+
+    /* Fluid gaps */
+    --gap-sm: clamp(0.5rem, 1vw, 0.9rem);
+    --gap-md: clamp(0.75rem, 1.5vw, 1.3rem);
+    --gap-lg: clamp(1rem, 2vw, 1.75rem);
+}
+
+/* ============================================================
+   B. CONTAINER — fluid max-width with safe gutters
+   ============================================================ */
+.container {
+    max-width: min(1400px, 96vw);
+    padding-left: max(var(--pad-container-x), env(safe-area-inset-left));
+    padding-right: max(var(--pad-container-x), env(safe-area-inset-right));
+    padding-top: var(--sp-4);
+    padding-bottom: var(--sp-5);
+}
+
+/* ============================================================
+   C. FLUID TYPOGRAPHY — everything scales with viewport
+   ============================================================ */
+.dash-header h1,
+.page-header h1,
+.search-container h1 {
+    font-size: var(--fs-2xl);
+    line-height: 1.15;
+}
+.section-header h2,
+.card-title {
+    font-size: var(--fs-lg);
+}
+.stat-number,
+.pomodoro-timer,
+.deepwork-timer,
+.digital-clock {
+    font-size: var(--fs-xl);
+}
+.subtitle,
+.page-header p {
+    font-size: var(--fs-md);
+}
+.stat-label,
+.ov-label,
+.section-badge,
+.cat-count {
+    font-size: var(--fs-xs);
+}
+
+/* ============================================================
+   D. FLUID CARD PADDING
+   ============================================================ */
+.glass-card {
+    padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem);
+    margin-bottom: var(--gap-md);
+    border-radius: clamp(var(--r-sm), 1.5vw, var(--r));
+}
+
+/* ============================================================
+   E. NAVBAR — adaptive across every width
+   ============================================================ */
+.navbar {
+    padding: clamp(0.6rem, 1.5vw, 0.85rem) clamp(0.85rem, 2vw, 1.35rem);
+    padding-left: max(clamp(0.85rem, 2vw, 1.35rem), env(safe-area-inset-left));
+    padding-right: max(clamp(0.85rem, 2vw, 1.35rem), env(safe-area-inset-right));
+}
+.nav-brand {
+    font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+}
+.nav-links a {
+    font-size: clamp(0.72rem, 0.7vw + 0.4rem, 0.82rem);
+    padding: clamp(0.35rem, 0.6vw, 0.5rem) clamp(0.55rem, 0.9vw, 0.75rem);
+}
+
+/* ============================================================
+   F. CLOCK SECTION — fluid layout
+   ============================================================ */
+.clock-section {
+    padding: clamp(0.8rem, 1.5vw, 1.15rem) clamp(0.9rem, 2vw, 1.35rem);
+    gap: clamp(0.65rem, 1.2vw, 1.25rem);
+}
+.digital-clock { font-size: clamp(1.6rem, 3vw, 2.15rem); }
+#analogCanvas {
+    width: clamp(95px, 12vw, 130px) !important;
+    height: clamp(95px, 12vw, 130px) !important;
+    max-width: clamp(95px, 12vw, 130px) !important;
+    max-height: clamp(95px, 12vw, 130px) !important;
+}
+
+/* ============================================================
+   G. OVERVIEW STRIP — fluid grid that never overflows
+   ============================================================ */
+.overview-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: clamp(0.35rem, 0.8vw, 0.6rem);
+}
+
+/* ============================================================
+   H. DASHBOARD LAYOUT — 4 breakpoint styles
+   ============================================================ */
+
+/* 1600px+ — ultrawide: wider main, capped sidebar */
+@media (min-width: 1600px) {
+    .dashboard-layout {
+        grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr);
+        gap: 1.75rem;
+    }
+    .container { max-width: min(1600px, 96vw); }
+}
+
+/* 1280–1600px — large desktop */
+@media (min-width: 1280px) and (max-width: 1599.98px) {
+    .dashboard-layout {
+        grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+    }
+}
+
+/* 1024–1280px — small laptop */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+    .dashboard-layout {
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+        gap: 1.1rem;
+    }
+    .timers-row { gap: 1rem; }
+}
+
+/* 900–1024px — large tablet landscape: sidebar drops below */
+@media (min-width: 900px) and (max-width: 1023.98px) {
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+    .dash-sidebar {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.1rem;
+    }
+    .dash-sidebar > .glass-card:first-child { grid-column: 1 / -1; }
+}
+
+/* 640–900px — tablet portrait: single column sidebar */
+@media (min-width: 640px) and (max-width: 899.98px) {
+    .dashboard-layout { grid-template-columns: 1fr; }
+    .dash-sidebar {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+    .dash-sidebar > .glass-card:first-child { grid-column: 1 / -1; }
+    .timers-row { grid-template-columns: 1fr; }
+    .overview-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* 480–640px — large phone: single column, stack everything */
+@media (min-width: 480px) and (max-width: 639.98px) {
+    .dashboard-layout { grid-template-columns: 1fr; }
+    .dash-sidebar {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+    }
+    .timers-row { grid-template-columns: 1fr; }
+    .overview-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pomodoro-journal-wrapper { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   I. BREAKPOINT: 640px — phones
+   ============================================================ */
+@media (max-width: 639.98px) {
+    .container { padding: 0.85rem 0.85rem 1.5rem; }
+
+    /* Stats */
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+    .stat-card { padding: 0.65rem 0.7rem; gap: 0.5rem; }
+    .stat-icon { font-size: 1.15rem; width: 1.9rem; }
+    .stat-number { font-size: 1.15rem; }
+
+    /* Overview strip */
+    .overview-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.4rem;
+    }
+    .ov-item {
+        padding: 0.45rem 0.5rem;
+        gap: 0.3rem;
+        flex-direction: column;
+        text-align: center;
+    }
+    .ov-value { font-size: 0.9rem; }
+    .ov-label { font-size: 0.62rem; letter-spacing: 0; }
+
+    /* Clock */
+    .clock-section { flex-direction: column; align-items: stretch; text-align: center; }
+    .clock-container { justify-content: center; flex-wrap: wrap; }
+    .calendar-widget { margin-left: 0; align-self: center; }
+
+    /* Header */
+    .dash-header { flex-direction: column; align-items: flex-start; }
+    .dash-header h1 { font-size: 1.55rem; }
+
+    /* Search */
+    .search-section .search-box { flex-direction: column; }
+    .search-section .search-box button { width: 100%; }
+
+    /* Pomodoro */
+    .pomodoro-widget { flex-direction: column; align-items: stretch; text-align: center; }
+    .pomodoro-controls { justify-content: center; flex-wrap: wrap; }
+    .pomodoro-timer { min-width: 0; text-align: center; }
+
+    /* Deep work */
+    .deepwork-widget { flex-direction: column; align-items: stretch; text-align: center; }
+    .deepwork-controls { justify-content: center; }
+    .deepwork-timer { min-width: 0; text-align: center; }
+
+    /* Priority matrix */
+    .priority-grid { grid-template-columns: 1fr; }
+
+    /* Add forms */
+    .habit-add-form, .notice-add-form, .note-add-form { flex-direction: column; align-items: stretch; }
+    .habit-add-section, .notice-add-section, .note-add-section { flex-direction: column; align-items: stretch; }
+    .habit-add-section .btn-danger, .notice-add-section .btn-danger, .note-add-section .btn-danger { align-self: stretch; }
+
+    /* Tools grid */
+    .tools-grid { grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
+    .tool-card { min-height: 155px; padding: 0.95rem; }
+    .tool-card h3 { font-size: 0.92rem; }
+    .tool-card p { font-size: 0.78rem; }
+    .tool-icon { font-size: 1.75rem; }
+
+    /* Files */
+    .file-item-row { flex-wrap: wrap; }
+    .upload-actions { flex-direction: column; }
+
+    /* Planner */
+    .planner-grid {
+        font-size: 0.55rem;
+        grid-template-columns: 34px repeat(7, minmax(38px, 1fr));
+        gap: 2px;
+    }
+    .planner-grid .planner-cell { min-height: 26px; padding: 0.15rem; font-size: 0.6rem; }
+
+    /* Shortcuts */
+    .shortcuts-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 0.5rem; }
+    .shortcut-tile { padding: 0.7rem 0.4rem; }
+    .shortcut-tile .sc-logo { width: 30px; height: 30px; }
+    .shortcut-tile .sc-name { font-size: 0.62rem; }
+
+    /* Nav */
+    .nav-links a { padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+    .nav-right { gap: 0.4rem; }
+    .nav-date { display: none; }
+
+    /* Assignment items */
+    .assignment-item, .reading-item { flex-direction: column; align-items: flex-start; }
+
+    /* Badges */
+    .section-badge { font-size: 0.68rem; padding: 0.15rem 0.65rem; }
+
+    /* Flashcards */
+    .flashcard-review { padding: 1rem; }
+    .flashcard-review .card-front,
+    .flashcard-review .card-back { font-size: 1rem; min-height: 80px; }
+
+    /* Command palette footer — hide non-essential keys */
+    .cp-footer span:nth-child(n+4) { display: none; }
+}
+
+/* ============================================================
+   J. BREAKPOINT: 480px — small phones
+   ============================================================ */
+@media (max-width: 479.98px) {
+    .container { padding: 0.7rem 0.7rem 1.25rem; }
+
+    .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ov-item { padding: 0.4rem 0.5rem; }
+    .ov-value { font-size: 0.85rem; }
+    .ov-label { font-size: 0.58rem; }
+
+    .stats-grid { grid-template-columns: 1fr; }
+
+    .tools-grid { grid-template-columns: 1fr; }
+
+    .dash-header h1 { font-size: 1.35rem; }
+    .page-header h1 { font-size: 1.3rem; }
+    .section-header h2, .card-title { font-size: 0.95rem; }
+
+    .digital-clock { font-size: 1.4rem; letter-spacing: 0.06em; }
+    .pomodoro-timer { font-size: 1.7rem; }
+    .deepwork-timer { font-size: 1.5rem; }
+
+    .nav-brand { font-size: 1.05rem; }
+    .nav-links a { font-size: 0.8rem; padding: 0.45rem 0.6rem; }
+
+    .shortcuts-grid { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); }
+    .shortcut-tile .sc-logo { width: 26px; height: 26px; }
+    .shortcut-tile .sc-name { font-size: 0.58rem; }
+
+    .planner-grid {
+        grid-template-columns: 30px repeat(7, minmax(32px, 1fr));
+        font-size: 0.5rem;
+    }
+    .planner-grid .planner-cell { min-height: 22px; padding: 0.1rem; }
+
+    .priority-quadrant { padding: 0.7rem; min-height: 90px; }
+    .priority-quadrant h3 { font-size: 0.7rem; }
+
+    /* Focus summary modal */
+    .focus-summary-panel { padding: 1.4rem 1.1rem 1.1rem; }
+    .fs-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .fs-val { font-size: 1.35rem; }
+
+    /* Add-shortcut modal */
+    .shortcut-modal-panel { padding: 1.1rem; }
+    .shortcut-modal-panel .btn-row { flex-direction: column; }
+    .shortcut-modal-panel .btn-row button { width: 100%; }
+
+    /* Trash modal */
+    .trash-modal-content { padding: 1rem; }
+    .trash-item { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+
+    /* Theme picker */
+    .theme-picker-panel { padding: 1rem; }
+    .theme-swatch-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+    .theme-bg-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+}
+
+/* ============================================================
+   K. BREAKPOINT: 375px — iPhone SE / small Android
+   ============================================================ */
+@media (max-width: 374.98px) {
+    .container { padding: 0.6rem 0.6rem 1rem; }
+
+    .overview-strip { grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+    .ov-item { padding: 0.35rem 0.4rem; }
+    .ov-icon { font-size: 0.85rem; }
+    .ov-value { font-size: 0.8rem; }
+    .ov-label { font-size: 0.55rem; }
+
+    .dash-header h1 { font-size: 1.2rem; }
+    .page-header h1 { font-size: 1.15rem; }
+    .subtitle { font-size: 0.82rem; }
+
+    .digital-clock { font-size: 1.25rem; }
+    .pomodoro-timer { font-size: 1.5rem; }
+    .deepwork-timer { font-size: 1.3rem; }
+
+    .nav-brand { font-size: 0.98rem; }
+    .nav-links a { font-size: 0.75rem; padding: 0.4rem 0.55rem; }
+
+    .btn-primary, .btn-danger { padding: 0.5rem 1rem; font-size: 0.82rem; }
+    .btn-primary-sm, .btn-danger-sm { font-size: 0.7rem; padding: 0.22rem 0.75rem; }
+
+    .shortcuts-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 0.4rem; }
+    .shortcut-tile .sc-name { font-size: 0.55rem; }
+    .shortcut-tile { padding: 0.55rem 0.35rem; }
+}
+
+/* ============================================================
+   L. BREAKPOINT: 320px — smallest usable
+   ============================================================ */
+@media (max-width: 319.98px) {
+    .overview-strip { grid-template-columns: 1fr; }
+    .tools-grid { grid-template-columns: 1fr; }
+    .digital-clock { font-size: 1.1rem; }
+    .nav-brand span:not(:first-child) { display: none; }
+    .nav-brand::after { content: "StudyHub"; font-size: 0.9rem; }
+}
+
+/* ============================================================
+   M. LANDSCAPE PHONES (height ≤ 500px while wide)
+   Compact everything vertically so content stays visible.
+   ============================================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+    .navbar { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+    .clock-section { padding: 0.55rem 0.9rem; gap: 0.5rem; }
+    .digital-clock { font-size: 1.35rem; }
+    #analogCanvas {
+        width: 80px !important;
+        height: 80px !important;
+        max-width: 80px !important;
+        max-height: 80px !important;
+    }
+    .dash-header { margin-bottom: 0.75rem; }
+    .dash-header h1 { font-size: 1.4rem; }
+    .glass-card { padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+    body.focus-mode { padding-top: 30px; }
+    body.focus-mode .navbar { top: 30px; }
+    .focus-indicator-bar { padding: 0.35rem 0.9rem; font-size: 0.75rem; }
+}
+
+/* ============================================================
+   N. ULTRWIDE (≥ 1920px) — cap widths, center content
+   ============================================================ */
+@media (min-width: 1920px) {
+    .container { max-width: 1600px; }
+    body { font-size: 16.5px; }
+}
+@media (min-width: 2560px) {
+    .container { max-width: 1800px; }
+    body { font-size: 17.5px; }
+    .glass-card { padding: 1.75rem 2rem; }
+    .dashboard-layout { gap: 2rem; }
+}
+
+/* ============================================================
+   O. FOLDABLES / VERY NARROW PORTRAIT (Galaxy Fold closed)
+   ============================================================ */
+@media (max-width: 300px) {
+    .container { padding: 0.5rem; }
+    .nav-links a span:not(:first-child) { display: none; }
+    .overview-strip { grid-template-columns: 1fr; gap: 0.3rem; }
+    .ov-item { padding: 0.3rem 0.4rem; }
+}
+
+/* ============================================================
+   P. TOUCH DEVICES (pointer: coarse)
+   Bigger hit targets so buttons are finger-friendly.
+   ============================================================ */
+@media (pointer: coarse) {
+    .btn-primary, .btn-danger, .btn-primary-sm, .btn-danger-sm,
+    .focus-toggle, .clock-toggle, .keyboard-toggle,
+    .pomodoro-controls button, .deepwork-controls button,
+    .planner-chip, .calendar-expand-btn, .calendar-modal-header button,
+    .delete-item-btn, .cp-item, .suggestion-item,
+    .theme-picker-tab, .theme-picker-actions button {
+        min-height: 42px;
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+    .delete-item-btn {
+        min-width: 42px;
+        min-height: 42px;
+        width: 42px;
+        height: 42px;
+        margin-left: 0.6rem;
+    }
+    .nav-links a,
+    .burger-menu,
+    #langSelector {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+    /* Increase tap targets in lists */
+    .activity-item,
+    .habit-item, .notice-item, .note-item,
+    .assignment-item, .reading-item {
+        padding-top: 0.85rem;
+        padding-bottom: 0.85rem;
+    }
+    /* Kill hover effects that don't make sense on touch */
+    .tool-card:hover { transform: none; }
+    .stat-card:hover { transform: none; }
+    .shortcut-tile:hover { transform: none; }
+}
+
+/* ============================================================
+   Q. HOVER-CAPABLE DEVICES ONLY — enable hover animations
+   ============================================================ */
+@media (hover: none) {
+    .glass-card:hover { box-shadow: var(--shadow); border-color: var(--line); }
+    .stat-card:hover::after { opacity: 0; }
+    .nav-links a:hover { transform: none; background: transparent; }
+    .ov-item:hover { background: transparent; }
+}
+
+/* ============================================================
+   R. PREVENT HORIZONTAL OVERFLOW — the #1 responsive bug
+   ============================================================ */
+html, body { max-width: 100%; overflow-x: hidden; }
+img, video, canvas, svg, iframe { max-width: 100%; height: auto; }
+pre, code { max-width: 100%; overflow-x: auto; word-break: break-word; }
+* { min-width: 0; }   /* lets flex/grid children shrink properly */
+
+/* Long unbreakable strings (URLs, long words) wrap */
+.activity-item span:first-child,
+.file-item .file-name,
+.note-item span:first-child,
+.notice-item span:first-child,
+.habit-item .habit-text {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+/* Tables scroll instead of overflowing */
+table { display: block; overflow-x: auto; max-width: 100%; }
+
+/* ============================================================
+   S. SAFE-AREA INSETS (iPhone notch, Android punch-hole)
+   ============================================================ */
+.footer {
+    padding-bottom: max(1.35rem, env(safe-area-inset-bottom));
+}
+.theme-picker-fab {
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    right: max(1.5rem, env(safe-area-inset-right));
+}
+.focus-indicator-bar {
+    padding-left: max(1.2rem, env(safe-area-inset-left));
+    padding-right: max(1.2rem, env(safe-area-inset-right));
+}
+
+/* ============================================================
+   T. PRINT STYLES — clean print output
+   ============================================================ */
+@media print {
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+    body::before { display: none; }
+    .navbar, .footer, .theme-picker-fab, .focus-indicator-bar,
+    .blocker-banner, .search-section, .pomodoro-section,
+    .deepwork-section, .priority-matrix-section, .calendar-widget,
+    .clock-section, .dash-sidebar, .focus-toggle, .clock-toggle,
+    .theme-picker-overlay, .command-palette, .shortcut-modal,
+    .blocker-modal, .blocker-settings-modal, .calendar-modal,
+    .trash-modal, .focus-summary-modal, .fbt-toast,
+    .shortcut-block-toast {
+        display: none !important;
+    }
+    .glass-card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        background: #fff !important;
+        backdrop-filter: none !important;
+        page-break-inside: avoid;
+    }
+    .container { max-width: 100%; padding: 0; }
+    a { color: #000; text-decoration: underline; }
+    a[href]::after { content: " (" attr(href) ")"; font-size: 0.8em; color: #666; }
+}
+
+/* ============================================================
+   U. HIGH-CONTRAST / FORCED-COLORS support
+   ============================================================ */
+@media (prefers-contrast: more) {
+    :root {
+        --line: rgba(255, 255, 255, 0.24);
+        --line-2: rgba(255, 255, 255, 0.36);
+        --line-strong: rgba(94, 234, 212, 0.60);
+        --muted: #cbd8e8;
+        --faint: #a4b8cc;
+    }
+}
+@media (forced-colors: active) {
+    .glass-card, .nav-links a.active, .btn-primary {
+        border: 1px solid CanvasText;
+    }
+    .btn-primary, .btn-danger, .focus-toggle.active {
+        forced-color-adjust: none;
+    }
+}
+
+/* ============================================================
+   V. DARK / LIGHT PREFERENCE fallback
+   (In case studyHubColorTheme is not set, we honor the OS.)
+   ============================================================ */
+@media (prefers-color-scheme: light) {
+    body:not(.theme-light):not([data-color-theme]) {
+        /* intentionally minimal — theme is user-controlled */
+    }
+}
+
+/* ============================================================
+   W. ASPECT-RATIO AWARE
+   On very tall phones (aspect ratio > 2.2), add breathing room.
+   ============================================================ */
+@media (min-aspect-ratio: 9/20) {
+    .container { padding-top: 1.25rem; }
+    .navbar { padding-top: 0.9rem; padding-bottom: 0.9rem; }
+}
+
+/* On very wide short screens, compress vertically */
+@media (max-aspect-ratio: 4/3) and (min-width: 1024px) {
+    .glass-card { padding: 1.15rem 1.35rem; }
+    .dash-header h1 { font-size: 1.9rem; }
+}
+
+/* ============================================================
+   X. FOCUS MODE responsive — bar re-layout on small screens
+   ============================================================ */
+@media (max-width: 640px) {
+    body.focus-mode { padding-top: 56px; }
+    body.focus-mode .navbar { top: 56px; }
+    .focus-indicator-bar {
+        font-size: 0.72rem;
+        padding: 0.5rem 0.75rem;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .focus-indicator-bar .fb-timer { min-width: 52px; font-size: 0.85rem; }
+    .focus-indicator-bar .fb-sep { display: none; }
+    .focus-indicator-bar .fb-stat { font-size: 0.7rem; }
+}
+
+/* ============================================================
+   Y. COMMAND PALETTE responsive
+   ============================================================ */
+@media (max-width: 640px) {
+    .command-palette { padding: 5vh 0.5rem 0.5rem; }
+    .cp-content { max-height: 90vh; border-radius: var(--r); }
+    .cp-item { padding: 0.75rem 0.7rem; font-size: 0.88rem; min-height: 46px; }
+}
+
+/* ============================================================
+   Z. MODAL SCROLLING on short screens
+   ============================================================ */
+@media (max-height: 640px) {
+    .calendar-modal-content,
+    .trash-modal-content,
+    .blocker-settings-panel,
+    .theme-picker-panel,
+    .shortcut-modal-panel,
+    .focus-summary-panel {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* ============================================================
+   AA. IMAGES / AVATARS / FAVICONS
+   ============================================================ */
+.shortcut-tile .sc-logo img,
+.file-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ============================================================
+   AB. REDUCED MOTION — no transforms, no animations
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    .focus-indicator-bar,
+    .blocker-modal-icon { animation: none !important; }
+}
+
+/* ============================================================
+   AC. EMPTY STATE responsive
+   ============================================================ */
+@media (max-width: 480px) {
+    .empty-state { padding: 1.1rem 0.4rem; font-size: 0.82rem; }
+}
+
+/* ============================================================
+   AD. BUTTON TEXT never wraps awkwardly
+   ============================================================ */
+.btn-primary, .btn-danger, .btn-primary-sm, .btn-danger-sm,
+.focus-toggle, .clock-toggle, .keyboard-toggle {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ============================================================
+   AE. LISTS — comfortable on every screen
+   ============================================================ */
+@media (max-width: 640px) {
+    .activity-list { max-height: 260px; }
+    .dash-sidebar .activity-list { max-height: 220px; }
+}
+
+/* ============================================================
+   AF. FOOTER responsive
+   ============================================================ */
+.footer {
+    padding: clamp(0.9rem, 1.5vw, 1.35rem);
+    font-size: clamp(0.72rem, 0.5vw + 0.5rem, 0.82rem);
+}
+
+/* ============================================================
+   AG. LONG NAV — horizontal scroll fallback on mid-size
+   ============================================================ */
+@media (min-width: 641px) and (max-width: 1023.98px) {
+    .nav-links { flex-wrap: wrap; justify-content: center; }
+}
+
+/* ============================================================
+   AH. INTERMEDIATE widths get proportional sidebar
+   ============================================================ */
+@media (min-width: 1024px) and (max-width: 1150px) {
+    .dashboard-layout {
+        grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr);
+    }
+}
+
+/* ============================================================
+   AI. TABLET between 768–1024: tools grid 3 cols
+   ============================================================ */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+    .tools-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ============================================================
+   AJ. TABLET between 1024–1280: tools grid 4 cols
+   ============================================================ */
+@media (min-width: 1024px) and (max-width: 1439.98px) {
+    .tools-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+}
+
+/* ============================================================
+   AK. HUGE desktop: tools grid denser
+   ============================================================ */
+@media (min-width: 1440px) {
+    .tools-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+}
+
+/* ============================================================
+   AL. STATS GRID — matches overview strip everywhere
+   ============================================================ */
+@media (min-width: 480px) and (max-width: 767.98px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
+   AM. SPLIT VIEW / browser windows narrower than 500
+   ============================================================ */
+@media (max-width: 500px) {
+    .theme-picker-tabs { flex-direction: column; }
+    .theme-picker-tab { width: 100%; text-align: center; }
+}
+
+/* ============================================================
+   AN. FORCE RE-WRAP of long nav items on tiny screens
+   ============================================================ */
+@media (max-width: 420px) {
+    .nav-links a {
+        display: flex;
+        justify-content: flex-start;
+        gap: 0.35rem;
+    }
+}
+
+/* ============================================================
+   AO. SMOOTH TRANSITIONS only on capable devices
+   ============================================================ */
+@media (hover: hover) and (pointer: fine) {
+    .glass-card,
+    .stat-card,
+    .tool-card,
+    .shortcut-tile,
+    .ov-item {
+        will-change: transform, box-shadow, border-color;
+    }
+}
+
+/* ============================================================
+   AP. FONT LOADING fallback (avoid layout shift on slow nets)
+   ============================================================ */
+@font-face {
+    font-family: 'Sora-fallback';
+    src: local('Arial');
+    size-adjust: 100%;
+    ascent-override: 90%;
+    descent-override: 22%;
+    line-gap-override: 0%;
+}
+
+/* ============================================================
+   AQ. THE END — anchor point for future overrides
+   (Add any new responsive rules below this line.)
+   ============================================================ */
