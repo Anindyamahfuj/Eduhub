@@ -14,6 +14,7 @@
     --bg-2: #091828;
     --bg-3: #0d2135;
 
+
     /* Ink — tonal scale */
     --ink:    #f0f6fc;
     --ink-2:  #d6e2f0;
@@ -4951,6 +4952,368 @@ table { display: block; overflow-x: auto; max-width: 100%; }
     descent-override: 22%;
     line-gap-override: 0%;
 }
+
+
+/* ============================================================
+   PLANNER PAGE — AI planner + grid styles
+   ============================================================ */
+
+.planner-ai-section {
+    border: 1px solid rgba(196, 181, 253, 0.28);
+    box-shadow: var(--shadow), 0 0 40px rgba(196, 181, 253, 0.05);
+}
+.planner-ai-section h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.5rem;
+    color: var(--ink);
+}
+
+.planner-ai-input {
+    display: flex;
+    gap: 0.65rem;
+    margin: 0.65rem 0;
+    flex-wrap: wrap;
+}
+.planner-ai-input textarea {
+    flex: 1;
+    min-width: 240px;
+    min-height: 68px;
+    background: rgba(0, 0, 0, 0.30);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    color: var(--ink);
+    padding: 0.75rem 1.05rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    transition: border var(--dur), box-shadow var(--dur);
+    line-height: 1.55;
+}
+.planner-ai-input textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: var(--focus-ring);
+}
+.planner-ai-input button {
+    background: linear-gradient(180deg, rgba(94, 234, 212, 0.24), rgba(94, 234, 212, 0.10));
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.65rem 1.4rem;
+    border-radius: var(--r-sm);
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--dur) var(--ease);
+    white-space: nowrap;
+    align-self: flex-start;
+}
+.planner-ai-input button:hover {
+    background: rgba(94, 234, 212, 0.32);
+    box-shadow: 0 0 26px rgba(94, 234, 212, 0.24);
+    transform: translateY(-1px);
+}
+
+.planner-ai-chips {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.05rem;
+}
+.planner-chip {
+    background: rgba(94, 234, 212, 0.08);
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+    padding: 0.4rem 0.95rem;
+    border-radius: var(--r-pill);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--dur) var(--ease);
+}
+.planner-chip:hover {
+    background: rgba(94, 234, 212, 0.24);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(94, 234, 212, 0.18);
+}
+
+.planner-ai-output { margin-top: 1.1rem; }
+
+.planner-ai-summary {
+    background: rgba(94, 234, 212, 0.075);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1.05rem;
+    border-radius: var(--r-sm);
+    margin-bottom: 1.05rem;
+    font-size: 0.9rem;
+    color: var(--ink);
+    line-height: 1.65;
+}
+.planner-ai-summary strong { color: var(--accent); }
+.planner-ai-summary .tag {
+    display: inline-block;
+    background: rgba(94, 234, 212, 0.12);
+    border: 1px solid rgba(94, 234, 212, 0.30);
+    padding: 0.08rem 0.6rem;
+    border-radius: var(--r-sm);
+    font-size: 0.75rem;
+    margin: 0 0.15rem;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+/* The legend under the preview — subject × count chips */
+.planner-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.7rem 0 0.9rem 0;
+}
+.planner-legend .legend-pill {
+    display: inline-block;
+    padding: 0.22rem 0.75rem;
+    border-radius: var(--r-pill);
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+.planner-ai-preview {
+    display: grid;
+    gap: 5px;
+    overflow-x: auto;
+    font-size: 0.7rem;
+    margin-bottom: 1.05rem;
+    padding-bottom: 0.55rem;
+}
+.planner-ai-preview .ai-cell {
+    background: rgba(94, 234, 212, 0.16);
+    border: 1px solid rgba(94, 234, 212, 0.34);
+    border-radius: var(--r-xs);
+    padding: 0.32rem;
+    text-align: center;
+    color: var(--ink);
+    font-weight: 600;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+}
+.planner-ai-preview .ai-cell.empty {
+    background: rgba(255, 255, 255, 0.025);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+.planner-ai-preview .ai-label {
+    background: rgba(255, 255, 255, 0.035);
+    border-radius: var(--r-xs);
+    padding: 0.32rem;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 700;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+}
+.planner-ai-preview .ai-label.ai-meal {
+    color: var(--warn);
+    background: rgba(253, 186, 116, 0.08);
+}
+.planner-ai-preview .ai-cell.ai-meal-cell {
+    background: rgba(253, 186, 116, 0.04);
+    border-color: rgba(253, 186, 116, 0.18);
+}
+
+.planner-ai-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-top: 0.9rem;
+}
+.planner-ai-actions button {
+    font-family: inherit;
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+    font-weight: 700;
+}
+.planner-ai-actions .btn-primary { padding: 0.55rem 1.3rem; }
+.planner-ai-actions .btn-danger {
+    background: rgba(252, 165, 165, 0.10);
+    color: var(--danger);
+    border: 1px solid rgba(252, 165, 165, 0.30);
+    padding: 0.55rem 1.2rem;
+    border-radius: var(--r-sm);
+    font-weight: 600;
+}
+.planner-ai-actions .btn-danger:hover {
+    background: rgba(252, 165, 165, 0.22);
+    box-shadow: 0 0 22px rgba(252, 165, 165, 0.18);
+}
+.planner-ai-actions .btn-danger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.planner-variants {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.8rem 0 0.6rem 0;
+    padding-top: 0.8rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.planner-variants .pv-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.planner-variants .pv-btn {
+    background: rgba(94, 234, 212, 0.06);
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+    padding: 0.35rem 0.9rem;
+    border-radius: var(--r-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--dur);
+}
+.planner-variants .pv-btn:hover {
+    background: rgba(94, 234, 212, 0.20);
+    transform: translateY(-1px);
+}
+
+/* Planner analytics (summary stats bar above preview) */
+.planner-analytics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+}
+.planner-analytics .pa-stat {
+    flex: 1 1 100px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 0.55rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.planner-analytics .pa-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+    font-weight: 700;
+}
+.planner-analytics .pa-val {
+    font-family: var(--mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.1;
+}
+.planner-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.85rem;
+}
+.planner-warnings .pw-item {
+    font-size: 0.8rem;
+    color: var(--warn);
+    background: rgba(253, 186, 116, 0.07);
+    border-left: 3px solid var(--warn);
+    padding: 0.35rem 0.7rem;
+    border-radius: 0 var(--r-xs) var(--r-xs) 0;
+    line-height: 1.45;
+}
+
+/* ============================================================
+   PLANNER GRID — main grid on the planner page
+   ============================================================ */
+.planner-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    gap: 4px;
+    overflow-x: auto;
+    font-size: 0.7rem;
+}
+.planner-grid .time-label {
+    background: rgba(255, 255, 255, 0.035);
+    padding: 0.28rem;
+    text-align: center;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-xs);
+    font-weight: 600;
+}
+.planner-grid .planner-cell {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    min-height: 36px;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: var(--ink);
+    transition: all var(--dur-fast) var(--ease);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: var(--r-xs);
+}
+.planner-grid .planner-cell:hover {
+    background: rgba(94, 234, 212, 0.12);
+    border-color: var(--accent);
+    transform: scale(1.03);
+}
+.planner-grid .planner-cell.filled {
+    background: rgba(94, 234, 212, 0.16);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .planner-ai-input {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .planner-ai-input textarea {
+        min-width: 0;
+    }
+    .planner-ai-input button {
+        width: 100%;
+    }
+    .planner-ai-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .planner-ai-actions button {
+        width: 100%;
+    }
+    .planner-grid {
+        font-size: 0.55rem;
+        grid-template-columns: 34px repeat(7, minmax(38px, 1fr));
+        gap: 2px;
+    }
+    .planner-grid .planner-cell { min-height: 26px; padding: 0.15rem; font-size: 0.6rem; }
+}
+
 
 /* ============================================================
    THE END — anchor point for future overrides
