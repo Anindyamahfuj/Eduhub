@@ -7137,7 +7137,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ---------- UNIQUE / ATMOSPHERIC ----------
     { id: 'bg-aurora',        name: 'Aurora Ice',       type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop' },
     { id: 'bg-iceland',       name: 'Iceland Canyon',   type: 'photo', url: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=1920&q=80&auto=format&fit=crop' },
-    { id: 'bg-swiss-alps',    name: 'Swiss Alps',       type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop' },
     { id: 'bg-yosemite',      name: 'Yosemite Valley',  type: 'photo', url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1920&q=80&auto=format&fit=crop' },
     { id: 'bg-fjord',         name: 'Norwegian Fjord',  type: 'photo', url: 'https://images.unsplash.com/photo-1601439678777-b2b3c56fa627?w=1920&q=80&auto=format&fit=crop' },
 
@@ -7151,7 +7150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     { id: 'bg-red-sunset',    name: 'Red Sunset',       type: 'photo', url: 'https://images.unsplash.com/photo-1500534623283-312aade485b7?w=1920&q=80&auto=format&fit=crop' },
     { id: 'bg-thunderstorm',  name: 'Thunderstorm',     type: 'photo', url: 'https://images.unsplash.com/photo-1429552077091-836152271555?w=1920&q=80&auto=format&fit=crop' },
     { id: 'bg-rainbow-hills', name: 'Rainbow Hills',    type: 'photo', url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1920&q=80&auto=format&fit=crop' },
-    { id: 'bg-zen-stones',    name: 'Zen Stones',       type: 'photo', url: 'https://images.unsplash.com/photo-1502691876148-a84978e59af8?w=1920&q=80&auto=format&fit=crop' },
+
 ];
     // ---------- Storage helpers ----------
     function getColor() { try { return localStorage.getItem(COLOR_KEY) || 'aurora'; } catch (e) { return 'aurora'; } }
