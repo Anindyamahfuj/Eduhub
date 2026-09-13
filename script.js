@@ -3049,35 +3049,53 @@ if (todayEl) todayEl.textContent = today;
     const todayFiles = data.files.filter(function(f) { return f.date && f.date.startsWith(today); }).length;
     const todayTasks = data.history.filter(function(h) { return h.date === today && h.type === 'habit_complete'; }).length;
 
-    let streak = 0;
-    if (data.habits.length > 0) {
-        var allDates = new Set();
-        data.habits.forEach(function(h) {
-            h.completedDates.forEach(function(d) { allDates.add(d); });
-        });
-        var sorted = Array.from(allDates).sort();
-        if (sorted.length > 0) {
-            var current = 1;
-            var maxStreak = 1;
-            for (var i = 1; i < sorted.length; i++) {
-                var prev = new Date(sorted[i - 1]);
-                var curr = new Date(sorted[i]);
-                var diff = (curr - prev) / (1000 * 60 * 60 * 24);
-                if (diff === 1) {
-                    current++;
-                    maxStreak = Math.max(maxStreak, current);
-                } else {
-                    current = 1;
-                }
+  // ---- LONGEST streak — persisted across sessions ----
+let longestStreak = data.longestStreak || 0;
+if (data.habits.length > 0) {
+    var allDates = new Set();
+    data.habits.forEach(function(h) {
+        (h.completedDates || []).forEach(function(d) { allDates.add(d); });
+    });
+    var sorted = Array.from(allDates).sort();
+    if (sorted.length > 0) {
+        var run = 1;
+        if (run > longestStreak) longestStreak = run;
+        for (var i = 1; i < sorted.length; i++) {
+            var diff = (new Date(sorted[i]) - new Date(sorted[i - 1])) / 86400000;
+            if (diff === 1) {
+                run++;
+                if (run > longestStreak) longestStreak = run;
+            } else {
+                run = 1;
             }
-            streak = maxStreak;
         }
     }
+}
+if (longestStreak > (data.longestStreak || 0)) {
+    data.longestStreak = longestStreak;
+    saveData(data);
+}
 
-    document.getElementById('statSearches').textContent = todaySearches;
-    document.getElementById('statFiles').textContent = data.files.length;
-    document.getElementById('statTasks').textContent = todayTasks;
-    document.getElementById('statStreak').textContent = streak;
+// ---- CURRENT streak — count back from today ----
+let currentStreak = 0;
+if (data.habits.length > 0) {
+    var todayStr = new Date().toISOString().slice(0, 10);
+    var dateSet = new Set();
+    data.habits.forEach(function(h) {
+        (h.completedDates || []).forEach(function(d) { dateSet.add(d); });
+    });
+    var cur = new Date();
+    if (!dateSet.has(todayStr)) cur.setDate(cur.getDate() - 1);
+    while (dateSet.has(cur.toISOString().slice(0, 10))) {
+        currentStreak++;
+        cur.setDate(cur.getDate() - 1);
+    }
+}
+
+document.getElementById('statSearches').textContent = todaySearches;
+document.getElementById('statFiles').textContent = data.files.length;
+document.getElementById('statTasks').textContent = todayTasks;
+document.getElementById('statStreak').textContent = longestStreak;  // stat card shows longest
 
     // Today Activity
     var todayActs = data.history.filter(function(h) { return h.date === today; });
