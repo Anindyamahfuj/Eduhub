@@ -5198,3 +5198,213 @@ table { display: block; overflow-x: auto; max-width: 100%; }
    AQ. THE END — anchor point for future overrides
    (Add any new responsive rules below this line.)
    ============================================================ */
+
+
+/* ============================================================
+   COMPACT CALCULATOR — make it look like a real device
+   ============================================================ */
+
+/* 1. Center the whole page on desktop, cap it to a phone-like width */
+.container {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* 2. Make the calculator card feel like a device chassis */
+.glass-card {
+    padding: 1rem;
+    border-radius: 22px;
+    max-width: 620px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* 3. Tighten the header so it doesn't dominate */
+.page-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+.page-header h1 {
+    font-size: 1.6rem;
+}
+.page-header p {
+    font-size: 0.82rem;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* 4. Tabs — compact pills, centered, wrap neatly */
+.calc-tabs {
+    justify-content: center;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.65rem;
+}
+.calc-tab {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    border-radius: 10px;
+}
+
+/* 5. Display — smaller, tighter, easier on the eye */
+.sci-display {
+    padding: 0.75rem 0.9rem;
+    border-radius: 14px;
+    margin-bottom: 0.75rem;
+}
+.sci-display-top {
+    font-size: 0.65rem;
+    margin-bottom: 0.35rem;
+}
+.sci-expr {
+    font-size: 0.9rem;
+    min-height: 1.2rem;
+}
+.sci-result {
+    font-size: 1.6rem;
+    min-height: 2rem;
+    margin-top: 0.2rem;
+}
+
+/* 6. Keypad grid — 5 columns, button-like proportions */
+.sci-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+}
+.sci-btn {
+    padding: 0.55rem 0.2rem;
+    min-height: 42px;
+    font-size: 0.82rem;
+    border-radius: 9px;
+}
+.sci-btn.op { font-size: 0.95rem; }
+.sci-btn.eq { font-size: 1.05rem; }
+
+/* 7. Memory row — compact */
+.mem-row {
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding-top: 0.6rem;
+    font-size: 0.75rem;
+}
+.mem-row button {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.7rem;
+    border-radius: 7px;
+}
+
+/* 8. History — shorter, capped */
+.hist-box {
+    margin-top: 0.7rem;
+    max-height: 140px;
+    border-radius: 10px;
+    padding: 0.5rem;
+}
+.hist-box h4 {
+    font-size: 0.68rem;
+    margin-bottom: 0.3rem;
+}
+.hist-item {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 6px;
+}
+
+/* 9. Tool panels — tighter rows and inputs */
+.tool-panel .row {
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+}
+.tool-panel label {
+    font-size: 0.75rem;
+    min-width: 55px;
+}
+.tool-panel input,
+.tool-panel select,
+.tool-panel textarea {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.82rem;
+    border-radius: 8px;
+}
+.tool-panel input.num { width: 72px; }
+.tool-panel textarea { min-height: 65px; font-size: 0.78rem; }
+.tool-result {
+    padding: 0.65rem 0.8rem;
+    font-size: 0.82rem;
+    border-radius: 0 9px 9px 0;
+    min-height: 2rem;
+    margin-top: 0.7rem;
+}
+
+/* 10. Matrix inputs */
+.matrix-grid.m2 { grid-template-columns: repeat(2, 56px); }
+.matrix-grid.m3 { grid-template-columns: repeat(3, 56px); }
+.matrix-grid input {
+    width: 56px;
+    padding: 0.32rem;
+    font-size: 0.78rem;
+    border-radius: 6px;
+}
+.matrix-block {
+    padding: 0.45rem;
+    border-radius: 9px;
+    margin-right: 0.65rem;
+    margin-bottom: 0.45rem;
+}
+.matrix-block h4 {
+    font-size: 0.68rem;
+    margin-bottom: 0.35rem;
+}
+
+/* 11. Hide the clock section on this page — it wastes space above the calculator */
+.clock-section {
+    display: none;
+}
+
+/* 12. Hide the extra empty space around the calculator card */
+.container > .glass-card {
+    margin-bottom: 1rem;
+}
+
+/* ============================================================
+   RESPONSIVE — stay compact on tablets & phones
+   ============================================================ */
+
+/* Tablet: still centered, but take more room */
+@media (max-width: 900px) {
+    .container { max-width: 560px; }
+    .glass-card { max-width: 540px; }
+}
+
+/* Phone: full width, small gutters */
+@media (max-width: 640px) {
+    .container {
+        max-width: 100%;
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+    .glass-card {
+        max-width: 100%;
+        padding: 0.75rem;
+        border-radius: 16px;
+    }
+    .sci-grid { grid-template-columns: repeat(5, 1fr); gap: 0.3rem; }
+    .sci-btn { min-height: 40px; font-size: 0.78rem; padding: 0.5rem 0.15rem; }
+    .sci-result { font-size: 1.4rem; }
+    .sci-expr { font-size: 0.82rem; }
+    .calc-tab { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
+    .mem-row { font-size: 0.7rem; }
+    .mem-row button { padding: 0.24rem 0.45rem; font-size: 0.65rem; }
+}
+
+/* Small phone: 4 columns, smaller buttons */
+@media (max-width: 420px) {
+    .sci-grid { grid-template-columns: repeat(4, 1fr); }
+    .sci-btn { font-size: 0.72rem; min-height: 38px; }
+    .sci-result { font-size: 1.25rem; }
+}
