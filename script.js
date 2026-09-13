@@ -8522,3 +8522,98 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 })();
+
+// ================================================================
+// STREAK DAILY REFRESH
+// Recomputes the streak automatically:
+//   • Every time the tab regains focus
+//   • At local midnight while the tab is open
+//   • Every 5 minutes as a safety net
+// ================================================================
+(function () {
+    'use strict';
+
+    function refreshStreaks() {
+        // Habits page uses updateStreak via setupHabits' closure — but we can
+        // recompute here directly and update every known element.
+        try {
+            var data = loadData();
+
+            // ---- Longest ----
+            var allDates = new Set();
+            (data.habits || []).forEach(function (h) {
+                (h.completedDates || []).forEach(function (d) { allDates.add(d); });
+            });
+            var sorted = Array.from(allDates).sort();
+            var longest = data.longestStreak || 0;
+            if (sorted.length > 0) {
+                var run = 1;
+                if (run > longest) longest = run;
+                for (var i = 1; i < sorted.length; i++) {
+                    var diff = (new Date(sorted[i]) - new Date(sorted[i - 1])) / 86400000;
+                    if (diff === 1) { run++; if (run > longest) longest = run; }
+                    else run = 1;
+                }
+            }
+            if (longest > (data.longestStreak || 0)) {
+                data.longestStreak = longest;
+                saveData(data);
+            }
+
+            // ---- Current ----
+            var todayStr = new Date().toISOString().slice(0, 10);
+            var cur = new Date();
+            if (!allDates.has(todayStr)) cur.setDate(cur.getDate() - 1);
+            var current = 0;
+            while (allDates.has(cur.toISOString().slice(0, 10))) {
+                current++;
+                cur.setDate(cur.getDate() - 1);
+            }
+
+            // ---- Update DOM ----
+            var el;
+
+            el = document.getElementById('streakDisplay');
+            if (el) el.textContent = current;
+
+            el = document.getElementById('currentStreakDisplay');
+            if (el) el.textContent = current;
+
+            el = document.getElementById('longestStreakDisplay');
+            if (el) el.textContent = longest;
+
+            el = document.getElementById('statStreak');
+            if (el) el.textContent = longest;
+
+        } catch (e) { /* silent */ }
+    }
+
+    // 1) Run once on load
+    refreshStreaks();
+
+    // 2) Run when the tab becomes visible again
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) refreshStreaks();
+    });
+
+    // 3) Run when the window regains focus
+    window.addEventListener('focus', refreshStreaks);
+
+    // 4) Every 5 minutes as a safety net
+    setInterval(refreshStreaks, 5 * 60 * 1000);
+
+    // 5) At local midnight — schedule a one-shot
+    (function scheduleMidnight() {
+        var now = new Date();
+        var midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        var ms = midnight - now;
+        setTimeout(function () {
+            refreshStreaks();
+            scheduleMidnight();  // reschedule for the next midnight
+        }, ms);
+    })();
+
+    // Expose for manual triggering from the console
+    window.studyHubRefreshStreaks = refreshStreaks;
+})();
