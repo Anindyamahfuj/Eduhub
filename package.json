@@ -1,20 +1,29 @@
 {
-  "name": "webapp",
+  "name": "studyhub",
+  "version": "1.0.0",
+  "private": true,
   "type": "module",
+  "description": "StudyHub — all-in-one digital academic workspace (Hono + Cloudflare Pages + D1)",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "wrangler pages dev",
-    "deploy": "npm run build && wrangler pages deploy",
+    "dev": "wrangler pages dev public --d1=DB --local --ip 0.0.0.0 --port 3000",
+    "start": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 delete studyhub 2>/dev/null || true",
+    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
+    "build": "node scripts/build.mjs",
+    "deploy": "npm run build && wrangler pages deploy public --project-name=studyhub",
+    "db:migrate:local": "wrangler d1 migrations apply studyhub-production --local",
+    "db:migrate:prod": "wrangler d1 migrations apply studyhub-production",
+    "db:console:local": "wrangler d1 execute studyhub-production --local",
+    "db:console:prod": "wrangler d1 execute studyhub-production",
+    "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local",
+    "test": "bash scripts/test.sh",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
     "hono": "^4.13.7"
   },
   "devDependencies": {
-    "@hono/vite-build": "^1.11.1",
-    "@hono/vite-dev-server": "^0.26.1",
-    "vite": "^8.1.4",
-    "wrangler": "^4.110.0"
+    "wrangler": "^4.130.0"
   }
 }

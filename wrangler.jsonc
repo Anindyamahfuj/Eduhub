@@ -1,34 +1,31 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "webapp",
+  "name": "studyhub",
   "compatibility_date": "2026-09-08",
-  "pages_build_output_dir": "./dist",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // }
+  "pages_build_output_dir": "./public",
+  "compatibility_flags": ["nodejs_compat"],
+  // Serve the .html files EXACTLY as they were originally served. Pages
+  // otherwise redirects /notes.html -> /notes, which would change the URLs
+  // and break the frontend's own path checks (refreshCurrentPage /
+  // setActiveNavLink compare location.pathname against 'notes.html').
+  "html_handling": "none",
+  "not_found_handling": "none",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "studyhub-production",
+      "database_id": "PLACEHOLDER_REPLACED_DURING_DEPLOY"
+    }
+  ],
+  // R2 is intentionally NOT configured during local development.
+  // With STORAGE_DRIVER=local, file blobs live in the D1 `files` table.
+  // At deploy time, set STORAGE_DRIVER=r2 and add an r2_buckets binding
+  // named FILES; the storage driver switches over with no frontend change.
+  "vars": {
+    // OpenAI-compatible provider configuration.
+    // No API key and no model are assumed; both are supplied later via secrets.
+    "OPENAI_BASE_URL": "https://api.openai.com/v1",
+    "OPENAI_MODEL": "",
+    "STORAGE_DRIVER": "local"
+  }
 }
