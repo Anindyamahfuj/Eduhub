@@ -4372,3 +4372,5 @@ h3 .emoji {
     -webkit-background-clip: initial !important;
     background-clip: initial !important;
 }
+
+.dash-date-badge { display: none !important; }
