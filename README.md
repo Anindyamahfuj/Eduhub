@@ -105,15 +105,27 @@ A basic developer-only panel lives at **`/admin`** with exactly seven sections:
   register/login/login-failed/logout, authorization denials, admin views, role
   changes, API errors and file-upload failures.
 
-### Admin test suite
+### Admin test suites
 
 ```bash
+# Authorization + sections + secrets + AI + logs
 bash scripts/admin-test.sh http://localhost:3000
 bash scripts/admin-test.sh https://studyhub-b3t.pages.dev   # targets prod D1
+
+# Rendering (jsdom) — every section must actually paint content
+node scripts/admin-render-test.mjs
+ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=... \
+  node scripts/admin-render-test.mjs https://studyhub-b3t.pages.dev
 ```
 
-Verifies the full authorization matrix, all seven sections, the no-secrets rule,
-the AI no-call rule and that real log events are recorded.
+`admin-test.sh` covers the full authorization matrix, all seven sections, the
+no-secrets rule, the AI no-call rule and real log events.
+
+`admin-render-test.mjs` loads the real `admin.js` in jsdom and asserts each
+section renders cards/tables without throwing. It exists because a numeric-cell
+bug once made **Overview, Users and Data** show "Request failed." while the API
+was perfectly healthy — no API-level test could catch that. Run it after any
+change to `admin/admin.js`.
 
 ## User guide
 

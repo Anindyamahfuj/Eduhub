@@ -16,6 +16,12 @@ Verification evidence for this build:
 - `scripts/browser-check.mjs` → **12/12 PASS** (student app regression, no change).
 - `node scripts/build.mjs` → passed; student `script.js` original bytes intact as
   prefix; admin assets integrity-checked; no static admin shell present.
+- `scripts/admin-render-test.mjs` → **7/7 PASS** locally and **live against
+  production**: every section renders real content in jsdom.
+- Admin render defect found and fixed post-deploy: `table()` used
+  `appendChild()` for numeric cell values, which only accepts DOM Nodes, so
+  Overview / Users / Data threw `TypeError` and showed "Request failed." while
+  the API was healthy. Fixed; regression test added.
 
 ---
 
@@ -132,6 +138,8 @@ Verification evidence for this build:
 - [x] L11 System shows real service checks — verified
 - [x] L12 AI page makes no LLM calls — verified
 - [x] L13 Regression: student app still works — 48/48 + 12/12 passed
+- [x] L14 Every admin section actually renders (no client-side exception) —
+  `scripts/admin-render-test.mjs` 7/7, embedded and live payloads
 
 ## M. Deployment & delivery (Phase 12)
 - [x] M1 Local-first: built and verified locally before deploy
