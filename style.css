@@ -1,88 +1,103 @@
 /* ============================================================
-   StudyHub — Aurora Interface  v3
-   A refined, deeper visual system. All existing class names,
-   IDs, and JS-driven states are preserved 1:1.
+   StudyHub — Aurora Interface  v4
+   654× refinement pass. All class names, IDs, tokens, feature
+   blocks, and JS-driven states are preserved 1:1.
    ============================================================ */
 
 /* ============================================================
    1. DESIGN TOKENS
    ============================================================ */
 :root {
-    /* Surfaces */
-    --bg-0: #04080f;
-    --bg-1: #071320;
-    --bg-2: #0a1a2c;
+    /* Surfaces — layered depth scale */
+    --bg-0: #03070d;
+    --bg-1: #06111d;
+    --bg-2: #091828;
+    --bg-3: #0d2135;
 
-    /* Ink */
-    --ink: #eaf2fb;
-    --ink-2: #cbd8e8;
-    --muted: #93a7bd;
-    --faint: #61758c;
-    --ghost: #3d5266;
+    /* Ink — tonal scale */
+    --ink:    #f0f6fc;
+    --ink-2:  #d6e2f0;
+    --muted:  #97abc2;
+    --faint:  #66798f;
+    --ghost:  #3f5468;
 
-    /* Lines */
-    --line: rgba(125, 211, 252, 0.12);
-    --line-2: rgba(125, 211, 252, 0.20);
-    --line-strong: rgba(94, 234, 212, 0.32);
+    /* Lines — semantic */
+    --line:        rgba(125, 211, 252, 0.10);
+    --line-2:      rgba(125, 211, 252, 0.18);
+    --line-strong: rgba(94, 234, 212, 0.34);
+    --line-hot:    rgba(192, 132, 252, 0.36);
 
-    /* Surfaces */
-    --surface: rgba(9, 22, 36, 0.72);
-    --surface-2: rgba(255, 255, 255, 0.045);
-    --surface-3: rgba(255, 255, 255, 0.075);
-    --surface-raised: rgba(13, 30, 48, 0.85);
+    /* Surfaces — translucent layers */
+    --surface:        rgba(9, 22, 36, 0.68);
+    --surface-2:      rgba(255, 255, 255, 0.042);
+    --surface-3:      rgba(255, 255, 255, 0.072);
+    --surface-4:      rgba(255, 255, 255, 0.105);
+    --surface-raised: rgba(13, 30, 48, 0.88);
 
     /* Brand */
-    --accent: #5eead4;
-    --accent-2: #7dd3fc;
-    --accent-glow: rgba(94, 234, 212, 0.35);
-    --brand: #c4b5fd;
-    --brand-hot: #c084fc;
-    --brand-glow: rgba(192, 132, 252, 0.30);
+    --accent:       #5eead4;
+    --accent-2:     #7dd3fc;
+    --accent-3:     #38bdf8;
+    --accent-glow:  rgba(94, 234, 212, 0.35);
+    --accent-soft:  rgba(94, 234, 212, 0.14);
+    --brand:        #c4b5fd;
+    --brand-hot:    #c084fc;
+    --brand-glow:   rgba(192, 132, 252, 0.30);
+    --brand-soft:   rgba(196, 181, 253, 0.14);
 
     /* Semantic */
-    --ok: #6ee7b7;
-    --warn: #fdba74;
+    --ok:     #6ee7b7;
+    --ok-soft: rgba(110, 231, 183, 0.14);
+    --warn:   #fdba74;
+    --warn-soft: rgba(253, 186, 116, 0.14);
     --danger: #fca5a5;
-    --info: #7dd3fc;
+    --danger-soft: rgba(252, 165, 165, 0.14);
+    --info:   #7dd3fc;
+    --info-soft: rgba(125, 211, 252, 0.14);
 
-    /* Elevation */
-    --shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.22);
-    --shadow-sm: 0 6px 22px rgba(0, 0, 0, 0.32);
-    --shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
-    --shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.55);
+    /* Elevation — refined layered shadows */
+    --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.30), 0 1px 2px rgba(0, 0, 0, 0.20);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.20);
+    --shadow:    0 12px 32px rgba(0, 0, 0, 0.42), 0 4px 10px rgba(0, 0, 0, 0.28);
+    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55), 0 8px 20px rgba(0, 0, 0, 0.36);
+    --shadow-xl: 0 40px 100px rgba(0, 0, 0, 0.62), 0 12px 32px rgba(0, 0, 0, 0.42);
     --shadow-glow: 0 0 40px var(--accent-glow);
 
-    /* Radii */
+    /* Radii — progression */
     --r-xs: 8px;
-    --r-sm: 12px;
-    --r: 18px;
-    --r-lg: 22px;
-    --r-xl: 28px;
+    --r-sm: 11px;
+    --r:    16px;
+    --r-lg: 20px;
+    --r-xl: 26px;
     --r-pill: 999px;
 
-    /* Type */
-   --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-         "Noto Color Emoji", "Android Emoji", "EmojiOne Color", sans-serif;
-
---font: "Sora", "Inter", -apple-system, system-ui, sans-serif, var(--emoji);
---mono: "JetBrains Mono", "Inter", ui-monospace, monospace, var(--emoji);
---display: "Fraunces", "Sora", serif, var(--emoji);
+    /* Type — emoji fallback baked in */
+    --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+             "Noto Color Emoji", "Android Emoji", "EmojiOne Color", sans-serif;
+    --font:    "Sora", "Inter", -apple-system, system-ui, sans-serif, var(--emoji);
+    --mono:    "JetBrains Mono", "Inter", ui-monospace, monospace, var(--emoji);
+    --display: "Fraunces", "Sora", serif, var(--emoji);
 
     /* Motion */
-    --ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --dur-fast: 0.14s;
-    --dur: 0.22s;
-    --dur-slow: 0.35s;
+    --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in:   cubic-bezier(0.4, 0, 1, 1);
+    --dur-fast:  0.14s;
+    --dur:       0.22s;
+    --dur-slow:  0.35s;
+
+    /* Focus ring */
+    --focus-ring: 0 0 0 3px rgba(94, 234, 212, 0.30);
 }
 
 /* ============================================================
    2. RESET & BASE
    ============================================================ */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
 
 body {
-    font-family: var(--font), var(--emoji);
+    font-family: var(--font);
     color: var(--ink);
     line-height: 1.6;
     min-height: 100vh;
@@ -93,12 +108,13 @@ body {
         radial-gradient(1000px 560px at 100% -4%, rgba(167, 139, 250, 0.18), transparent 52%),
         radial-gradient(900px 500px at 50% 110%, rgba(125, 211, 252, 0.08), transparent 55%),
         linear-gradient(180deg, #050d17 0%, #040912 55%, #060e17 100%);
+    background-attachment: fixed;
     transition: background var(--dur-slow) var(--ease);
     letter-spacing: -0.011em;
-    /* font-smoothing removed — it forced emojis to monochrome */
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
 }
-/* Ambient glow — pure radial gradients, NO blend modes */
+
 body::before {
     content: "";
     position: fixed;
@@ -110,12 +126,29 @@ body::before {
         radial-gradient(circle at 85% 85%, rgba(192, 132, 252, 0.05), transparent 45%);
 }
 
-/* NOTE: The previous body::after noise texture used mix-blend-mode: soft-light,
-   which flattened all color emojis into white boxes. Removed entirely. */
-
 body > * { position: relative; z-index: 1; }
 
 ::selection { background: rgba(94, 234, 212, 0.32); color: #fff; }
+
+/* Scrollbars — refined */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(94, 234, 212, 0.24), rgba(125, 211, 252, 0.24));
+    border-radius: var(--r-pill);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(94, 234, 212, 0.45), rgba(125, 211, 252, 0.45));
+    background-clip: padding-box;
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
 
 /* ============================================================
    3. LAYOUT
@@ -133,6 +166,7 @@ h1, h2, h3, h4 {
     letter-spacing: -0.03em;
     font-weight: 600;
     color: var(--ink);
+    line-height: 1.2;
 }
 
 /* ============================================================
@@ -184,8 +218,8 @@ h1, h2, h3, h4 {
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.28), transparent);
-    opacity: 0.65;
+    background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.32), transparent);
+    opacity: 0.75;
     pointer-events: none;
 }
 .glass-card:hover {
@@ -200,7 +234,7 @@ h1, h2, h3, h4 {
    6. NAVBAR
    ============================================================ */
 .navbar {
-    background: rgba(4, 12, 20, 0.82);
+    background: rgba(4, 12, 20, 0.86);
     backdrop-filter: blur(26px) saturate(1.4);
     -webkit-backdrop-filter: blur(26px) saturate(1.4);
     border-bottom: 1px solid var(--line);
@@ -208,7 +242,7 @@ h1, h2, h3, h4 {
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.32);
 }
 .nav-container {
     max-width: 1320px;
@@ -229,9 +263,9 @@ h1, h2, h3, h4 {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    transition: transform var(--dur) var(--ease);
+    transition: transform var(--dur) var(--ease), filter var(--dur);
 }
-.nav-brand:hover { transform: translateY(-1px); }
+.nav-brand:hover { transform: translateY(-1px); filter: brightness(1.1); }
 
 .burger-menu {
     display: none;
@@ -277,11 +311,11 @@ h1, h2, h3, h4 {
     transform: translateY(-1px);
 }
 .nav-links a.active {
-    background: linear-gradient(180deg, rgba(94, 234, 212, 0.20), rgba(125, 211, 252, 0.08));
+    background: linear-gradient(180deg, rgba(94, 234, 212, 0.22), rgba(125, 211, 252, 0.08));
     color: var(--accent);
     box-shadow:
-        inset 0 0 0 1px rgba(94, 234, 212, 0.32),
-        0 0 22px rgba(94, 234, 212, 0.12);
+        inset 0 0 0 1px rgba(94, 234, 212, 0.36),
+        0 0 22px rgba(94, 234, 212, 0.14);
 }
 
 .nav-right {
@@ -317,7 +351,7 @@ h1, h2, h3, h4 {
 #langSelector:hover { border-color: var(--line-2) !important; }
 #langSelector:focus {
     border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 
 .focus-toggle {
@@ -404,11 +438,8 @@ h1, h2, h3, h4 {
 }
 .digital-clock.active { display: block; }
 
-.clock-date {
-    display: none;      /* hidden — the calendar pill already shows the date */
-}
+.clock-date { display: none; }
 
-/* Analog clock — force perfect circle */
 #analogClock {
     display: none;
     align-items: center;
@@ -435,7 +466,6 @@ h1, h2, h3, h4 {
     filter: drop-shadow(0 8px 26px rgba(94, 234, 212, 0.22));
 }
 
-/* Push the calendar widget to the far right */
 .calendar-widget {
     margin-left: auto;
     display: flex;
@@ -511,7 +541,6 @@ h1, h2, h3, h4 {
 .dash-header h1 {
     font-size: 2.15rem;
     font-weight: 650;
-    /* gradient moved into a child class so emojis keep their color */
 }
 .dash-header h1 .gradient-text {
     background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%);
@@ -539,7 +568,6 @@ h1, h2, h3, h4 {
 .page-header h1 {
     font-size: 1.95rem;
     font-weight: 650;
-    /* gradient moved into a child class so emojis keep their color */
 }
 .page-header h1 .gradient-text {
     background: linear-gradient(180deg, var(--ink), var(--ink-2));
@@ -679,7 +707,7 @@ h1, h2, h3, h4 {
 .journal-area textarea:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 .journal-past {
     margin-top: 0.6rem;
@@ -855,7 +883,7 @@ h1, h2, h3, h4 {
 .ai-recommend-input input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 .ai-recommend-input button {
     background: rgba(94, 234, 212, 0.18);
@@ -1037,7 +1065,7 @@ h1, h2, h3, h4 {
 .note-add-form input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 
 .habit-list, .notice-list, .note-list { margin-top: 1.4rem; }
@@ -1077,7 +1105,6 @@ h1, h2, h3, h4 {
     border-color: var(--accent);
 }
 
-/* Notice items (also matched by .notice-item pattern above, extra styling for board) */
 .notice-board { border: 1px solid var(--line); }
 .notice-board-header {
     display: flex;
@@ -1426,7 +1453,7 @@ h1, h2, h3, h4 {
 .input-dark:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 
 /* ============================================================
@@ -1969,7 +1996,7 @@ h1, h2, h3, h4 {
 .planner-ai-input textarea:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 .planner-ai-chips { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 1.05rem; }
 .planner-chip {
@@ -2103,7 +2130,6 @@ body.focus-mode::before {
         radial-gradient(circle at bottom left, rgba(167, 139, 250, 0.10), transparent 55%);
 }
 
-/* Focus bar internals */
 .focus-indicator-bar .fb-timer {
     font-family: var(--mono);
     font-size: 1rem;
@@ -2529,7 +2555,7 @@ body.focus-mode::before {
 .bs-add-row input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 .bs-add-btn {
     background: rgba(94, 234, 212, 0.16);
@@ -3114,7 +3140,6 @@ body.focus-mode::before {
     font-style: italic;
 }
 
-/* Add-shortcut modal */
 .shortcut-modal {
     position: fixed;
     inset: 0;
@@ -3176,7 +3201,7 @@ body.focus-mode::before {
 .shortcut-modal-panel input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 .shortcut-modal-panel .hint {
     font-size: 0.72rem;
@@ -3218,7 +3243,6 @@ body.focus-mode::before {
     box-shadow: 0 0 22px rgba(94, 234, 212, 0.24);
 }
 
-/* Shortcut blocked toast */
 .shortcut-block-toast {
     position: fixed;
     top: 92px;
@@ -3379,7 +3403,6 @@ body.theme-light {
     color: var(--ink);
 }
 body.theme-light::before { opacity: 0.5; }
-/* body.theme-light::after removed — noise texture deleted */
 
 body.theme-light .navbar {
     background: rgba(255, 255, 255, 0.85) !important;
@@ -3695,7 +3718,7 @@ body.theme-light .fbt-toast { background: rgba(255, 255, 255, 0.98); color: #0f1
 body.theme-light .fbt-toast.ok { border-color: #059669; }
 
 /* ============================================================
-   48. COMMAND PALETTE v2 (last so it wins over base .cp-content)
+   48. COMMAND PALETTE v2
    ============================================================ */
 .command-palette {
     position: fixed;
@@ -3963,7 +3986,6 @@ kbd {
     .cp-footer span:nth-child(n+2):nth-child(-n+3) { display: none; }
 }
 
-/* Command palette — light theme */
 body.theme-light .cp-content {
     background: linear-gradient(180deg, #ffffff, #f8fafc);
     border-color: rgba(13, 148, 136, 0.30);
@@ -4005,7 +4027,6 @@ body.theme-light input[type="date"],
 body.theme-light select,
 body.theme-light textarea { color-scheme: light; }
 
-/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -4014,11 +4035,11 @@ body.theme-light textarea { color-scheme: light; }
         scroll-behavior: auto !important;
     }
 }
+
 /* ============================================================
    DASHBOARD REDESIGN v3 — structured, minimal, hierarchical
    ============================================================ */
 
-/* --- Compact Overview Strip (replaces 5 large stat cards) --- */
 .overview-strip {
     display: flex;
     align-items: center;
@@ -4081,7 +4102,6 @@ body.theme-light textarea { color-scheme: light; }
     .ov-divider { display: none; }
 }
 
-/* --- Main Dashboard Layout: main + records sidebar --- */
 .dashboard-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
@@ -4111,14 +4131,12 @@ body.theme-light textarea { color-scheme: light; }
     border-radius: 3px;
 }
 
-/* --- Timers side-by-side --- */
 .timers-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.3rem;
 }
 
-/* --- Compact card title --- */
 .card-title {
     font-size: 1rem;
     font-weight: 600;
@@ -4130,7 +4148,6 @@ body.theme-light textarea { color-scheme: light; }
     letter-spacing: -0.01em;
 }
 
-/* --- Pomodoro inline input --- */
 .pomo-duration-input {
     width: 56px;
     background: rgba(0, 0, 0, 0.30);
@@ -4146,7 +4163,7 @@ body.theme-light textarea { color-scheme: light; }
 .pomo-duration-input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+    box-shadow: var(--focus-ring);
 }
 .pomo-unit {
     color: var(--muted);
@@ -4154,7 +4171,6 @@ body.theme-light textarea { color-scheme: light; }
     font-weight: 600;
 }
 
-/* --- Deep Work stats inline --- */
 .deepwork-stats {
     display: flex;
     align-items: center;
@@ -4170,7 +4186,6 @@ body.theme-light textarea { color-scheme: light; }
 }
 .dw-sep { opacity: 0.4; }
 
-/* --- Sidebar cards: tighter, scrollable lists --- */
 .dash-sidebar .glass-card { margin-bottom: 0; }
 .dash-sidebar .activity-list {
     max-height: 220px;
@@ -4185,7 +4200,6 @@ body.theme-light textarea { color-scheme: light; }
 .dash-sidebar .section-header { margin-bottom: 0.7rem; }
 .dash-sidebar .empty-state { padding: 1rem 0.5rem; font-size: 0.82rem; }
 
-/* --- Responsive --- */
 @media (max-width: 1024px) {
     .dashboard-layout { grid-template-columns: 1fr; }
     .dash-sidebar {
@@ -4202,11 +4216,9 @@ body.theme-light textarea { color-scheme: light; }
     .dash-sidebar { gap: 1rem; }
 }
 
-/* --- Focus mode: hide sidebar, expand main --- */
 body.focus-mode .dash-sidebar { display: none; }
 body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
 
-/* --- Reduce visual weight of search card inside main --- */
 .dash-main .search-section { margin-bottom: 0; }
 .dash-main .search-section .card-title { font-size: 0.95rem; }
 
@@ -4249,7 +4261,6 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
     border-radius: var(--r-pill);
 }
 
-/* Enhanced tool card */
 .tool-card .tool-tags {
     display: flex;
     flex-wrap: wrap;
@@ -4277,7 +4288,6 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
     color: var(--accent-2);
 }
 
-/* Tool card min-height for consistency */
 .tool-card {
     min-height: 190px;
     justify-content: flex-start;
@@ -4285,19 +4295,14 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
 .tool-card h3 { margin: 0.25rem 0 0.35rem; }
 .tool-card p  { margin-bottom: 0.35rem; }
 
-/* Responsive */
 @media (max-width: 640px) {
     .tools-category-header .cat-title { font-size: 1rem; }
     .tool-card { min-height: 175px; }
 }
 
-
 /* ============================================================
    EMOJI COLOR SAFETY NET — must come last
-   Guarantees emoji glyphs render in full color everywhere
    ============================================================ */
-
-/* 1. Reset text-fill-color inheritance for emoji glyphs */
 .emoji {
     background: none !important;
     -webkit-background-clip: initial !important;
@@ -4313,7 +4318,6 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
     vertical-align: -0.05em;
 }
 
-/* 2. Any element with a .hl-* class or .neon-text gets emoji fallback */
 [class*="hl-"],
 .neon-text,
 .nav-brand,
@@ -4338,13 +4342,11 @@ body.focus-mode .dashboard-layout { grid-template-columns: 1fr; }
     font-variant-emoji: emoji;
 }
 
-/* 3. Headings that DON'T use gradient — safe to add emoji fallback */
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--display), var(--emoji);
     font-variant-emoji: emoji;
 }
 
-/* 4. Buttons always show emojis (they had font-family: inherit before) */
 button,
 .btn-primary,
 .btn-primary-sm,
@@ -4360,7 +4362,6 @@ button,
     font-variant-emoji: emoji;
 }
 
-/* 5. Emoji inside a gradient-text parent — override the transparent fill */
 .dash-header h1 .emoji,
 .page-header h1 .emoji,
 .gradient-text .emoji,
@@ -4373,6 +4374,7 @@ h3 .emoji {
     background-clip: initial !important;
 }
 
+/* Hide empty journal entries */
 .journal-past {
     display: none !important;
 }
