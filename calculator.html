@@ -122,9 +122,9 @@
   body .sci-expr { font-size: 0.9rem; min-height: 1.2rem; }
   body .sci-result { font-size: 1.6rem; min-height: 2rem; margin-top: 0.2rem; }
 
-  /* Keypad — 5 columns, key-like proportions */
+  /* Keypad — 6 columns to match the HTML button grid */
   body .sci-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 0.35rem;
     margin-bottom: 0.75rem;
   }
@@ -176,14 +176,15 @@
   @media (max-width: 640px) {
     body .container { max-width: 100%; padding-left: 0.6rem; padding-right: 0.6rem; }
     body .glass-card { padding: 0.75rem; border-radius: 16px; }
+    body .sci-grid { grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
     body .sci-btn { min-height: 40px; font-size: 0.78rem; padding: 0.5rem 0.15rem; }
     body .sci-result { font-size: 1.4rem; }
     body .sci-expr { font-size: 0.82rem; }
     body .calc-tab { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
   }
   @media (max-width: 420px) {
-    body .sci-grid { grid-template-columns: repeat(4, 1fr); }
-    body .sci-btn { font-size: 0.72rem; min-height: 38px; }
+    body .sci-grid { grid-template-columns: repeat(6, 1fr); gap: 0.25rem; }
+    body .sci-btn { font-size: 0.68rem; min-height: 34px; padding: 0.42rem 0.1rem; }
     body .sci-result { font-size: 1.25rem; }
   }
 </style>
@@ -225,9 +226,9 @@
                     <option value="sw">🇰🇪 Kiswahili</option>
                     <option value="tr">🇹🇷 Türkçe</option>
                 </select>
-              
+
                 <button id="trashBtn" class="focus-toggle">🗑️ Trash (0)</button>
-         
+
                 <button id="focusToggle" class="focus-toggle">🔓 <span data-i18n="focus_off">Focus Off</span></button>
             </div>
         </div>
