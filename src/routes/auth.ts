@@ -18,6 +18,7 @@ import {
   getCurrentUser
 } from '../lib/helpers.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
+import { writeAudit } from '../lib/audit.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
@@ -60,6 +61,15 @@ authRoutes.post('/register', async (c) => {
 
   const token = await issueSession(c.env, id);
   c.header('Set-Cookie', sessionCookie(token, isSecureRequest(c)));
+  c.executionCtx.waitUntil(
+    writeAudit(c.env, {
+      action: 'auth.register',
+      actorId: id,
+      actorEmail: email,
+      target: 'account',
+      result: 'ok'
+    })
+  );
   return json({ ok: true, user: { id, email } }, 201);
 });
 
@@ -82,19 +92,63 @@ authRoutes.post('/login', async (c) => {
     .first<{ id: string; email: string; password_hash: string }>();
 
   // Same generic message whether the user is missing or the password is wrong.
-  if (!user) return fail('Incorrect email or password.', 401);
+  if (!user) {
+    c.executionCtx.waitUntil(
+      writeAudit(c.env, {
+        action: 'auth.login_failed',
+        actorEmail: email || null,
+        target: 'account',
+        result: 'denied',
+        detail: 'unknown account'
+      })
+    );
+    return fail('Incorrect email or password.', 401);
+  }
 
   const valid = await verifyPassword(password, user.password_hash);
-  if (!valid) return fail('Incorrect email or password.', 401);
+  if (!valid) {
+    c.executionCtx.waitUntil(
+      writeAudit(c.env, {
+        action: 'auth.login_failed',
+        actorId: user.id,
+        actorEmail: user.email,
+        target: 'account',
+        result: 'denied',
+        detail: 'bad password'
+      })
+    );
+    return fail('Incorrect email or password.', 401);
+  }
 
   const token = await issueSession(c.env, user.id);
   c.header('Set-Cookie', sessionCookie(token, isSecureRequest(c)));
+  c.executionCtx.waitUntil(
+    writeAudit(c.env, {
+      action: 'auth.login',
+      actorId: user.id,
+      actorEmail: user.email,
+      target: 'account',
+      result: 'ok'
+    })
+  );
   return ok({ user: { id: user.id, email: user.email } });
 });
 
 /** POST /api/auth/logout */
 authRoutes.post('/logout', async (c) => {
+  const user = await getCurrentUser(c);
   c.header('Set-Cookie', clearCookie(isSecureRequest(c)));
+  if (user) {
+    c.executionCtx.waitUntil(
+      writeAudit(c.env, {
+        action: 'auth.logout',
+        actorId: user.id,
+        actorEmail: user.email,
+        target: 'account',
+        result: 'ok'
+      })
+    );
+  }
   return ok();
 });
 

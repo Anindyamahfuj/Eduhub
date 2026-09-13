@@ -1,5 +1,9 @@
 /**
  * Shared backend helpers: JSON responses, session tokens, and auth guards.
+ *
+ * Authorization is enforced HERE, server-side. The `role` column on `users` is
+ * the single source of truth; nothing about authorization is decided on the
+ * client.
  */
 import type { Context, Next } from 'hono';
 
@@ -93,16 +97,27 @@ export function readCookie(header: string | undefined, name: string): string | n
 export interface SessionUser {
   id: string;
   email: string;
+  /** 'student' | 'developer' — the server-side authorization source of truth. */
+  role: string;
 }
 
-/** Resolve the current user from the session cookie, or null. */
-export async function getCurrentUser(c: Context): Promise<SessionUser | null> {
-  const env = c.env as Env;
-  const token = readCookie(c.req.header('Cookie'), SESSION_COOKIE);
+export const DEVELOPER_ROLE = 'developer';
+
+/**
+ * Resolve the current user from a raw Cookie header, or null.
+ *
+ * Exported separately from getCurrentUser so the Pages Functions page guard
+ * (which has a Functions context, not a Hono context) can reuse it.
+ */
+export async function resolveUser(
+  env: Env,
+  cookieHeader: string | undefined
+): Promise<SessionUser | null> {
+  const token = readCookie(cookieHeader, SESSION_COOKIE);
   if (!token) return null;
   const tokenHash = await sha256Hex(token);
   const row = await env.DB.prepare(
-    `SELECT u.id AS id, u.email AS email
+    `SELECT u.id AS id, u.email AS email, COALESCE(u.role, 'student') AS role
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token = ? AND s.expires_at > ?`
   )
@@ -111,10 +126,53 @@ export async function getCurrentUser(c: Context): Promise<SessionUser | null> {
   return row ?? null;
 }
 
+/** Resolve the current user from a Hono context, or null. */
+export async function getCurrentUser(c: Context): Promise<SessionUser | null> {
+  return resolveUser(c.env as Env, c.req.header('Cookie'));
+}
+
+export function isDeveloper(user: SessionUser | null): boolean {
+  return Boolean(user && user.role === DEVELOPER_ROLE);
+}
+
 /** Middleware: reject unauthenticated API calls, scoped to a single user. */
 export async function requireUser(c: Context, next: Next): Promise<Response | void> {
   const user = await getCurrentUser(c);
   if (!user) return fail('Not authenticated', 401);
+  c.set('user', user);
+  await next();
+}
+
+/**
+ * Middleware: developer-only. Fails closed.
+ *   - unauthenticated -> 401
+ *   - authenticated but not a developer -> 403
+ * Both outcomes are recorded in the audit log.
+ */
+export async function requireDeveloper(c: Context, next: Next): Promise<Response | void> {
+  const user = await getCurrentUser(c);
+  if (!user) {
+    const { writeAudit } = await import('./audit.js');
+    await writeAudit(c.env as Env, {
+      action: 'authz.denied',
+      target: new URL(c.req.url).pathname,
+      result: 'denied',
+      detail: 'unauthenticated'
+    });
+    return fail('Not authenticated', 401);
+  }
+  if (!isDeveloper(user)) {
+    const { writeAudit } = await import('./audit.js');
+    await writeAudit(c.env as Env, {
+      action: 'authz.denied',
+      actorId: user.id,
+      actorEmail: user.email,
+      target: new URL(c.req.url).pathname,
+      result: 'denied',
+      detail: 'not a developer'
+    });
+    return fail('Developer authorization required', 403);
+  }
   c.set('user', user);
   await next();
 }

@@ -17,6 +17,10 @@
     "db:console:prod": "wrangler d1 execute studyhub-production",
     "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local",
     "test": "bash scripts/test.sh",
+    "test:admin": "bash scripts/admin-test.sh",
+    "admin:list": "node scripts/promote-admin.mjs list",
+    "admin:grant": "node scripts/promote-admin.mjs grant",
+    "admin:revoke": "node scripts/promote-admin.mjs revoke",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {

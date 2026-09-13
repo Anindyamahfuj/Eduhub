@@ -28,6 +28,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'frontend');
 const out = join(root, 'public');
 const shimPath = join(root, 'src', 'client', 'storage-shim.js');
+const adminSrc = join(root, 'admin');
 
 function copyTree(from, to) {
   mkdirSync(to, { recursive: true });
@@ -46,6 +47,18 @@ console.log('--------------');
 copyTree(src, out);
 console.log(`  copied   frontend/ -> public/`);
 
+// 1a. Copy the developer admin panel into public/admin/.
+// The panel lives in its OWN source directory (admin/) and is served from its
+// own URL space (/admin/*), so nothing in the student app or in public/ root
+// is touched. It is guarded server-side by functions/admin/[[route]].ts.
+if (existsSync(adminSrc)) {
+  copyTree(adminSrc, join(out, 'admin'));
+  console.log(`  copied   admin/ -> public/admin/`);
+} else {
+  console.error('  MISSING  admin/ source directory');
+  process.exit(1);
+}
+
 // 1b. Preserve the original .html URLs.
 // Cloudflare Pages otherwise 308-redirects /notes.html -> /notes, which
 // changes the site's URLs and breaks the frontend's own path checks
@@ -56,7 +69,11 @@ console.log(`  copied   frontend/ -> public/`);
 // and would otherwise redirect it to "/" before the wildcard rule is reached.
 writeFileSync(
   join(out, '_redirects'),
-  ['/index.html / 200', '/*.html /:splat 200', ''].join('\n')
+  [
+    '/index.html / 200',
+    '/*.html /:splat 200',
+    ''
+  ].join('\n')
 );
 console.log(`  wrote    public/_redirects (.html URLs preserved)`);
 
@@ -79,7 +96,7 @@ const required = [
 
 let failed = false;
 const manifest = {};
-console.log('\n  integrity check');
+console.log('\n  integrity check (student frontend)');
 for (const file of required) {
   const path = join(src, file);
   if (!existsSync(path)) {
@@ -94,6 +111,38 @@ for (const file of required) {
 
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist', 'frontend-manifest.json'), JSON.stringify(manifest, null, 2));
+
+// 3a. The admin panel's static assets must be present and copied through.
+// NOTE: there is deliberately NO admin/index.html. The admin shell is served by
+// functions/admin/[[route]].ts from src/client/admin-shell.js, and is only ever
+// returned AFTER the server-side guard passes. A static shell file would both
+// loop through Pages' directory-index normalization and risk being served
+// directly, bypassing the guard.
+const adminRequired = ['admin.css', 'admin.js'];
+const adminManifest = {};
+console.log('\n  integrity check (admin panel)');
+for (const file of adminRequired) {
+  const path = join(adminSrc, file);
+  if (!existsSync(path)) {
+    console.error(`  MISSING  admin/${file}`);
+    failed = true;
+    continue;
+  }
+  adminManifest[file] = createHash('md5').update(readFileSync(path)).digest('hex');
+  // The copied output must exist too.
+  if (!existsSync(join(out, 'admin', file))) {
+    console.error(`  MISSING  public/admin/${file} (not copied)`);
+    failed = true;
+    continue;
+  }
+  console.log(`  OK       admin/${file}`);
+}
+// Guard against a static admin shell reappearing (a guard bypass).
+if (existsSync(join(out, 'admin', 'index.html'))) {
+  console.error('  ERROR    public/admin/index.html exists — shell must be served only by the guard');
+  failed = true;
+}
+writeFileSync(join(root, 'dist', 'admin-manifest.json'), JSON.stringify(adminManifest, null, 2));
 
 // 4. Verify the served script.js keeps the original bytes as a prefix.
 const served = readFileSync(join(out, 'script.js'));

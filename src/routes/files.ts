@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import type { Env } from '../lib/helpers.js';
 import { currentUser, fail, ok, requireUser } from '../lib/helpers.js';
 import { deleteAllFiles, deleteFile, listFiles, putFile } from '../lib/files.js';
+import { writeAudit } from '../lib/audit.js';
 
 export const fileRoutes = new Hono<{ Bindings: Env }>();
 
@@ -37,22 +38,52 @@ fileRoutes.post('/', async (c) => {
   }
 
   const incoming = Array.isArray(body.files) ? body.files : [];
-  if (incoming.length === 0) return fail('No files provided.');
-
-  const saved = [];
-  for (const item of incoming) {
-    if (!item || typeof item.data !== 'string' || item.data.length === 0) continue;
-    const id = item.id || crypto.randomUUID();
-    await putFile(c.env, user.id, {
-      id,
-      name: item.name,
-      size: item.size,
-      data: item.data
-    });
-    saved.push(id);
+  if (incoming.length === 0) {
+    c.executionCtx.waitUntil(
+      writeAudit(c.env, {
+        action: 'file.upload_failed',
+        actorId: user.id,
+        actorEmail: user.email,
+        target: 'files',
+        result: 'error',
+        detail: 'no files provided'
+      })
+    );
+    return fail('No files provided.');
   }
 
-  return ok({ saved });
+  const saved = [];
+  let failed = 0;
+  for (const item of incoming) {
+    if (!item || typeof item.data !== 'string' || item.data.length === 0) {
+      failed++;
+      continue;
+    }
+    const id = item.id || crypto.randomUUID();
+    try {
+      await putFile(c.env, user.id, {
+        id,
+        name: item.name,
+        size: item.size,
+        data: item.data
+      });
+      saved.push(id);
+    } catch (e) {
+      failed++;
+      c.executionCtx.waitUntil(
+        writeAudit(c.env, {
+          action: 'file.upload_failed',
+          actorId: user.id,
+          actorEmail: user.email,
+          target: String(item.name || id),
+          result: 'error',
+          detail: (e as Error).message
+        })
+      );
+    }
+  }
+
+  return ok({ saved, failed });
 });
 
 /** DELETE /api/files/:id */
