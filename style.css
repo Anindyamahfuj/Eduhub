@@ -4122,19 +4122,30 @@ html body .overview-strip .ov-item,
     opacity: 0.6;
 }
 @media (max-width: 640px) {
+    html body .overview-strip,
     .overview-strip {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.4rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 0.4rem !important;
     }
-    .ov-item {
-        flex-direction: column;
+    html body .overview-strip .ov-item,
+    .overview-strip .ov-item {
+        flex-direction: column !important;
         text-align: center;
-        padding: 0.5rem 0.5rem;
-        gap: 0.3rem;
+        padding: 0.5rem 0.5rem !important;
+        gap: 0.3rem !important;
     }
-    .ov-value { font-size: 0.9rem; }
-    .ov-label { font-size: 0.62rem; letter-spacing: 0; }
-    .ov-icon { font-size: 0.85rem; }
+    html body .overview-strip .ov-value,
+    .overview-strip .ov-value { font-size: 0.9rem !important; }
+    html body .overview-strip .ov-label,
+    .overview-strip .ov-label { font-size: 0.62rem !important; letter-spacing: 0 !important; }
+    html body .overview-strip .ov-icon,
+    .overview-strip .ov-icon { font-size: 0.85rem !important; }
+}
+@media (max-width: 420px) {
+    html body .overview-strip,
+    .overview-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
 }
 @media (max-width: 420px) {
     .overview-strip {
