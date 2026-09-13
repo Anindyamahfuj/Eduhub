@@ -5469,6 +5469,31 @@ html body .overview-strip .ov-divider {
         gap: 0.5rem !important;
     }
 }
+/* ============================================================
+   RESET .stat-number — remove any accidental background/box
+   styling inherited from a broader selector.
+   ============================================================ */
+html body .stat-number,
+html body .ov-value,
+html body .ov-value span,
+html body .stat-number span {
+    background: none !important;
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    display: inline !important;
+    color: var(--ink) !important;
+    font-family: var(--mono) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+
 
 
 /* ============================================================
