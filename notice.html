@@ -91,9 +91,9 @@
 
         <section class="notice-add-section glass-card">
             <div class="notice-add-form">
-                <input type="text" id="noticeInput" data-i18n-placeholder="notice_placeholder" placeholder="✍️ Write a notice..." />
-                <button id="addNoticeBtn" class="btn-primary">📌 <span data-i18n="add_notice">Pin Notice</span></button>
-            </div>
+    <input type="text" id="noticeInput" data-i18n-placeholder="notice_placeholder" placeholder="✍️ Write a notice..." />
+    <button type="button" id="addNoticeBtn" class="btn-primary" onclick="window.__pinNotice && window.__pinNotice()">📌 <span data-i18n="add_notice">Pin Notice</span></button>
+</div>
             <button id="deleteAllNoticesBtn" class="btn-danger">🗑️ <span data-i18n="delete_all">Delete All</span></button>
         </section>
 
