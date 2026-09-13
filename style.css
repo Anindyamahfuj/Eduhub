@@ -4040,16 +4040,14 @@ body.theme-light textarea { color-scheme: light; }
    DASHBOARD REDESIGN v3 — structured, minimal, hierarchical
    ============================================================ */
 .overview-strip {
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.5rem;
-    background: transparent;              /* outer container becomes invisible */
+    background: transparent;
     border: none;
     box-shadow: none;
     padding: 0;
     margin-bottom: 1.4rem;
-    flex-wrap: wrap;
 }
 .ov-item {
     flex: 1 1 0;                          /* equal width, no overflow */
