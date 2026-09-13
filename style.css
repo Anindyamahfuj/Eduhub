@@ -5347,6 +5347,83 @@ table { display: block; overflow-x: auto; max-width: 100%; }
 }
 
 
+
+/* ============================================================
+   DASHBOARD — FORCE 5 STATS IN A STRAIGHT ROW
+   Overrides every other rule with high specificity.
+   ============================================================ */
+html body .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.85rem !important;
+    margin-bottom: 1.6rem !important;
+}
+html body .stats-grid .stat-card {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 1rem 1.1rem !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+html body .stats-grid .stat-card .stat-icon {
+    font-size: 1.5rem !important;
+    width: 2.2rem !important;
+    flex-shrink: 0 !important;
+}
+html body .stats-grid .stat-card .stat-info {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    gap: 0.15rem;
+}
+html body .stats-grid .stat-card .stat-label {
+    font-size: 0.62rem !important;
+    letter-spacing: 0.08em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+html body .stats-grid .stat-card .stat-number {
+    font-size: 1.45rem !important;
+    line-height: 1 !important;
+}
+
+/* Responsive ladder */
+@media (max-width: 900px) {
+    html body .stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+@media (max-width: 640px) {
+    html body .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.55rem !important;
+    }
+    html body .stats-grid .stat-card {
+        padding: 0.7rem 0.8rem !important;
+        gap: 0.55rem !important;
+    }
+    html body .stats-grid .stat-card .stat-icon {
+        font-size: 1.15rem !important;
+        width: 1.75rem !important;
+    }
+    html body .stats-grid .stat-card .stat-number {
+        font-size: 1.15rem !important;
+    }
+    html body .stats-grid .stat-card .stat-label {
+        font-size: 0.55rem !important;
+    }
+}
+@media (max-width: 420px) {
+    html body .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+
+
 /* ============================================================
    THE END — anchor point for future overrides
    (Add any new global rules below this line.)
