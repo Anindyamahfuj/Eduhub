@@ -66,6 +66,55 @@ Every data route is authenticated and strictly scoped to the requesting user, so
 | GET | `/api/ai/models` | OpenAI-compatible model list |
 | POST | `/api/ai/chat/completions` | OpenAI-compatible chat (returns 501 until configured) |
 
+### Developer admin API (`/api/admin/*`)
+
+All of these are behind `requireDeveloper` — **401** unauthenticated, **403** for a
+non-developer, **200** for a developer. Authorization is decided on the server
+from `users.role`; nothing is decided in the browser.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/admin/whoami` | Confirm developer identity |
+| GET | `/api/admin/overview` | Counts, module totals, recent activity |
+| GET | `/api/admin/users` | Accounts (no hashes/tokens ever selected) |
+| POST | `/api/admin/users/:id/role` | Grant/revoke `developer` |
+| GET | `/api/admin/data` | Read-only workspace inspection |
+| GET | `/api/admin/data/tables` | Real table inventory |
+| GET | `/api/admin/files` | File metadata only |
+| GET | `/api/admin/logs` | Audit events |
+| GET | `/api/admin/system` | Live service checks |
+| GET | `/api/admin/ai` | AI configuration (no call made) |
+
+## Developer admin panel
+
+A basic developer-only panel lives at **`/admin`** with exactly seven sections:
+**Overview · Users · Data · Files · Logs · System · AI**.
+
+- **Pages & UI** — `admin/` (own source dir, served from `/admin/*`). The student
+  frontend is untouched.
+- **Page guard** — `functions/admin/[[route]].ts` runs server-side for every
+  `/admin` request: unauthenticated → 302 `/login.html`; student → 403; developer
+  → panel. The shell is served from `src/client/admin-shell.js`, never a static
+  file, so the guard cannot be bypassed by requesting the HTML directly.
+- **API guard** — `requireDeveloper` (`src/lib/helpers.ts`) on `/api/admin/*`.
+- **Role** — `users.role` (`'student'` | `'developer'`), added by
+  `migrations/0002_admin.sql`. This is the only permission level.
+- **Bootstrap** — `node scripts/promote-admin.mjs grant <email> [--remote]`
+  (also `revoke`, `list`). Required because no developer exists on a fresh DB.
+- **Audit log** — `audit_logs` table via `src/lib/audit.ts`; records auth
+  register/login/login-failed/logout, authorization denials, admin views, role
+  changes, API errors and file-upload failures.
+
+### Admin test suite
+
+```bash
+bash scripts/admin-test.sh http://localhost:3000
+bash scripts/admin-test.sh https://studyhub-b3t.pages.dev   # targets prod D1
+```
+
+Verifies the full authorization matrix, all seven sections, the no-secrets rule,
+the AI no-call rule and that real log events are recorded.
+
 ## User guide
 
 1. Run the local server (see below) and open http://localhost:3000.
@@ -89,7 +138,9 @@ Then open http://localhost:3000.
 - **Platform**: Cloudflare Pages (own account, Free tier)
 - **Status**: ✅ Deployed (Free tier)
 - **D1**: studyhub-production (bd3d6fb7-7749-43ca-bcb0-48e614b4a14c)
-- **Verified**: health, register/login, workspace round-trip, byte-identical script.js prefix, all 48 local tests
+- **Verified**: health, register/login, workspace round-trip, byte-identical
+  script.js prefix, 48/48 API + 12/12 browser regression, 36/36 admin
+  authorization — all passing both locally and in production.
 
 ## AI integration
 

@@ -20,6 +20,13 @@ BASE="${1:-http://localhost:3000}"
 JAR_ROOT="$(mktemp -d)"
 pass=0; fail=0
 
+# The bootstrap CLI must write to the SAME database the tested deployment uses.
+# localhost -> local D1; anything else -> remote (production) D1.
+case "$BASE" in
+  *localhost*|*127.0.0.1*) DB_TARGET="--local" ;;
+  *)                       DB_TARGET="--remote" ;;
+esac
+
 ok()   { echo "  PASS  $1"; pass=$((pass+1)); }
 bad()  { echo "  FAIL  $1"; fail=$((fail+1)); }
 check(){ if [ "$2" = "$3" ]; then ok "$1 ($2)"; else bad "$1 (expected $3, got $2)"; fi; }
@@ -32,6 +39,7 @@ PW="StudyHub!2026"
 
 echo "StudyHub admin authorization tests"
 echo "base: $BASE"
+echo "db:   $DB_TARGET"
 echo "---------------------------------"
 
 # ---------------------------------------------------------------- accounts --
@@ -47,8 +55,9 @@ DJAR="$JAR_ROOT/dev.jar"
 reg "$STUDENT_EMAIL" "$SJAR"
 reg "$DEV_EMAIL" "$DJAR"
 
-# Promote the developer account through the real CLI (the bootstrap path).
-node "$(dirname "$0")/promote-admin.mjs" grant "$DEV_EMAIL" >/dev/null 2>&1
+# Promote the developer account through the real CLI (the bootstrap path),
+# against the SAME database this deployment reads from.
+node "$(dirname "$0")/promote-admin.mjs" grant "$DEV_EMAIL" "$DB_TARGET" >/dev/null 2>&1
 GRANTED=$?
 check "developer bootstrap CLI grant succeeds" "$GRANTED" "0"
 
