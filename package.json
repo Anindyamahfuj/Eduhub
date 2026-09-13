@@ -18,6 +18,7 @@
     "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local",
     "test": "bash scripts/test.sh",
     "test:admin": "bash scripts/admin-test.sh",
+    "test:admin:render": "node scripts/admin-render-test.mjs",
     "admin:list": "node scripts/promote-admin.mjs list",
     "admin:grant": "node scripts/promote-admin.mjs grant",
     "admin:revoke": "node scripts/promote-admin.mjs revoke",

@@ -57,14 +57,18 @@
         var node = document.createElement(tag);
         attrs = attrs || {};
         Object.keys(attrs).forEach(function (k) {
-            if (k === 'class') node.className = attrs[k];
-            else if (k === 'text') node.textContent = attrs[k];
-            else if (k === 'html') node.innerHTML = attrs[k];
-            else node.setAttribute(k, attrs[k]);
+            var v = attrs[k];
+            if (v == null) return; // never write the string "null" into the DOM
+            if (k === 'class') node.className = v;
+            else if (k === 'text') node.textContent = v;
+            else if (k === 'html') node.innerHTML = v;
+            else node.setAttribute(k, v);
         });
         (children || []).forEach(function (child) {
             if (child == null) return;
-            node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+            // Accept real element nodes; coerce strings/numbers to text nodes.
+            if (typeof child === 'object' && child.nodeType === 1) node.appendChild(child);
+            else node.appendChild(document.createTextNode(String(child)));
         });
         return node;
     }
@@ -122,9 +126,13 @@
                 if (c.wrap) classes.push('wrap');
                 if (c.mono) classes.push('admin-mono');
                 var td = el('td', { class: classes.join(' ') || null });
+                // A cell value may be a count/size (number) or a badge (element).
+                // Only real element nodes may be appended to the DOM — anything
+                // else is coerced to text, otherwise appendChild() throws and the
+                // whole section fails to render.
                 if (value == null) td.textContent = '—';
-                else if (typeof value === 'string') td.textContent = value;
-                else td.appendChild(value);
+                else if (typeof value === 'object' && value.nodeType === 1) td.appendChild(value);
+                else td.textContent = String(value);
                 return td;
             }));
         }));
