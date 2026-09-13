@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "studyhub-production",
-      "database_id": "PLACEHOLDER_REPLACED_DURING_DEPLOY"
+      "database_id": "bd3d6fb7-7749-43ca-bcb0-48e614b4a14c"
     }
   ],
   // R2 is intentionally NOT configured during local development.

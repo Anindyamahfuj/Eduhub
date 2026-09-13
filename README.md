@@ -18,7 +18,8 @@ This repository is the **full-stack** version. The original project was a purely
 ## URLs
 
 - **Local**: http://localhost:3000
-- **Production**: _set after Cloudflare deployment_
+- **Production**: https://studyhub-b3t.pages.dev
+- **Cloudflare project**: studyhub
 - **Repository**: https://github.com/Anindyamahfuj/Eduhub
 
 ## Data architecture
@@ -70,7 +71,9 @@ Then open http://localhost:3000.
 ## Deployment
 
 - **Platform**: Cloudflare Pages (own account, Free tier)
-- **Status**: not yet deployed
+- **Status**: ✅ Deployed (Free tier)
+- **D1**: studyhub-production (bd3d6fb7-7749-43ca-bcb0-48e614b4a14c)
+- **Verified**: health, register/login, workspace round-trip, byte-identical script.js prefix, all 48 local tests
 
 ## AI integration
 
