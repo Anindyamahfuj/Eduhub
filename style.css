@@ -5423,6 +5423,53 @@ html body .stats-grid .stat-card .stat-number {
 }
 
 
+/* ============================================================
+   ABSOLUTE LAST — force 5 boxes in one straight row
+   Covers both .stats-grid (large cards) and .overview-strip (compact)
+   ============================================================ */
+
+/* If dashboard uses .stats-grid */
+html body .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
+/* If dashboard uses .overview-strip */
+html body .overview-strip {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+html body .overview-strip .ov-item {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: initial !important;
+}
+html body .overview-strip .ov-divider {
+    display: none !important;
+}
+
+/* Responsive — 3 cols on tablet, 2 cols on phone */
+@media (max-width: 900px) {
+    html body .stats-grid,
+    html body .overview-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+@media (max-width: 640px) {
+    html body .stats-grid,
+    html body .overview-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.5rem !important;
+    }
+}
+
 
 /* ============================================================
    THE END — anchor point for future overrides
