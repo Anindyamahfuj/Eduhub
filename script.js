@@ -3720,38 +3720,74 @@ function setupHabits() {
         updateStreak();
     }
 
-    // ---------- STREAK ----------
-    function updateStreak() {
-        var data = loadData();
-        var streak = 0;
+ // ---------- STREAK (daily current + persisted longest) ----------
+function updateStreak() {
+    var data = loadData();
 
-        if (data.habits.length > 0) {
-            var allDates = new Set();
-            data.habits.forEach(function(h) {
-                (h.completedDates || []).forEach(function(d) { allDates.add(d); });
-            });
+    // ---- Collect all unique completed dates across every habit ----
+    var allDates = new Set();
+    data.habits.forEach(function(h) {
+        (h.completedDates || []).forEach(function(d) { allDates.add(d); });
+    });
 
-            var sorted = Array.from(allDates).sort();
-            if (sorted.length > 0) {
-                var current = 1;
-                var maxStreak = 1;
-                for (var i = 1; i < sorted.length; i++) {
-                    var prev = new Date(sorted[i - 1]);
-                    var curr = new Date(sorted[i]);
-                    var diff = (curr - prev) / (1000 * 60 * 60 * 24);
-                    if (diff === 1) {
-                        current++;
-                        maxStreak = Math.max(maxStreak, current);
-                    } else {
-                        current = 1;
-                    }
-                }
-                streak = maxStreak;
+    // ---- CURRENT streak — count backwards from today ----
+    // If today has no completion yet, start from yesterday (grace period
+    // so you don't see 0 every morning before you've done anything).
+    var today = new Date();
+    var todayStr = today.toISOString().slice(0, 10);
+
+    var cursor = new Date(today);
+    if (!allDates.has(todayStr)) {
+        cursor.setDate(cursor.getDate() - 1);
+    }
+
+    var currentStreak = 0;
+    while (allDates.has(cursor.toISOString().slice(0, 10))) {
+        currentStreak++;
+        cursor.setDate(cursor.getDate() - 1);
+    }
+
+    // ---- LONGEST streak — scan the sorted date list ----
+    var sorted = Array.from(allDates).sort();
+    var longestStreak = 0;
+    if (sorted.length > 0) {
+        var run = 1;
+        longestStreak = 1;
+        for (var i = 1; i < sorted.length; i++) {
+            var diff = (new Date(sorted[i]) - new Date(sorted[i - 1])) / 86400000;
+            if (diff === 1) {
+                run++;
+                if (run > longestStreak) longestStreak = run;
+            } else {
+                run = 1;
             }
         }
-
-        if (streakDisplay) streakDisplay.textContent = streak;
     }
+
+    // ---- Persist the longest streak so browser cache clearing can't lose it ----
+    if (!data.longestStreak) data.longestStreak = 0;
+    if (longestStreak > data.longestStreak) {
+        data.longestStreak = longestStreak;
+        saveData(data);
+    }
+    // If we have more recent history than what's persisted, use the larger one
+    var recordedLongest = Math.max(longestStreak, data.longestStreak || 0);
+
+    // ---- Update every streak display on the page ----
+    // #streakDisplay is used on habits.html
+    if (streakDisplay) streakDisplay.textContent = currentStreak;
+
+    // Optional secondary slots if your HTML has them (safe no-ops otherwise)
+    var longestEl = document.getElementById('longestStreakDisplay');
+    if (longestEl) longestEl.textContent = recordedLongest;
+
+    var currentEl = document.getElementById('currentStreakDisplay');
+    if (currentEl) currentEl.textContent = currentStreak;
+
+    // Dashboard stat (index.html): show the longest record
+    var dashEl = document.getElementById('statStreak');
+    if (dashEl) dashEl.textContent = recordedLongest;
+}
 
     // ---------- ONE delegated listener on the container ----------
     if (!list.dataset.habitsHooked) {
