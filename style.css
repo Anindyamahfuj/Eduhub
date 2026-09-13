@@ -4103,8 +4103,12 @@ body.theme-light textarea { color-scheme: light; }
     opacity: 0.6;
 }
 @media (max-width: 640px) {
-    .overview-strip { gap: 0.15rem; padding: 0.55rem 0.7rem; }
-    .ov-item { padding: 0.22rem 0.45rem; gap: 0.32rem; }
+    .overview-strip { gap: 0.4rem; }
+    .ov-item {
+        flex: 1 1 calc(33.333% - 0.4rem);   /* 3 per row on mobile */
+        padding: 0.5rem 0.55rem;
+        gap: 0.3rem;
+    }
     .ov-value { font-size: 0.92rem; }
     .ov-label { font-size: 0.65rem; }
     .ov-divider { display: none; }
