@@ -7076,61 +7076,83 @@ document.addEventListener('DOMContentLoaded', function() {
         lavender: { name: 'Lavender', accent: '#c4b5fd', accent2: '#ddd6fe', brand: '#a78bfa', brandHot: '#8b5cf6' }
     };
 
-    // ---------- 30 BACKGROUNDS (10 gradients + 20 photos) ----------
-    const BACKGROUNDS = [
-        // --- Default ---
-        { id: 'bg-default',  name: 'Default',     type: 'default',  css: '' },
+   const BACKGROUNDS = [
+    // --- Default ---
+    { id: 'bg-default',  name: 'Default',     type: 'default',  css: '' },
 
-        // --- 10 GRADIENTS (darkened so UI stays readable) ---
-        { id: 'bg-deepsea',  name: 'Deep Sea',    type: 'gradient', css: 'linear-gradient(135deg, #041418 0%, #0f766e 50%, #041418 100%)' },
-        { id: 'bg-twilight', name: 'Twilight',    type: 'gradient', css: 'linear-gradient(135deg, #0f0a1e 0%, #4c1d95 50%, #0f0a1e 100%)' },
-        { id: 'bg-ember',    name: 'Ember',       type: 'gradient', css: 'linear-gradient(135deg, #1a0707 0%, #b91c1c 50%, #1a0707 100%)' },
-        { id: 'bg-forest-g', name: 'Forest',      type: 'gradient', css: 'linear-gradient(135deg, #051410 0%, #065f46 50%, #051410 100%)' },
-        { id: 'bg-sunset-g', name: 'Sunset',      type: 'gradient', css: 'linear-gradient(135deg, #1a0a1a 0%, #9a3412 50%, #1a0a1a 100%)' },
-        { id: 'bg-cyber-g',  name: 'Cyber',       type: 'gradient', css: 'linear-gradient(135deg, #0a0014 0%, #7c3aed 40%, #06b6d4 100%)' },
-        { id: 'bg-arctic',   name: 'Arctic',      type: 'gradient', css: 'linear-gradient(135deg, #071825 0%, #0284c7 50%, #071825 100%)' },
-        { id: 'bg-gold',     name: 'Orange',        type: 'gradient', css: 'linear-gradient(135deg, #1a1000 0%, #b45309 50%, #1a1000 100%)' },
-        { id: 'bg-plum',     name: 'Plum',        type: 'gradient', css: 'linear-gradient(135deg, #130513 0%, #86198f 50%, #130513 100%)' },
-        { id: 'bg-crimson',  name: 'Crimson',     type: 'gradient', css: 'linear-gradient(135deg, #1a0510 0%, #831843 50%, #1a0510 100%)' },
+    // --- 10 GRADIENTS (darkened so UI stays readable) ---
+    { id: 'bg-deepsea',  name: 'Deep Sea',    type: 'gradient', css: 'linear-gradient(135deg, #041418 0%, #0f766e 50%, #041418 100%)' },
+    { id: 'bg-twilight', name: 'Twilight',    type: 'gradient', css: 'linear-gradient(135deg, #0f0a1e 0%, #4c1d95 50%, #0f0a1e 100%)' },
+    { id: 'bg-ember',    name: 'Ember',       type: 'gradient', css: 'linear-gradient(135deg, #1a0707 0%, #b91c1c 50%, #1a0707 100%)' },
+    { id: 'bg-forest-g', name: 'Forest',      type: 'gradient', css: 'linear-gradient(135deg, #051410 0%, #065f46 50%, #051410 100%)' },
+    { id: 'bg-sunset-g', name: 'Sunset',      type: 'gradient', css: 'linear-gradient(135deg, #1a0a1a 0%, #9a3412 50%, #1a0a1a 100%)' },
+    { id: 'bg-cyber-g',  name: 'Cyber',       type: 'gradient', css: 'linear-gradient(135deg, #0a0014 0%, #7c3aed 40%, #06b6d4 100%)' },
+    { id: 'bg-arctic',   name: 'Arctic',      type: 'gradient', css: 'linear-gradient(135deg, #071825 0%, #0284c7 50%, #071825 100%)' },
+    { id: 'bg-gold',     name: 'Orange',      type: 'gradient', css: 'linear-gradient(135deg, #1a1000 0%, #b45309 50%, #1a1000 100%)' },
+    { id: 'bg-plum',     name: 'Plum',        type: 'gradient', css: 'linear-gradient(135deg, #130513 0%, #86198f 50%, #130513 100%)' },
+    { id: 'bg-crimson',  name: 'Crimson',     type: 'gradient', css: 'linear-gradient(135deg, #1a0510 0%, #831843 50%, #1a0510 100%)' },
 
-        // --- 20 PHOTOS (picsum.photos — fixed IDs return the same image every time) ---
-        // Nature
-        { id: 'bg-mountain', name: 'Mountain',    type: 'photo', url: 'https://picsum.photos/id/1018/1920/1080' },
-        { id: 'bg-canyon',   name: 'Canyon',      type: 'photo', url: 'https://picsum.photos/id/1016/1920/1080' },
-        { id: 'bg-waterfall',name: 'Waterfall',   type: 'photo', url: 'https://picsum.photos/id/1039/1920/1080' },
-        { id: 'bg-lake',     name: 'Ocean',        type: 'photo', url: 'https://picsum.photos/id/1019/1920/1080' },
-        { id: 'bg-forest-p', name: 'Forest Path', type: 'photo', url: 'https://picsum.photos/id/1043/1920/1080' },
-        { id: 'bg-meadow',   name: 'Meadow',      type: 'photo', url: 'https://picsum.photos/id/1044/1920/1080' },
-        { id: 'bg-river',    name: 'River',       type: 'photo', url: 'https://picsum.photos/id/1015/1920/1080' },
-        { id: 'bg-snow-p',   name: 'Snow Peaks',  type: 'photo', url: 'https://picsum.photos/id/1036/1920/1080' },
-        // Ocean & Beach
-        { id: 'bg-beach',    name: 'Beach',       type: 'photo', url: 'https://picsum.photos/id/1056/1920/1080' },
-        { id: 'bg-ocean-p',  name: 'Ocean Waves', type: 'photo', url: 'https://picsum.photos/id/1061/1920/1080' },
-        // Sky & Sunset
-        { id: 'bg-dusk',     name: 'Dusk',        type: 'photo', url: 'https://picsum.photos/id/1065/1920/1080' },
-        // Urban
-        { id: 'bg-city2',    name: 'Skyline',     type: 'photo', url: 'https://picsum.photos/id/1050/1920/1080' },
-    
-        // Mist & Trees
-        { id: 'bg-lonepine', name: 'Lone Pine',   type: 'photo', url: 'https://picsum.photos/id/1069/1920/1080' },
-        { id: 'bg-milky-way',      name: 'Milky Way',       type: 'photo', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-norway-fjord',   name: 'Norwegian Fjord', type: 'photo', url: 'https://images.unsplash.com/photo-1601439678777-b2b3c56fa627?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-lavender',       name: 'Lavender Fields', type: 'photo', url: 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-tropical',       name: 'Tropical Island', type: 'photo', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-sakura',         name: 'Cherry Blossom',  type: 'photo', url: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-banff',          name: 'Lake Louise',     type: 'photo', url: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-iceland',        name: 'Iceland ',  type: 'photo', url: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-dolomites',      name: 'Dolomites',       type: 'photo', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-autumn',         name: 'Autumn Forest',   type: 'photo', url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-santorini',      name: 'Santorini Sunset',type: 'photo', url: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-maldives',       name: 'Maldives Water',  type: 'photo', url: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-blue-mountains', name: 'Blue Mountains',  type: 'photo', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-desert-dunes',   name: 'Desert Dunes',    type: 'photo', url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=1920&q=80&auto=format&fit=crop' },
-        { id: 'bg-northern',       name: 'Northern Lights', type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop&sat=-30' },
-        { id: 'bg-yosemite',       name: 'Yosemite Valley', type: 'photo', url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1920&q=80&auto=format&fit=crop' },
-        
-    ];
+    // ============================================================
+    // NATURAL PHOTOS — mountains, water, forests, sky, deserts
+    // All Unsplash CDN — free, stable, high quality
+    // ============================================================
 
+    // ---------- MOUNTAINS ----------
+    { id: 'bg-mountain-lake', name: 'Mountain Lake',    type: 'photo', url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-snow-peaks',    name: 'Snow Peaks',       type: 'photo', url: 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-alpine-meadow', name: 'Alpine Meadow',    type: 'photo', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-blue-mountains',name: 'Blue Mountains',   type: 'photo', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-lake-louise',   name: 'Lake Louise',      type: 'photo', url: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- WATER / OCEAN ----------
+    { id: 'bg-ocean-waves',   name: 'Ocean Waves',      type: 'photo', url: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-tropical',      name: 'Tropical Island',  type: 'photo', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-waterfall',     name: 'Waterfall',        type: 'photo', url: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-maldives',      name: 'Turquoise Water',  type: 'photo', url: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-misty-lake',    name: 'Misty Lake',       type: 'photo', url: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- FORESTS ----------
+    { id: 'bg-forest-path',   name: 'Forest Path',      type: 'photo', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-autumn-forest', name: 'Autumn Forest',    type: 'photo', url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-mist-forest',   name: 'Misty Forest',     type: 'photo', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-pine-forest',   name: 'Pine Forest',      type: 'photo', url: 'https://images.unsplash.com/photo-1511497584788-876760111969?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- SKY / NIGHT ----------
+    { id: 'bg-milky-way',     name: 'Milky Way',        type: 'photo', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-northern',      name: 'Northern Lights',  type: 'photo', url: 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-starry-night',  name: 'Starry Night',     type: 'photo', url: 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-sunset-sky',    name: 'Sunset Sky',       type: 'photo', url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-pink-clouds',   name: 'Pink Clouds',      type: 'photo', url: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-golden-hour',   name: 'Golden Hour',      type: 'photo', url: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- DESERTS & CANYONS ----------
+    { id: 'bg-desert-dunes',  name: 'Desert Dunes',     type: 'photo', url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-red-canyon',    name: 'Red Canyon',       type: 'photo', url: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- COUNTRYSIDE / FIELDS ----------
+    { id: 'bg-lavender',      name: 'Lavender Fields',  type: 'photo', url: 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-green-hills',   name: 'Green Hills',      type: 'photo', url: 'https://images.unsplash.com/photo-1472396961693-142e6e269027?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-meadow-field',  name: 'Meadow Field',     type: 'photo', url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- UNIQUE / ATMOSPHERIC ----------
+    { id: 'bg-aurora',        name: 'Aurora Ice',       type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-iceland',       name: 'Iceland Canyon',   type: 'photo', url: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-swiss-alps',    name: 'Swiss Alps',       type: 'photo', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-yosemite',      name: 'Yosemite Valley',  type: 'photo', url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-fjord',         name: 'Norwegian Fjord',  type: 'photo', url: 'https://images.unsplash.com/photo-1601439678777-b2b3c56fa627?w=1920&q=80&auto=format&fit=crop' },
+
+    // ---------- NEW BATCH — 10 more curated naturals ----------
+    { id: 'bg-cherry',        name: 'Cherry Blossom',   type: 'photo', url: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-firefly',       name: 'Firefly Forest',   type: 'photo', url: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-snow-forest',   name: 'Snowy Forest',     type: 'photo', url: 'https://images.unsplash.com/photo-1483664852095-d6cc6870702d?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-coastal-cliffs',name: 'Coastal Cliffs',   type: 'photo', url: 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-waterfall-glen',name: 'Waterfall Glen',   type: 'photo', url: 'https://images.unsplash.com/photo-1467890947394-8171244e5410?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-canyon-river',  name: 'Canyon River',     type: 'photo', url: 'https://images.unsplash.com/photo-1439853949127-fa647821eba0?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-red-sunset',    name: 'Red Sunset',       type: 'photo', url: 'https://images.unsplash.com/photo-1500534623283-312aade485b7?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-thunderstorm',  name: 'Thunderstorm',     type: 'photo', url: 'https://images.unsplash.com/photo-1429552077091-836152271555?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-rainbow-hills', name: 'Rainbow Hills',    type: 'photo', url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1920&q=80&auto=format&fit=crop' },
+    { id: 'bg-zen-stones',    name: 'Zen Stones',       type: 'photo', url: 'https://images.unsplash.com/photo-1502691876148-a84978e59af8?w=1920&q=80&auto=format&fit=crop' },
+];
     // ---------- Storage helpers ----------
     function getColor() { try { return localStorage.getItem(COLOR_KEY) || 'aurora'; } catch (e) { return 'aurora'; } }
     function getBg()    { try { return localStorage.getItem(BG_KEY) || 'bg-default'; } catch (e) { return 'bg-default'; } }
