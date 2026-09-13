@@ -24,3 +24,6 @@ pids/
 
 # OS
 .DS_Store
+
+# Test harness scratch
+.wrangler/
