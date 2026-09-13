@@ -4373,4 +4373,6 @@ h3 .emoji {
     background-clip: initial !important;
 }
 
-.dash-date-badge { display: none !important; }
+.journal-past {
+    display: none !important;
+}
