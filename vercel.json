@@ -1,12 +1,8 @@
 {
   "framework": "nextjs",
-  "rewrites": [
-    { "source": "/api/admin/:path*", "destination": "/api/admin" },
-    { "source": "/api/:path*", "destination": "/api/[...slug]" }
-  ],
   "headers": [
     {
-      "source": "/api/:path*",
+      "source": "/api/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" }
       ]

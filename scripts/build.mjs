@@ -171,27 +171,19 @@ console.log('Build passed.');
 //    `node:sqlite` stays an external runtime import. Both Vercel API
 //    functions import from this bundle.
 try {
-  const { execSync } = await import('node:child_process');
+  const esbuild = await import('esbuild');
   const path = await import('node:path');
-  const bin = path.join(root, 'node_modules', 'esbuild', 'bin', 'esbuild');
   const out = path.join(root, 'dist', 'server.mjs');
-  const cmd = [
-    JSON.stringify(bin),
-    JSON.stringify(path.join(root, 'src', 'index.ts')),
-    '--bundle',
-    '--format=esm',
-    '--platform=node',
-    '--outfile=' + JSON.stringify(out),
-    '--external:node:sqlite',
-    '--external:node:crypto',
-    '--external:node:fs',
-    '--external:node:path',
-    '--external:node:url',
-    '--external:node:child_process',
-    '--define:process.env.STORAGE_DRIVER=' + JSON.stringify(process.env.STORAGE_DRIVER || 'local'),
-    '--log-level=warning'
-  ].join(' ');
-  execSync(cmd, { cwd: root, stdio: 'inherit' });
+  await esbuild.build({
+    entryPoints: [path.join(root, 'src', 'index.ts')],
+    bundle: true,
+    format: 'esm',
+    platform: 'node',
+    outfile: out,
+    external: ['node:sqlite', 'node:crypto', 'node:fs', 'node:path', 'node:url', 'node:child_process'],
+    define: { 'process.env.STORAGE_DRIVER': JSON.stringify(process.env.STORAGE_DRIVER || 'local') },
+    logLevel: 'warning',
+  });
   console.log('  bundled  src/index.ts -> dist/server.mjs');
 } catch (e) {
   if (e?.code !== 'MODULE_NOT_FOUND') throw e;
@@ -218,8 +210,7 @@ if (process.env.VERCEL === '1') {
 //    identical markup. Skipped (non-fatal) when the module is absent.
 if (process.env.VERCEL === '1') {
   try {
-    const { generateAdminPage } = await import('./generate-admin-page.mjs');
-    await generateAdminPage();
+    await import('./generate-admin-page.mjs');
   } catch (e) {
     if (e?.code !== 'MODULE_NOT_FOUND') throw e;
   }
