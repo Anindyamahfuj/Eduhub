@@ -2,40 +2,22 @@
   "name": "studyhub",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "description": "StudyHub — all-in-one digital academic workspace (Hono + Cloudflare Pages + D1)",
+  "description": "StudyHub — all-in-one digital academic workspace",
   "scripts": {
-    "dev": "wrangler pages dev public --local --ip 0.0.0.0 --port 3000",
-    "start": "pm2 start ecosystem.config.cjs",
-    "stop": "pm2 delete studyhub 2>/dev/null || true",
-    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
-    "build": "node scripts/build.mjs",
-    "deploy": "npm run build && wrangler pages deploy public --project-name=studyhub",
-    "db:migrate:local": "wrangler d1 migrations apply studyhub-production --local",
-    "db:migrate:prod": "wrangler d1 migrations apply studyhub-production",
-    "db:console:local": "wrangler d1 execute studyhub-production --local",
-    "db:console:prod": "wrangler d1 execute studyhub-production",
-    "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local",
-    "test": "bash scripts/test.sh",
-    "test:admin": "bash scripts/admin-test.sh",
-    "test:admin:render": "node scripts/admin-render-test.mjs",
-    "admin:list": "node scripts/promote-admin.mjs list",
-    "admin:grant": "node scripts/promote-admin.mjs grant",
-    "admin:revoke": "node scripts/promote-admin.mjs revoke",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "@vercel/node": "^3.0.0",
-    "esbuild": "^0.28.1",
-    "hono": "^4.13.7"
+    "hono": "^4.13.7",
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260911.1",
-    "jsdom": "^30.0.1",
-    "wrangler": "^4.130.0"
-  },
-  "allowScripts": {
-    "esbuild@0.28.1": true,
-    "workerd@1.20260908.1": true
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
   }
 }
