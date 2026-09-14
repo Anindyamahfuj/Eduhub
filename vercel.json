@@ -13,7 +13,9 @@
   "headers": [
     {
       "source": "/api/(.*)",
-      "headers": { "Cache-Control": "no-store" }
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
     }
   ]
 }
