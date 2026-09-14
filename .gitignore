@@ -23,17 +23,19 @@ pids/
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Test harness scratch
-.wrangler/
-
-# Throwaway test scaffolding (mock provider, generated worker types)
 scripts/tmp-mock-provider.cjs
+scripts/tmp-e2e-seed.mjs
+
+# Generated types
 worker-configuration.d.ts
 
-
-# Local dev state
+# Local dev database
 .data/
-# Throwaway test scaffolding
-scripts/tmp-e2e-seed.mjs
-scripts/tmp-mock-provider.cjs
+
+# Firebase (not used)
+.firebase/
+firestore-debug.log
+firestore-debug.*.log
