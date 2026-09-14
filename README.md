@@ -9,8 +9,8 @@ This repository is the **full-stack** version. The original project was a purely
 | Layer | Technology |
 | --- | --- |
 | Frontend | Original StudyHub HTML/CSS/JS — unchanged |
-| API | Hono on Cloudflare Pages Functions |
-| Database | Cloudflare D1 (SQLite) |
+| API | Hono on Cloudflare Pages Functions / Vercel Serverless Functions |
+| Database | Cloudflare D1 (SQLite) / Vercel (node:sqlite) |
 | Auth | Email + password, PBKDF2-HMAC-SHA256, D1-backed sessions |
 | File storage | Local (D1-backed blobs) during development; R2-ready abstraction |
 | AI | OpenAI-compatible scaffold — no LLM call enabled yet |
