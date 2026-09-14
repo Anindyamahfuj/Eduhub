@@ -1,18 +1,12 @@
 {
-  "buildCommand": "node scripts/build.mjs",
-  "outputDirectory": "public",
-  "installCommand": "npm install",
-  "functions": {
-    "api/[...route].ts": { "runtime": "nodejs22.x" },
-    "api/admin/index.ts": { "runtime": "nodejs22.x" }
-  },
+  "framework": "nextjs",
   "rewrites": [
-    { "source": "/api/admin/(.*)", "destination": "/api/admin/index.ts" },
-    { "source": "/api/(.*)", "destination": "/api/[...route].ts" }
+    { "source": "/api/admin/:path*", "destination": "/api/admin" },
+    { "source": "/api/:path*", "destination": "/api/[...slug]" }
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/:path*",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" }
       ]
