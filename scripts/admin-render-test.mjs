@@ -86,6 +86,15 @@ const synthetic = {
     files: [{ id: 'f1', name: 'notes.pdf', size: 2048, mime: 'application/pdf', ownerId: 'u1', ownerEmail: 'dev@example.com', uploadedAt: '2026-09-13 15:00:00', storageKey: null, status: 'inline (database blob)' }]
   },
 
+  tools: {
+    ok: true,
+    tools: [
+      { id: 'dashboard', kind: 'builtin', label: 'Dashboard', href: 'index.html', icon: 'ph-squares-four', sortOrder: 10, enabled: true, createdAt: '2026-09-13 14:00:00', updatedAt: '2026-09-13 14:00:00' },
+      { id: 'calculator', kind: 'builtin', label: 'Calculator', href: 'calculator.html', icon: 'ph-calculator', sortOrder: 30, enabled: false, createdAt: '2026-09-13 14:00:00', updatedAt: '2026-09-13 15:00:00' },
+      { id: 'pomodoro', kind: 'custom', label: 'Pomodoro', href: 'https://pomofocus.io', icon: 'ph-timer', sortOrder: 120, enabled: true, createdAt: '2026-09-13 15:00:00', updatedAt: '2026-09-13 15:00:00' }
+    ]
+  },
+
   logs: {
     ok: true, available: true, total: 2,
     actions: [{ action: 'auth.login', n: 1 }, { action: 'authz.denied', n: 1 }],
@@ -132,7 +141,7 @@ if (base && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
     live = false;
   } else {
     payloads = { ...synthetic };
-    for (const key of ['whoami', 'overview', 'users', 'data', 'data/tables', 'files', 'logs', 'system', 'ai']) {
+    for (const key of ['whoami', 'overview', 'users', 'data', 'data/tables', 'files', 'tools', 'logs', 'system', 'ai']) {
       const res = await fetch(`${base}/api/admin/${key}`, { headers: { Cookie: cookie } });
       payloads[key] = await res.json();
     }
@@ -142,7 +151,7 @@ if (base && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
 
 /* --------------------------------- runner --------------------------------- */
 
-const SECTIONS = ['overview', 'users', 'data', 'files', 'logs', 'system', 'ai'];
+const SECTIONS = ['overview', 'users', 'data', 'files', 'tools', 'logs', 'system', 'ai'];
 let pass = 0;
 let fail = 0;
 

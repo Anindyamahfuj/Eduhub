@@ -1,37 +1,40 @@
 /**
  * OpenAI-compatible AI scaffold.
  *
- * IMPORTANT: no LLM call is implemented yet — by explicit requirement. This
- * module only establishes the contract so a provider can be connected later
- * without touching the frontend or the rest of the architecture.
+ * Configuration is resolved through getAiConfig(): validated settings saved
+ * from the admin panel (app_settings table) win, OPENAI_* environment
+ * variables are the fallback. A key reaches the database ONLY after the
+ * admin console validated it against the live provider, so every branch
+ * below can trust what it reads.
  *
- * To enable a provider later, set (as Cloudflare secrets / vars):
- *   OPENAI_API_KEY   — the provider key
- *   OPENAI_BASE_URL  — defaults to https://api.openai.com/v1
- *   OPENAI_MODEL     — the model id to use
- * No key or model is assumed at this stage.
+ * The /chat/completions call itself is still scaffolded (501 until the chat
+ * feature is switched on); /models is live and is the same call the admin
+ * validation probe uses.
  */
 import { Hono } from 'hono';
 import type { Env } from '../lib/helpers.js';
 import { currentUser, fail, json, ok, requireUser } from '../lib/helpers.js';
+import { getAiConfig } from '../lib/ai-config.js';
 
 export const aiRoutes = new Hono<{ Bindings: Env }>();
 
 aiRoutes.use('*', requireUser);
 
 /** Current provider configuration state (never exposes the key itself). */
-function providerStatus(env: Env) {
+async function providerStatus(env: Env) {
+  const cfg = await getAiConfig(env);
   return {
-    configured: Boolean(env.OPENAI_API_KEY && env.OPENAI_BASE_URL),
-    baseUrl: env.OPENAI_BASE_URL || null,
-    model: env.OPENAI_MODEL || null,
+    configured: Boolean(cfg.apiKey && cfg.baseUrl),
+    baseUrl: cfg.baseUrl,
+    model: cfg.model,
+    source: cfg.source,
     // The key value is intentionally never returned.
-    hasKey: Boolean(env.OPENAI_API_KEY)
+    hasKey: Boolean(cfg.apiKey)
   };
 }
 
 /** GET /api/ai/config — what the client can expect. */
-aiRoutes.get('/config', (c) => json({ ok: true, provider: providerStatus(c.env) }));
+aiRoutes.get('/config', async (c) => json({ ok: true, provider: await providerStatus(c.env) }));
 
 /**
  * GET /api/ai/models — OpenAI-compatible model listing.
@@ -39,13 +42,13 @@ aiRoutes.get('/config', (c) => json({ ok: true, provider: providerStatus(c.env) 
  * configured yet. The frontend can adopt this without changes later.
  */
 aiRoutes.get('/models', async (c) => {
-  const env = c.env;
-  if (!env.OPENAI_API_KEY) {
+  const cfg = await getAiConfig(c.env);
+  if (!cfg.apiKey || !cfg.baseUrl) {
     return fail('No AI provider is configured yet.', 501);
   }
   try {
-    const res = await fetch(`${env.OPENAI_BASE_URL}/models`, {
-      headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` }
+    const res = await fetch(`${cfg.baseUrl}/models`, {
+      headers: { Authorization: `Bearer ${cfg.apiKey}` }
     });
     const body = await res.text();
     return new Response(body, {
@@ -66,8 +69,8 @@ aiRoutes.get('/models', async (c) => {
  * model once integration is enabled.
  */
 aiRoutes.post('/chat/completions', async (c) => {
-  const env = c.env;
   const user = currentUser(c);
+  const cfg = await getAiConfig(c.env);
 
   let body: Record<string, unknown> = {};
   try {
@@ -76,14 +79,14 @@ aiRoutes.post('/chat/completions', async (c) => {
     return fail('Invalid JSON body');
   }
 
-  if (!env.OPENAI_API_KEY) {
+  if (!cfg.apiKey || !cfg.baseUrl) {
     // Deliberate: the integration point exists but is not yet enabled.
     return json(
       {
         ok: false,
-        error: 'AI provider not configured yet. Set OPENAI_API_KEY, OPENAI_BASE_URL and OPENAI_MODEL.',
+        error: 'AI provider not configured yet. A developer can add a validated key in Admin > AI.',
         received: {
-          model: body.model ?? env.OPENAI_MODEL ?? null,
+          model: body.model ?? cfg.model ?? null,
           scope: { userId: user.id },
           messages: Array.isArray(body.messages) ? (body.messages as unknown[]).length : 0
         }
@@ -93,13 +96,13 @@ aiRoutes.post('/chat/completions', async (c) => {
   }
 
   try {
-    const res = await fetch(`${env.OPENAI_BASE_URL}/chat/completions`, {
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`
+        Authorization: `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify({ model: env.OPENAI_MODEL || body.model, ...body })
+      body: JSON.stringify({ model: cfg.model || body.model, ...body })
     });
     const text = await res.text();
     return new Response(text, {

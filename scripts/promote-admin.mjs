@@ -19,6 +19,7 @@
  * route that can grant developer rights.
  */
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const DB = 'studyhub-production';
 
@@ -32,11 +33,18 @@ function usage() {
 Targets the local development database by default; pass --remote for production.`);
 }
 
+function wranglerBin() {
+  // Windows: `npx` is a .cmd shim that Node's spawnSync cannot exec directly
+  // (ENOENT). Fall back to the wrangler entry point installed in node_modules.
+  const local = new URL('../node_modules/wrangler/bin/wrangler.js', import.meta.url);
+  return fileURLToPath(local);
+}
+
 function run(sql) {
   const target = process.argv.includes('--remote') ? '--remote' : '--local';
   const out = execFileSync(
-    'npx',
-    ['wrangler', 'd1', 'execute', DB, target, '--json', '--command', sql],
+    process.execPath,
+    [wranglerBin(), 'd1', 'execute', DB, target, '--json', '--command', sql],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
   );
   try {

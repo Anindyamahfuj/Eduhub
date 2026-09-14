@@ -18,6 +18,15 @@ import type { Env, SessionUser } from '../lib/helpers.js';
 import { currentUser, fail, isDeveloper, json, ok, requireDeveloper } from '../lib/helpers.js';
 import { auditTableExists, writeAudit } from '../lib/audit.js';
 import { fileDriver } from '../lib/files.js';
+import {
+  checkKeyShape,
+  checkUrlShape,
+  clearAiConfig,
+  getAiConfig,
+  identifyProvider,
+  probeProvider,
+  saveAiConfig
+} from '../lib/ai-config.js';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
 
@@ -121,7 +130,7 @@ adminRoutes.get('/overview', async (c) => {
     }
   }
 
-  const collections = WORKSPACE_COLLECTIONS.map((col) => ({
+  const collections: Array<{ key: string; label: string; count: number }> = WORKSPACE_COLLECTIONS.map((col) => ({
     key: col.key,
     label: col.label,
     count: totals[col.key]
@@ -601,26 +610,158 @@ adminRoutes.get('/system', async (c) => {
 /* ---------------------------------------------------------------------- AI */
 
 /**
- * Preparation only. No LLM call is made, no key is required, and no model or
- * endpoint is assumed. Values are reported from the existing configuration.
+ * AI configuration status. Reports the ACTIVE configuration (validated
+ * database settings over environment variables), never the key itself —
+ * only a masked hint. The setup console (PUT/DELETE below) is the writer.
  */
 adminRoutes.get('/ai', async (c) => {
-  const baseUrl = c.env.OPENAI_BASE_URL || null;
-  const model = c.env.OPENAI_MODEL && String(c.env.OPENAI_MODEL).trim() !== ''
-    ? String(c.env.OPENAI_MODEL)
-    : null;
-  const hasKey = Boolean(c.env.OPENAI_API_KEY);
+  const cfg = await getAiConfig(c.env);
 
   return ok({
-    provider: 'OpenAI-compatible',
-    status: hasKey && model ? 'configured' : 'not configured',
-    model,
-    endpoint: baseUrl,
-    hasKey,
+    provider: cfg.provider || (cfg.source === 'environment' ? 'OpenAI-compatible' : 'OpenAI-compatible'),
+    providerId: cfg.provider,
+    source: cfg.source,
+    status: cfg.apiKey && cfg.baseUrl ? 'configured' : 'not configured',
+    model: cfg.model,
+    endpoint: cfg.baseUrl,
+    hasKey: Boolean(cfg.apiKey),
+    keyHint: cfg.keyHint,
+    validatedAt: cfg.validatedAt,
     chatEndpoint: '/api/ai/chat/completions',
-    configured: hasKey && model,
-    note: 'Placeholder only — no LLM integration is enabled and no request is sent.'
+    configured: Boolean(cfg.apiKey && cfg.baseUrl),
+    note:
+      cfg.source === 'database'
+        ? 'Validated key stored in the database (source of truth for the runtime).'
+        : cfg.source === 'environment'
+          ? 'Read-only environment configuration. Paste a key below to manage it here.'
+          : 'No key configured. Paste one below — it is identified, validated against the live provider, then stored.'
   });
+});
+
+/**
+ * Validate-and-persist a pasted API key. The key is identified against the
+ * provider catalog, shape-checked, then PROBED live (GET {baseUrl}/models
+ * with the pasted key). The database is written only after the probe
+ * succeeds — an unvalidated key is never stored, so nothing downstream can
+ * ever read one.
+ */
+adminRoutes.put('/ai/config', async (c) => {
+  const actor = currentUser(c);
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    return fail('Invalid JSON body');
+  }
+
+  const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+  const customBaseUrl = typeof body.baseUrl === 'string' ? body.baseUrl.trim() : '';
+  const modelInput = typeof body.model === 'string' ? body.model.trim() : '';
+
+  if (!apiKey) return fail('Paste an API key first.');
+
+  const shape = checkKeyShape(apiKey);
+  if (!shape.ok) return fail(shape.error ?? 'Invalid key.');
+
+  const spec = identifyProvider(apiKey);
+  if (!spec && !customBaseUrl) {
+    return fail('Unrecognized key prefix. Choose "Custom provider" and supply the base URL.');
+  }
+
+  const baseUrl = spec ? spec.baseUrl : customBaseUrl;
+  const urlCheck = checkUrlShape(baseUrl);
+  if (!urlCheck.ok) return fail(urlCheck.error ?? 'Invalid base URL.');
+
+  const model = modelInput || null;
+
+  /* The live probe: the gate between pasted and stored. */
+  const probe = await probeProvider({ apiKey, baseUrl, model });
+  if (!probe.ok) {
+    await writeAudit(c.env, {
+      action: 'ai.config.validation_failed',
+      actorId: actor.id,
+      actorEmail: actor.email,
+      target: spec?.id ?? 'custom',
+      result: 'error',
+      detail: probe.error ?? 'probe failed'
+    });
+    return fail(probe.error ?? 'Validation failed.', 400);
+  }
+
+  const validatedAt = new Date().toISOString();
+  await saveAiConfig(c.env, {
+    apiKey,
+    baseUrl,
+    model,
+    provider: spec?.id ?? 'custom',
+    validatedAt
+  });
+
+  await writeAudit(c.env, {
+    action: 'ai.config.set',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: spec?.id ?? 'custom',
+    result: 'ok',
+    detail: `validated live: ${probe.modelCount ?? 0} models listed${probe.modelVerified ? ', requested model verified' : ''}. Key value never logged.`
+  });
+
+  return ok({
+    provider: spec?.label ?? 'Custom provider',
+    endpoint: baseUrl,
+    model,
+    keyHint: apiKey.slice(0, 3) + '…' + apiKey.slice(-4),
+    modelCount: probe.modelCount ?? null,
+    modelVerified: probe.modelVerified ?? false,
+    validatedAt
+  });
+});
+
+/**
+ * Remove the database key. The runtime falls back to environment variables
+ * (usually none in local dev), so the student AI scaffold reports "not
+ * configured" again. The action is audited; the key value is not.
+ */
+adminRoutes.delete('/ai/config', async (c) => {
+  const actor = currentUser(c);
+  await clearAiConfig(c.env);
+  await writeAudit(c.env, {
+    action: 'ai.config.remove',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: 'app_settings',
+    result: 'ok',
+    detail: 'database AI key cleared'
+  });
+  return ok({ cleared: true });
+});
+
+/**
+ * Re-probe the ACTIVE stored configuration ("Test connection"). Reads the
+ * same resolver the runtime uses, so green here means the app can talk to
+ * the provider right now.
+ */
+adminRoutes.post('/ai/test', async (c) => {
+  const actor = currentUser(c);
+  const cfg = await getAiConfig(c.env);
+
+  if (!cfg.apiKey || !cfg.baseUrl) {
+    return fail('No AI provider is configured to test.');
+  }
+
+  const probe = await probeProvider({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, model: cfg.model });
+  await writeAudit(c.env, {
+    action: 'ai.config.test',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: cfg.provider ?? 'custom',
+    result: probe.ok ? 'ok' : 'error',
+    detail: probe.ok ? `${probe.modelCount ?? 0} models listed` : probe.error ?? 'probe failed'
+  });
+
+  if (!probe.ok) return fail(probe.error ?? 'Test failed.', 502);
+  return ok({ modelCount: probe.modelCount ?? null, modelVerified: probe.modelVerified ?? false });
 });
 
 /* Developer-only view of the existing AI config route (already authenticated). */
@@ -631,4 +772,299 @@ adminRoutes.get('/ai/status', (c) => {
     scope: { userId: user.id, role: user.role },
     developer: isDeveloper(user)
   });
+});
+
+/* ------------------------------------------------------------------ Tools */
+
+/**
+ * Admin-managed site tools: the student navigation itself. Builtins map to
+ * the real pages (they can be renamed, re-iconed, reordered, hidden — never
+ * deleted, because the pages remain). Customs are free links created here.
+ *
+ * Every mutation is audited. Validation is strict about anything that could
+ * become markup or a script URL in the student nav: labels are length-capped,
+ * icons must be a Phosphor class or a short glyph, and hrefs must be an
+ * http(s) URL or a plain relative path (no schemes like javascript:).
+ */
+
+const TOOL_ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const TOOL_LABEL_MAX = 40;
+const TOOL_ICON_RE = /^ph-[a-z0-9-]{2,48}$/;
+
+function slugify(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+}
+
+/**
+ * Accepts https?:// URLs and plain relative paths ('notes.html', '/guide').
+ * Anything that could smuggle a scheme (javascript:, data:, protocol-relative
+ * //host) is rejected. Returns the sanitized value or null.
+ */
+function sanitizeHref(raw: unknown): string | null {
+  const value = String(raw ?? '').trim();
+  if (!value || value.length > 500) return null;
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
+      return url.href;
+    } catch {
+      return null;
+    }
+  }
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return null; // any scheme
+  if (value.startsWith('//')) return null;                  // protocol-relative
+  if (value.includes('..')) return null;                    // no traversal games
+  return /^[A-Za-z0-9._~/-]+$/.test(value) ? value : null;
+}
+
+/** A valid icon is a Phosphor class ('ph-robot') or a short glyph (<= 4 chars). */
+function sanitizeIcon(raw: unknown): string | null {
+  const value = String(raw ?? '').trim();
+  if (value === '') return '';
+  if (TOOL_ICON_RE.test(value)) return value;
+  if (Array.from(value).length <= 4 && !/[<>&"']/.test(value)) return value;
+  return null;
+}
+
+function sanitizeLabel(raw: unknown): string | null {
+  const value = String(raw ?? '').trim().replace(/\s+/g, ' ');
+  if (value.length < 1 || value.length > TOOL_LABEL_MAX) return null;
+  return value;
+}
+
+interface ToolRow {
+  id: string;
+  kind: string;
+  label: string;
+  href: string;
+  icon: string;
+  sort_order: number;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
+}
+
+function toolJson(r: ToolRow) {
+  return {
+    id: r.id,
+    kind: r.kind,
+    label: r.label,
+    href: r.href,
+    icon: r.icon,
+    sortOrder: r.sort_order,
+    enabled: Boolean(r.enabled),
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
+  };
+}
+
+async function getTool(env: Env, id: string): Promise<ToolRow | null> {
+  return env.DB.prepare(
+    `SELECT id, kind, label, href, icon, sort_order, enabled, created_at, updated_at
+       FROM site_tools WHERE id = ?`
+  )
+    .bind(id)
+    .first<ToolRow>();
+}
+
+/** Full list, including disabled tools and customs. */
+adminRoutes.get('/tools', async (c) => {
+  const actor = currentUser(c);
+  const rows = await c.env.DB.prepare(
+    `SELECT id, kind, label, href, icon, sort_order, enabled, created_at, updated_at
+       FROM site_tools ORDER BY sort_order, label`
+  ).all<ToolRow>();
+
+  await writeAudit(c.env, {
+    action: 'admin.view',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: 'tools',
+    result: 'ok'
+  });
+
+  return ok({ tools: (rows.results || []).map(toolJson) });
+});
+
+/** Create a custom tool. It appears in the student nav immediately. */
+adminRoutes.post('/tools', async (c) => {
+  const actor = currentUser(c);
+
+  let body: { id?: string; label?: string; href?: string; icon?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return fail('Invalid JSON body');
+  }
+
+  const label = sanitizeLabel(body.label);
+  if (!label) return fail(`label is required (max ${TOOL_LABEL_MAX} characters)`);
+
+  const href = sanitizeHref(body.href);
+  if (!href) return fail('href must be an http(s) URL or a plain relative path');
+
+  const icon = sanitizeIcon(body.icon);
+  if (icon === null) return fail('icon must be a ph-* Phosphor name or a short glyph');
+
+  const requestedId = slugify(String(body.id || '')) || slugify(label);
+  if (!TOOL_ID_RE.test(requestedId)) return fail('id must be a short slug (a-z, 0-9, dashes)');
+
+  const existing = await getTool(c.env, requestedId);
+  if (existing) return fail(`a tool with id '${requestedId}' already exists`, 409);
+
+  const maxRow = await c.env.DB.prepare(
+    'SELECT COALESCE(MAX(sort_order), 0) AS m FROM site_tools'
+  ).first<{ m: number }>();
+  const sortOrder = (maxRow?.m ?? 0) + 10;
+
+  await c.env.DB.prepare(
+    `INSERT INTO site_tools (id, kind, label, href, icon, sort_order, enabled)
+     VALUES (?, 'custom', ?, ?, ?, ?, 1)`
+  )
+    .bind(requestedId, label, href, icon || 'ph-globe', sortOrder)
+    .run();
+
+  await writeAudit(c.env, {
+    action: 'admin.tool_create',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: requestedId,
+    result: 'ok',
+    detail: `label='${label}' href=${href}`
+  });
+
+  const created = await getTool(c.env, requestedId);
+  return ok({ tool: created ? toolJson(created) : null });
+});
+
+/**
+ * Update a tool: label, icon, enabled, sort order (and href for customs).
+ * The dashboard can be edited but never disabled: it is the site's fallback
+ * page, so hiding it would leave redirected users nowhere to land.
+ */
+adminRoutes.put('/tools/:id', async (c) => {
+  const actor = currentUser(c);
+  const id = c.req.param('id');
+
+  let body: { label?: string; icon?: string; enabled?: boolean; sortOrder?: number; href?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return fail('Invalid JSON body');
+  }
+
+  const existing = await getTool(c.env, id);
+  if (!existing) return fail('Tool not found.', 404);
+
+  const updates: string[] = [];
+  const binds: Array<string | number> = [];
+  const details: string[] = [];
+
+  if (body.label !== undefined) {
+    const label = sanitizeLabel(body.label);
+    if (!label) return fail(`label must be 1-${TOOL_LABEL_MAX} characters`);
+    if (label !== existing.label) {
+      updates.push('label = ?');
+      binds.push(label);
+      details.push(`label: '${existing.label}' -> '${label}'`);
+    }
+  }
+
+  if (body.icon !== undefined) {
+    const icon = sanitizeIcon(body.icon);
+    if (icon === null) return fail('icon must be a ph-* Phosphor name or a short glyph');
+    const resolved = icon || (existing.kind === 'builtin' ? '' : 'ph-globe');
+    if (resolved !== existing.icon) {
+      updates.push('icon = ?');
+      binds.push(resolved);
+      details.push(`icon -> ${resolved || '(emoji default)'}`);
+    }
+  }
+
+  if (body.enabled !== undefined) {
+    const enabled = body.enabled ? 1 : 0;
+    if (enabled !== existing.enabled) {
+      if (id === 'dashboard' && !enabled) {
+        return fail('The dashboard cannot be disabled: it is the fallback page.', 409);
+      }
+      updates.push('enabled = ?');
+      binds.push(enabled);
+      details.push(`enabled -> ${Boolean(enabled)}`);
+    }
+  }
+
+  if (body.sortOrder !== undefined) {
+    const order = Number(body.sortOrder);
+    if (!Number.isInteger(order) || order < 0 || order > 100000) {
+      return fail('sortOrder must be a non-negative integer');
+    }
+    if (order !== existing.sort_order) {
+      updates.push('sort_order = ?');
+      binds.push(order);
+      details.push(`order ${existing.sort_order} -> ${order}`);
+    }
+  }
+
+  if (body.href !== undefined) {
+    if (existing.kind !== 'custom') {
+      return fail('Builtin tools point at their own pages; their href is fixed.');
+    }
+    const href = sanitizeHref(body.href);
+    if (!href) return fail('href must be an http(s) URL or a plain relative path');
+    if (href !== existing.href) {
+      updates.push('href = ?');
+      binds.push(href);
+      details.push(`href -> ${href}`);
+    }
+  }
+
+  if (updates.length === 0) {
+    return ok({ tool: toolJson(existing), changed: false });
+  }
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  await c.env.DB.prepare(`UPDATE site_tools SET ${updates.join(', ')} WHERE id = ?`)
+    .bind(...binds, id)
+    .run();
+
+  await writeAudit(c.env, {
+    action: 'admin.tool_update',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: id,
+    result: 'ok',
+    detail: details.join('; ')
+  });
+
+  const updated = await getTool(c.env, id);
+  return ok({ tool: updated ? toolJson(updated) : null, changed: true });
+});
+
+/** Delete a custom tool. Builtins cannot be deleted: their pages still exist. */
+adminRoutes.delete('/tools/:id', async (c) => {
+  const actor = currentUser(c);
+  const id = c.req.param('id');
+
+  const existing = await getTool(c.env, id);
+  if (!existing) return fail('Tool not found.', 404);
+  if (existing.kind !== 'custom') {
+    return fail('Builtin tools cannot be deleted. Disable them instead.', 400);
+  }
+
+  await c.env.DB.prepare('DELETE FROM site_tools WHERE id = ?').bind(id).run();
+
+  await writeAudit(c.env, {
+    action: 'admin.tool_delete',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: id,
+    result: 'ok',
+    detail: `label='${existing.label}'`
+  });
+
+  return ok({ deleted: id });
 });

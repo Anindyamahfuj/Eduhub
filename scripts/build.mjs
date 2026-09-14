@@ -28,6 +28,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'frontend');
 const out = join(root, 'public');
 const shimPath = join(root, 'src', 'client', 'storage-shim.js');
+const toolsShimPath = join(root, 'src', 'client', 'tools-shim.js');
 const adminSrc = join(root, 'admin');
 
 function copyTree(from, to) {
@@ -80,10 +81,14 @@ console.log(`  wrote    public/_redirects (.html URLs preserved)`);
 // 2. Append the storage shim to the served script.js.
 const originalScript = readFileSync(join(src, 'script.js'));
 const shim = readFileSync(shimPath);
+// 2b. Append the site-tools controller (admin-managed navigation) after it.
+const toolsShim = readFileSync(toolsShimPath);
 const combined = Buffer.concat([
   originalScript,
   Buffer.from('\n\n'),
-  shim
+  shim,
+  Buffer.from('\n\n'),
+  toolsShim
 ]);
 writeFileSync(join(out, 'script.js'), combined);
 

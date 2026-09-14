@@ -151,7 +151,7 @@ function initClock() {
 
     digital.classList.add('active');
     analog.classList.remove('active');
-    toggle.textContent = '⏰ Switch to Analog';
+    toggle.innerHTML = '<i class="ph ph-alarm" aria-hidden="true"></i> Switch to Analog';
 
     // ---------- ANALOG DRAW ----------
     function drawAnalog(now) {
@@ -364,13 +364,13 @@ function initClock() {
             clockMode = 'analog';
             digital.classList.remove('active');
             analog.classList.add('active');
-            this.textContent = '⏰ Switch to Digital';
+            this.innerHTML = '<i class="ph ph-clock" aria-hidden="true"></i> Switch to Digital';
             startAnalogLoop();
         } else {
             clockMode = 'digital';
             digital.classList.add('active');
             analog.classList.remove('active');
-            this.textContent = '⏰ Switch to Analog';
+            this.innerHTML = '<i class="ph ph-alarm" aria-hidden="true"></i> Switch to Analog';
             stopAnalogLoop();
             updateClock();
         }
@@ -437,7 +437,7 @@ function initMelodyTimer() {
 const translations = {
     en: {
         'dash_title': 'Dashboard',
-        'dash_subtitle': 'Your study hub at a glance — today\'s progress & all-time history.',
+        'dash_subtitle': 'Your study hub at a glance: today\'s progress & all-time history.',
         'stat_searches': 'Searches Today',
         'stat_files': 'Files Uploaded',
         'stat_tasks': 'Tasks Done Today',
@@ -497,6 +497,7 @@ const translations = {
         'habit_placeholder': '✍️ New habit (e.g., Read 30 min)',
         'your_habits': 'Your Habits',
         'current_streak': 'Current Streak',
+        'longest_streak': 'Longest Streak',
         'days': 'days',
         'notice': 'Notice',
         'notice_subtitle': 'Pin important announcements or reminders for your study group.',
@@ -520,7 +521,7 @@ const translations = {
         'planner': 'Planner',
         'planner_subtitle': 'Click any cell to plan your subject for that day & time.',
         'flashcards': 'Flashcards',
-        'flashcards_subtitle': 'Spaced repetition – review due cards regularly.',
+        'flashcards_subtitle': 'Spaced repetition, review due cards regularly.',
         'new_deck': 'New Deck',
         'click_to_flip': 'Click card to flip.',
         'rate_difficulty': 'Rate difficulty:',
@@ -624,6 +625,7 @@ const translations = {
         'habit_placeholder': '✍️ Nuevo hábito (ej. Leer 30 min)',
         'your_habits': 'Tus Hábitos',
         'current_streak': 'Racha Actual',
+        'longest_streak': 'Racha más larga',
         'days': 'días',
         'notice': 'Avisos',
         'notice_subtitle': 'Fija anuncios importantes o recordatorios para tu grupo de estudio.',
@@ -691,7 +693,7 @@ const translations = {
     },
     zh: {
         'dash_title': '仪表盘',
-        'dash_subtitle': '一站式学习中心 — 今日进度与全部历史记录。',
+        'dash_subtitle': '一站式学习中心：今日进度与全部历史记录。',
         'stat_searches': '今日搜索',
         'stat_files': '已上传文件',
         'stat_tasks': '今日完成任务',
@@ -751,6 +753,7 @@ const translations = {
         'habit_placeholder': '✍️ 新习惯（例如：阅读 30 分钟）',
         'your_habits': '你的习惯',
         'current_streak': '当前连续天数',
+        'longest_streak': '最长连续天数',
         'days': '天',
         'notice': '公告',
         'notice_subtitle': '为学习小组固定重要通知或提醒。',
@@ -774,7 +777,7 @@ const translations = {
         'planner': '计划表',
         'planner_subtitle': '点击任意格子，规划该日该时段的学习科目。',
         'flashcards': '闪卡',
-        'flashcards_subtitle': '间隔重复 – 定期复习到期卡片。',
+        'flashcards_subtitle': '间隔重复, 定期复习到期卡片。',
         'new_deck': '新建牌组',
         'click_to_flip': '点击卡片翻转。',
         'rate_difficulty': '评价难度：',
@@ -818,7 +821,7 @@ const translations = {
     },
     hi: {
         'dash_title': 'डैशबोर्ड',
-        'dash_subtitle': 'आपका अध्ययन केंद्र — आज की प्रगति और पूरी इतिहास।',
+        'dash_subtitle': 'आपका अध्ययन केंद्र: आज की प्रगति और पूरी इतिहास।',
         'stat_searches': 'आज की खोजें',
         'stat_files': 'अपलोड की गई फ़ाइलें',
         'stat_tasks': 'आज पूर्ण किए गए कार्य',
@@ -878,6 +881,7 @@ const translations = {
         'habit_placeholder': '✍️ नई आदत (जैसे: 30 मिनट पढ़ें)',
         'your_habits': 'आपकी आदतें',
         'current_streak': 'वर्तमान स्ट्रीक',
+        'longest_streak': 'सबसे लंबी स्ट्रीक',
         'days': 'दिन',
         'notice': 'सूचना',
         'notice_subtitle': 'अपने अध्ययन समूह के लिए महत्वपूर्ण घोषणाएँ या अनुस्मारक पिन करें।',
@@ -901,7 +905,7 @@ const translations = {
         'planner': 'योजनाकार',
         'planner_subtitle': 'किसी भी सेल पर क्लिक करें और उस दिन और समय के लिए अपना विषय योजना बनाएं।',
         'flashcards': 'फ्लैशकार्ड',
-        'flashcards_subtitle': 'अंतराल पुनरावृत्ति – नियमित रूप से देय कार्ड की समीक्षा करें।',
+        'flashcards_subtitle': 'अंतराल पुनरावृत्ति, नियमित रूप से देय कार्ड की समीक्षा करें।',
         'new_deck': 'नया डेक',
         'click_to_flip': 'कार्ड को पलटने के लिए क्लिक करें।',
         'rate_difficulty': 'कठिनाई रेट करें:',
@@ -945,7 +949,7 @@ const translations = {
     },
     ar: {
         'dash_title': 'لوحة التحكم',
-        'dash_subtitle': 'مركز دراستك بنظرة سريعة — تقدم اليوم والتاريخ الكامل.',
+        'dash_subtitle': 'مركز دراستك بنظرة سريعة: تقدم اليوم والتاريخ الكامل.',
         'stat_searches': 'عمليات البحث اليوم',
         'stat_files': 'الملفات المرفوعة',
         'stat_tasks': 'المهام المكتملة اليوم',
@@ -1005,6 +1009,7 @@ const translations = {
         'habit_placeholder': '✍️ عادة جديدة (مثال: اقرأ 30 دقيقة)',
         'your_habits': 'عاداتك',
         'current_streak': 'السلسلة الحالية',
+        'longest_streak': 'أطول سلسلة',
         'days': 'أيام',
         'notice': 'إشعارات',
         'notice_subtitle': 'ثبت إعلانات مهمة أو تذكيرات لمجموعة دراستك.',
@@ -1028,7 +1033,7 @@ const translations = {
         'planner': 'المخطط',
         'planner_subtitle': 'انقر على أي خلية لتخطيط مادتك لذلك اليوم والوقت.',
         'flashcards': 'البطاقات التعليمية',
-        'flashcards_subtitle': 'تكرار متباعد – راجع البطاقات المستحقة بانتظام.',
+        'flashcards_subtitle': 'تكرار متباعد, راجع البطاقات المستحقة بانتظام.',
         'new_deck': 'مجموعة جديدة',
         'click_to_flip': 'انقر على البطاقة لقلبها.',
         'rate_difficulty': 'قيم الصعوبة:',
@@ -1072,7 +1077,7 @@ const translations = {
     },
     fr: {
         'dash_title': 'Tableau de bord',
-        'dash_subtitle': 'Votre centre d\'études en un coup d\'œil — progrès du jour et historique complet.',
+        'dash_subtitle': 'Votre centre d\'études en un coup d\'œil: progrès du jour et historique complet.',
         'stat_searches': 'Recherches aujourd\'hui',
         'stat_files': 'Fichiers téléchargés',
         'stat_tasks': 'Tâches terminées aujourd\'hui',
@@ -1132,6 +1137,7 @@ const translations = {
         'habit_placeholder': '✍️ Nouvelle habitude (ex. Lire 30 min)',
         'your_habits': 'Vos habitudes',
         'current_streak': 'Série actuelle',
+        'longest_streak': 'Plus longue série',
         'days': 'jours',
         'notice': 'Notifications',
         'notice_subtitle': 'Épinglez des annonces importantes ou des rappels pour votre groupe d\'étude.',
@@ -1155,7 +1161,7 @@ const translations = {
         'planner': 'Planificateur',
         'planner_subtitle': 'Cliquez sur n\'importe quelle cellule pour planifier votre matière pour ce jour et cette heure.',
         'flashcards': 'Flashcards',
-        'flashcards_subtitle': 'Répétition espacée – révisez régulièrement les cartes dues.',
+        'flashcards_subtitle': 'Répétition espacée, révisez régulièrement les cartes dues.',
         'new_deck': 'Nouveau paquet',
         'click_to_flip': 'Cliquez sur la carte pour la retourner.',
         'rate_difficulty': 'Évaluez la difficulté :',
@@ -1199,7 +1205,7 @@ const translations = {
     },
     ru: {
         'dash_title': 'Панель управления',
-        'dash_subtitle': 'Ваш учебный центр — прогресс за сегодня и вся история.',
+        'dash_subtitle': 'Ваш учебный центр: прогресс за сегодня и вся история.',
         'stat_searches': 'Поисков сегодня',
         'stat_files': 'Загружено файлов',
         'stat_tasks': 'Задач выполнено сегодня',
@@ -1259,6 +1265,7 @@ const translations = {
         'habit_placeholder': '✍️ Новая привычка (напр. Читать 30 мин)',
         'your_habits': 'Ваши привычки',
         'current_streak': 'Текущая серия',
+        'longest_streak': 'Самая длинная серия',
         'days': 'дней',
         'notice': 'Уведомления',
         'notice_subtitle': 'Закрепите важные объявления или напоминания для учебной группы.',
@@ -1282,7 +1289,7 @@ const translations = {
         'planner': 'Планировщик',
         'planner_subtitle': 'Нажмите на любую ячейку, чтобы спланировать предмет на этот день и время.',
         'flashcards': 'Карточки',
-        'flashcards_subtitle': 'Интервальное повторение – регулярно просматривайте просроченные карточки.',
+        'flashcards_subtitle': 'Интервальное повторение, регулярно просматривайте просроченные карточки.',
         'new_deck': 'Новая колода',
         'click_to_flip': 'Нажмите на карточку, чтобы перевернуть.',
         'rate_difficulty': 'Оцените сложность:',
@@ -1326,7 +1333,7 @@ const translations = {
     },
     pt: {
         'dash_title': 'Painel de Controle',
-        'dash_subtitle': 'Seu centro de estudos num relance — progresso de hoje e histórico completo.',
+        'dash_subtitle': 'Seu centro de estudos num relance: progresso de hoje e histórico completo.',
         'stat_searches': 'Pesquisas Hoje',
         'stat_files': 'Arquivos Carregados',
         'stat_tasks': 'Tarefas Concluídas Hoje',
@@ -1386,6 +1393,7 @@ const translations = {
         'habit_placeholder': '✍️ Novo hábito (ex. Ler 30 min)',
         'your_habits': 'Seus Hábitos',
         'current_streak': 'Sequência Atual',
+        'longest_streak': 'Sequência mais longa',
         'days': 'dias',
         'notice': 'Avisos',
         'notice_subtitle': 'Fixe anúncios importantes ou lembretes para o seu grupo de estudo.',
@@ -1409,7 +1417,7 @@ const translations = {
         'planner': 'Planejador',
         'planner_subtitle': 'Clique em qualquer célula para planejar sua disciplina para aquele dia e hora.',
         'flashcards': 'Flashcards',
-        'flashcards_subtitle': 'Repetição espaçada – revise os cartões vencidos regularmente.',
+        'flashcards_subtitle': 'Repetição espaçada, revise os cartões vencidos regularmente.',
         'new_deck': 'Novo Baralho',
         'click_to_flip': 'Clique no cartão para virar.',
         'rate_difficulty': 'Avalie a dificuldade:',
@@ -1453,7 +1461,7 @@ const translations = {
     },
     bn: {
         'dash_title': 'ড্যাশবোর্ড',
-        'dash_subtitle': 'আপনার স্টাডি হাব — আজকের অগ্রগতি ও সম্পূর্ণ ইতিহাস।',
+        'dash_subtitle': 'আপনার স্টাডি হাব: আজকের অগ্রগতি ও সম্পূর্ণ ইতিহাস।',
         'stat_searches': 'আজকের অনুসন্ধান',
         'stat_files': 'আপলোড করা ফাইল',
         'stat_tasks': 'আজকের সম্পন্ন কাজ',
@@ -1513,6 +1521,7 @@ const translations = {
         'habit_placeholder': '✍️ নতুন অভ্যাস (যেমন: ৩০ মিনিট পড়া)',
         'your_habits': 'আপনার অভ্যাস',
         'current_streak': 'বর্তমান ধারা',
+        'longest_streak': 'দীর্ঘতম ধারা',
         'days': 'দিন',
         'notice': 'নোটিশ',
         'notice_subtitle': 'আপনার স্টাডি গ্রুপের জন্য গুরুত্বপূর্ণ ঘোষণা বা রিমাইন্ডার পিন করুন।',
@@ -1536,7 +1545,7 @@ const translations = {
         'planner': 'পরিকল্পনাকারী',
         'planner_subtitle': 'যেকোনো সেলে ক্লিক করে সেই দিন ও সময়ের জন্য আপনার বিষয় পরিকল্পনা করুন।',
         'flashcards': 'ফ্ল্যাশকার্ড',
-        'flashcards_subtitle': 'ব্যবধান পুনরাবৃত্তি – নিয়মিত বকেয়া কার্ড পর্যালোচনা করুন।',
+        'flashcards_subtitle': 'ব্যবধান পুনরাবৃত্তি, নিয়মিত বকেয়া কার্ড পর্যালোচনা করুন।',
         'new_deck': 'নতুন ডেক',
         'click_to_flip': 'কার্ড ফ্লিপ করতে ক্লিক করুন।',
         'rate_difficulty': 'কঠিনতা রেট দিন:',
@@ -1580,7 +1589,7 @@ const translations = {
     },
     ur: {
         'dash_title': 'ڈیش بورڈ',
-        'dash_subtitle': 'آپ کا اسٹڈی ہب — آج کی پیشرفت اور مکمل تاریخ۔',
+        'dash_subtitle': 'آپ کا اسٹڈی ہب: آج کی پیشرفت اور مکمل تاریخ۔',
         'stat_searches': 'آج کی تلاشیں',
         'stat_files': 'اپ لوڈ کردہ فائلیں',
         'stat_tasks': 'آج مکمل ہونے والے کام',
@@ -1640,6 +1649,7 @@ const translations = {
         'habit_placeholder': '✍️ نئی عادت (مثال: 30 منٹ پڑھیں)',
         'your_habits': 'آپ کی عادتیں',
         'current_streak': 'موجودہ تسلسل',
+        'longest_streak': 'سب سے لمبا تسلسل',
         'days': 'دن',
         'notice': 'نوٹس',
         'notice_subtitle': 'اپنے مطالعاتی گروپ کے لیے اہم اعلانات یا یاد دہانیاں پن کریں۔',
@@ -1663,7 +1673,7 @@ const translations = {
         'planner': 'منصوبہ ساز',
         'planner_subtitle': 'کسی بھی سیل پر کلک کریں اور اس دن اور وقت کے لیے اپنا مضمون منصوبہ بنائیں۔',
         'flashcards': 'فلیش کارڈز',
-        'flashcards_subtitle': 'فاصلہ تکرار – باقاعدگی سے واجب الادا کارڈز کا جائزہ لیں۔',
+        'flashcards_subtitle': 'فاصلہ تکرار, باقاعدگی سے واجب الادا کارڈز کا جائزہ لیں۔',
         'new_deck': 'نیا ڈیک',
         'click_to_flip': 'کارڈ پلٹنے کے لیے کلک کریں۔',
         'rate_difficulty': 'مشکل کی شرح:',
@@ -1707,7 +1717,7 @@ const translations = {
     },
     id: {
         'dash_title': 'Dasbor',
-        'dash_subtitle': 'Pusat studi Anda sekilas — kemajuan hari ini & riwayat semua waktu.',
+        'dash_subtitle': 'Pusat studi Anda sekilas: kemajuan hari ini & riwayat semua waktu.',
         'stat_searches': 'Pencarian Hari Ini',
         'stat_files': 'File Diunggah',
         'stat_tasks': 'Tugas Selesai Hari Ini',
@@ -1767,6 +1777,7 @@ const translations = {
         'habit_placeholder': '✍️ Kebiasaan baru (misal: Baca 30 menit)',
         'your_habits': 'Kebiasaan Anda',
         'current_streak': 'Streak Saat Ini',
+        'longest_streak': 'Streak Terpanjang',
         'days': 'hari',
         'notice': 'Pengumuman',
         'notice_subtitle': 'Sematkan pengumuman penting atau pengingat untuk grup studi Anda.',
@@ -1790,7 +1801,7 @@ const translations = {
         'planner': 'Perencana',
         'planner_subtitle': 'Klik sel mana pun untuk merencanakan mata pelajaran Anda untuk hari dan waktu itu.',
         'flashcards': 'Kartu Flash',
-        'flashcards_subtitle': 'Pengulangan terjadwal – tinjau kartu yang jatuh tempo secara teratur.',
+        'flashcards_subtitle': 'Pengulangan terjadwal, tinjau kartu yang jatuh tempo secara teratur.',
         'new_deck': 'Dek Baru',
         'click_to_flip': 'Klik kartu untuk membalik.',
         'rate_difficulty': 'Nilai kesulitan:',
@@ -1834,7 +1845,7 @@ const translations = {
     },
     de: {
         'dash_title': 'Dashboard',
-        'dash_subtitle': 'Ihr Studien-Hub auf einen Blick — heutiger Fortschritt & gesamte Historie.',
+        'dash_subtitle': 'Ihr Studien-Hub auf einen Blick: heutiger Fortschritt & gesamte Historie.',
         'stat_searches': 'Suchanfragen heute',
         'stat_files': 'Hochgeladene Dateien',
         'stat_tasks': 'Heute erledigte Aufgaben',
@@ -1894,6 +1905,7 @@ const translations = {
         'habit_placeholder': '✍️ Neue Gewohnheit (z.B. 30 min lesen)',
         'your_habits': 'Ihre Gewohnheiten',
         'current_streak': 'Aktuelle Serie',
+        'longest_streak': 'Längste Serie',
         'days': 'Tage',
         'notice': 'Notizen',
         'notice_subtitle': 'Pinnen Sie wichtige Ankündigungen oder Erinnerungen für Ihre Lerngruppe.',
@@ -1917,7 +1929,7 @@ const translations = {
         'planner': 'Planer',
         'planner_subtitle': 'Klicken Sie auf eine beliebige Zelle, um Ihr Fach für diesen Tag und diese Uhrzeit zu planen.',
         'flashcards': 'Karteikarten',
-        'flashcards_subtitle': 'Wiederholung in Abständen – überprüfen Sie regelmäßig fällige Karten.',
+        'flashcards_subtitle': 'Wiederholung in Abständen, überprüfen Sie regelmäßig fällige Karten.',
         'new_deck': 'Neues Deck',
         'click_to_flip': 'Klicken Sie auf die Karte, um sie umzudrehen.',
         'rate_difficulty': 'Bewerten Sie die Schwierigkeit:',
@@ -1961,7 +1973,7 @@ const translations = {
     },
     ja: {
         'dash_title': 'ダッシュボード',
-        'dash_subtitle': 'あなたの学習ハブ — 今日の進捗と全履歴。',
+        'dash_subtitle': 'あなたの学習ハブ: 今日の進捗と全履歴。',
         'stat_searches': '今日の検索',
         'stat_files': 'アップロードされたファイル',
         'stat_tasks': '今日完了したタスク',
@@ -2021,6 +2033,7 @@ const translations = {
         'habit_placeholder': '✍️ 新しい習慣（例：30分読書）',
         'your_habits': 'あなたの習慣',
         'current_streak': '現在の連続記録',
+        'longest_streak': '最長連続記録',
         'days': '日',
         'notice': 'お知らせ',
         'notice_subtitle': '学習グループ向けの重要な告知やリマインダーをピン留めします。',
@@ -2044,7 +2057,7 @@ const translations = {
         'planner': 'プランナー',
         'planner_subtitle': '任意のセルをクリックして、その日と時間の科目を計画します。',
         'flashcards': 'フラッシュカード',
-        'flashcards_subtitle': '間隔反復 – 定期的に期限切れカードを復習します。',
+        'flashcards_subtitle': '間隔反復, 定期的に期限切れカードを復習します。',
         'new_deck': '新しいデッキ',
         'click_to_flip': 'カードをクリックして裏返す',
         'rate_difficulty': '難易度を評価：',
@@ -2088,7 +2101,7 @@ const translations = {
     },
     sw: {
         'dash_title': 'Dashibodi',
-        'dash_subtitle': 'Kituo chako cha kujifunza kwa mtazamo mmoja — maendeleo ya leo na historia yote.',
+        'dash_subtitle': 'Kituo chako cha kujifunza kwa mtazamo mmoja: maendeleo ya leo na historia yote.',
         'stat_searches': 'Utafutaji Leo',
         'stat_files': 'Faili Zilizopakiwa',
         'stat_tasks': 'Kazi Zilizokamilishwa Leo',
@@ -2148,6 +2161,7 @@ const translations = {
         'habit_placeholder': '✍️ Zoezi jipya (mfano: Soma dakika 30)',
         'your_habits': 'Mazoea Yako',
         'current_streak': 'Mfululizo wa Sasa',
+        'longest_streak': 'Mfululizo mrefu zaidi',
         'days': 'siku',
         'notice': 'Matangazo',
         'notice_subtitle': 'Bandika matangazo muhimu au vikumbusho kwa kikundi chako cha kujifunza.',
@@ -2171,7 +2185,7 @@ const translations = {
         'planner': 'Mpangaji',
         'planner_subtitle': 'Bofya seli yoyote kupanga somo lako kwa siku na wakati huo.',
         'flashcards': 'Kadi za Kujifunza',
-        'flashcards_subtitle': 'Kurudia kwa vipindi – kagua kadi zilizochelewa mara kwa mara.',
+        'flashcards_subtitle': 'Kurudia kwa vipindi, kagua kadi zilizochelewa mara kwa mara.',
         'new_deck': 'Staha Mpya',
         'click_to_flip': 'Bofya kadi kuigeuza.',
         'rate_difficulty': 'Kadiria ugumu:',
@@ -2215,7 +2229,7 @@ const translations = {
     },
     tr: {
         'dash_title': 'Kontrol Paneli',
-        'dash_subtitle': 'Çalışma merkeziniz — bugünün ilerlemesi ve tüm zamanların geçmişi.',
+        'dash_subtitle': 'Çalışma merkeziniz: bugünün ilerlemesi ve tüm zamanların geçmişi.',
         'stat_searches': 'Bugünkü Aramalar',
         'stat_files': 'Yüklenen Dosyalar',
         'stat_tasks': 'Bugün Tamamlanan Görevler',
@@ -2275,6 +2289,7 @@ const translations = {
         'habit_placeholder': '✍️ Yeni alışkanlık (örnek: 30 dk oku)',
         'your_habits': 'Alışkanlıklarınız',
         'current_streak': 'Mevcut Seri',
+        'longest_streak': 'En uzun seri',
         'days': 'gün',
         'notice': 'Duyurular',
         'notice_subtitle': 'Çalışma grubunuz için önemli duyuruları veya hatırlatıcıları sabitleyin.',
@@ -2298,7 +2313,7 @@ const translations = {
         'planner': 'Planlayıcı',
         'planner_subtitle': 'Herhangi bir hücreye tıklayarak o gün ve saat için dersinizi planlayın.',
         'flashcards': 'Bilgi Kartları',
-        'flashcards_subtitle': 'Aralıklı tekrar – vadesi gelen kartları düzenli olarak gözden geçirin.',
+        'flashcards_subtitle': 'Aralıklı tekrar, vadesi gelen kartları düzenli olarak gözden geçirin.',
         'new_deck': 'Yeni Deste',
         'click_to_flip': 'Kartı çevirmek için tıklayın.',
         'rate_difficulty': 'Zorluk derecesini puanlayın:',
@@ -2358,7 +2373,7 @@ var extraTranslations = {
         'restore_btn': 'Restore', 'delete_btn': 'Delete', 'empty_trash_btn': 'Empty Trash', 'close_btn': 'Close',
         'switch_digital': 'Switch to Digital',
         'ai_planner_title': 'StudyHub AI Planner',
-        'ai_planner_desc': 'Describe what you want — the AI will plan it for you. Try "make a routine by yourself", "easy weekend plan", "intense exam week", "math morning, physics evening", "3 hours today", or "focus on chemistry this week".',
+        'ai_planner_desc': 'Describe what you want: the AI will plan it for you. Try "make a routine by yourself", "easy weekend plan", "intense exam week", "math morning, physics evening", "3 hours today", or "focus on chemistry this week".',
         'ai_planner_placeholder': 'Type your request here...',
         'generate_plan_btn': 'Generate Plan',
         'chip_auto': 'Auto routine', 'chip_easy': 'Easy', 'chip_exam': 'Exam week', 'chip_weekend': 'Weekend',
@@ -2370,8 +2385,8 @@ var extraTranslations = {
         'subjects_label': 'Subjects', 'total_sessions_label': 'Total sessions', 'across_label': 'across', 'days_label': 'day(s)',
         'apply_merge_btn': 'Apply to Planner (merge)', 'replace_planner_btn': 'Replace Planner',
         'retry_variation_btn': 'Retry (new variation)', 'reset_planner_btn': 'Reset Planner',
-        'reset_confirm': 'Reset the planner? This will clear every cell — this cannot be undone.',
-        'please_type_plan': 'Please type what you want to plan — or click one of the chips above.',
+        'reset_confirm': 'Reset the planner? This will clear every cell: this cannot be undone.',
+        'please_type_plan': 'Please type what you want to plan, or click one of the chips above.',
         'today_minutes': 'Today', 'total_minutes': 'Total',
         'pause_btn': 'Pause', 'sound_none': 'No Sound', 'sound_rain': 'Rain', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Quiz Generator', 'generate_quiz_btn': 'Generate Quiz from Notes', 'clear_quiz_btn': 'Clear Quiz',
@@ -2540,7 +2555,7 @@ var extraTranslations = {
         'restore_btn': 'Restaurar', 'delete_btn': 'Eliminar', 'empty_trash_btn': 'Vaciar Papelera', 'close_btn': 'Cerrar',
         'switch_digital': 'Cambiar a Digital',
         'ai_planner_title': 'Planificador IA de StudyHub',
-        'ai_planner_desc': 'Describe lo que quieres — la IA lo planificará. Prueba "haz una rutina tú mismo", "plan de fin de semana fácil", "semana de exámenes intensa", "matemáticas por la mañana, física por la tarde", "3 horas hoy" o "enfócate en química esta semana".',
+        'ai_planner_desc': 'Describe lo que quieres: la IA lo planificará. Prueba "haz una rutina tú mismo", "plan de fin de semana fácil", "semana de exámenes intensa", "matemáticas por la mañana, física por la tarde", "3 horas hoy" o "enfócate en química esta semana".',
         'ai_planner_placeholder': 'Escribe tu solicitud aquí...',
         'generate_plan_btn': 'Generar Plan',
         'chip_auto': 'Rutina automática', 'chip_easy': 'Fácil', 'chip_exam': 'Semana de exámenes', 'chip_weekend': 'Fin de semana',
@@ -2552,8 +2567,8 @@ var extraTranslations = {
         'subjects_label': 'Asignaturas', 'total_sessions_label': 'Sesiones totales', 'across_label': 'en', 'days_label': 'día(s)',
         'apply_merge_btn': 'Aplicar al Planificador (fusionar)', 'replace_planner_btn': 'Reemplazar Planificador',
         'retry_variation_btn': 'Reintentar (nueva variación)', 'reset_planner_btn': 'Restablecer Planificador',
-        'reset_confirm': '¿Restablecer el planificador? Se borrarán todas las celdas — no se puede deshacer.',
-        'please_type_plan': 'Escribe lo que quieres planificar — o haz clic en un chip.',
+        'reset_confirm': '¿Restablecer el planificador? Se borrarán todas las celdas: no se puede deshacer.',
+        'please_type_plan': 'Escribe lo que quieres planificar, o haz clic en un chip.',
         'today_minutes': 'Hoy', 'total_minutes': 'Total',
         'pause_btn': 'Pausar', 'sound_none': 'Sin Sonido', 'sound_rain': 'Lluvia', 'sound_white': 'Ruido Blanco', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Generador de Cuestionarios', 'generate_quiz_btn': 'Generar Cuestionario desde Notas', 'clear_quiz_btn': 'Borrar Cuestionario',
@@ -2567,7 +2582,7 @@ var extraTranslations = {
         'restore_btn': '恢复', 'delete_btn': '删除', 'empty_trash_btn': '清空回收站', 'close_btn': '关闭',
         'switch_digital': '切换到数字时钟',
         'ai_planner_title': 'StudyHub AI 计划器',
-        'ai_planner_desc': '描述您的需求 — AI 会为您规划。试试"自己安排一个惯例"、"轻松的周末计划"、"紧张的考试周"、"早上数学，晚上物理"、"今天学习 3 小时"或"本周专注化学"。',
+        'ai_planner_desc': '描述您的需求: AI 会为您规划。试试"自己安排一个惯例"、"轻松的周末计划"、"紧张的考试周"、"早上数学，晚上物理"、"今天学习 3 小时"或"本周专注化学"。',
         'ai_planner_placeholder': '在此输入您的请求...',
         'generate_plan_btn': '生成计划',
         'chip_auto': '自动惯例', 'chip_easy': '轻松', 'chip_exam': '考试周', 'chip_weekend': '周末',
@@ -2579,8 +2594,8 @@ var extraTranslations = {
         'subjects_label': '科目', 'total_sessions_label': '总会话数', 'across_label': '共', 'days_label': '天',
         'apply_merge_btn': '应用到计划器（合并）', 'replace_planner_btn': '替换计划器',
         'retry_variation_btn': '重试（新变体）', 'reset_planner_btn': '重置计划器',
-        'reset_confirm': '重置计划器？将清空所有单元格 — 无法撤销。',
-        'please_type_plan': '请输入您想规划的内容 — 或点击上方标签。',
+        'reset_confirm': '重置计划器？将清空所有单元格: 无法撤销。',
+        'please_type_plan': '请输入您想规划的内容, 或点击上方标签。',
         'today_minutes': '今天', 'total_minutes': '总计',
         'pause_btn': '暂停', 'sound_none': '无声', 'sound_rain': '雨声', 'sound_white': '白噪音', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': '测验生成器', 'generate_quiz_btn': '从笔记生成测验', 'clear_quiz_btn': '清除测验',
@@ -2594,7 +2609,7 @@ var extraTranslations = {
         'restore_btn': 'पुनर्स्थापित', 'delete_btn': 'हटाएं', 'empty_trash_btn': 'ट्रैश खाली करें', 'close_btn': 'बंद करें',
         'switch_digital': 'डिजिटल पर स्विच करें',
         'ai_planner_title': 'StudyHub AI प्लानर',
-        'ai_planner_desc': 'बताएं कि आप क्या चाहते हैं — AI आपके लिए योजना बनाएगा। आज़माएं "खुद एक दिनचर्या बनाओ", "आसान सप्ताहांत योजना", "गहन परीक्षा सप्ताह", "सुबह गणित, शाम भौतिकी", "आज 3 घंटे" या "इस सप्ताह रसायन पर ध्यान दें"।',
+        'ai_planner_desc': 'बताएं कि आप क्या चाहते हैं: AI आपके लिए योजना बनाएगा। आज़माएं "खुद एक दिनचर्या बनाओ", "आसान सप्ताहांत योजना", "गहन परीक्षा सप्ताह", "सुबह गणित, शाम भौतिकी", "आज 3 घंटे" या "इस सप्ताह रसायन पर ध्यान दें"।',
         'ai_planner_placeholder': 'यहाँ अपनी request लिखें...',
         'generate_plan_btn': 'योजना बनाएं',
         'chip_auto': 'स्वतः दिनचर्या', 'chip_easy': 'आसान', 'chip_exam': 'परीक्षा सप्ताह', 'chip_weekend': 'सप्ताहांत',
@@ -2606,8 +2621,8 @@ var extraTranslations = {
         'subjects_label': 'विषय', 'total_sessions_label': 'कुल सत्र', 'across_label': 'में', 'days_label': 'दिन',
         'apply_merge_btn': 'प्लानर में लागू करें (मर्ज)', 'replace_planner_btn': 'प्लानर बदलें',
         'retry_variation_btn': 'पुनः प्रयास (नया)', 'reset_planner_btn': 'प्लानर रीसेट करें',
-        'reset_confirm': 'प्लानर रीसेट करें? सभी सेल साफ हो जाएंगे — इसे पूर्ववत नहीं किया जा सकता।',
-        'please_type_plan': 'जो योजना बनानी है वह लिखें — या ऊपर कोई चिप क्लिक करें।',
+        'reset_confirm': 'प्लानर रीसेट करें? सभी सेल साफ हो जाएंगे: इसे पूर्ववत नहीं किया जा सकता।',
+        'please_type_plan': 'जो योजना बनानी है वह लिखें, या ऊपर कोई चिप क्लिक करें।',
         'today_minutes': 'आज', 'total_minutes': 'कुल',
         'pause_btn': 'रोकें', 'sound_none': 'कोई ध्वनि नहीं', 'sound_rain': 'बारिश', 'sound_white': 'सफेद शोर', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'क्विज़ जनरेटर', 'generate_quiz_btn': 'नोट्स से क्विज़ बनाएं', 'clear_quiz_btn': 'क्विज़ साफ करें',
@@ -2621,7 +2636,7 @@ var extraTranslations = {
         'restore_btn': 'استعادة', 'delete_btn': 'حذف', 'empty_trash_btn': 'إفراغ المهملات', 'close_btn': 'إغلاق',
         'switch_digital': 'التبديل إلى الرقمي',
         'ai_planner_title': 'مخطط StudyHub AI',
-        'ai_planner_desc': 'صف ما تريده — سيقوم الذكاء الاصطناعي بالتخطيط. جرّب "اصنع روتينًا بنفسك"، "خطة عطلة نهاية أسبوع سهلة"، "أسبوع امتحانات مكثف"، "رياضيات صباحًا، فيزياء مساءً"، "3 ساعات اليوم" أو "التركيز على الكيمياء هذا الأسبوع".',
+        'ai_planner_desc': 'صف ما تريده: سيقوم الذكاء الاصطناعي بالتخطيط. جرّب "اصنع روتينًا بنفسك"، "خطة عطلة نهاية أسبوع سهلة"، "أسبوع امتحانات مكثف"، "رياضيات صباحًا، فيزياء مساءً"، "3 ساعات اليوم" أو "التركيز على الكيمياء هذا الأسبوع".',
         'ai_planner_placeholder': 'اكتب طلبك هنا...',
         'generate_plan_btn': 'توليد خطة',
         'chip_auto': 'روتين تلقائي', 'chip_easy': 'سهل', 'chip_exam': 'أسبوع الامتحانات', 'chip_weekend': 'عطلة نهاية الأسبوع',
@@ -2633,8 +2648,8 @@ var extraTranslations = {
         'subjects_label': 'المواد', 'total_sessions_label': 'إجمالي الجلسات', 'across_label': 'خلال', 'days_label': 'يوم',
         'apply_merge_btn': 'تطبيق على المخطط (دمج)', 'replace_planner_btn': 'استبدال المخطط',
         'retry_variation_btn': 'إعادة المحاولة (تنويع جديد)', 'reset_planner_btn': 'إعادة تعيين المخطط',
-        'reset_confirm': 'إعادة تعيين المخطط؟ سيتم مسح كل الخلايا — لا يمكن التراجع.',
-        'please_type_plan': 'اكتب ما تريد تخطيطه — أو انقر على أحد الأزرار أعلاه.',
+        'reset_confirm': 'إعادة تعيين المخطط؟ سيتم مسح كل الخلايا: لا يمكن التراجع.',
+        'please_type_plan': 'اكتب ما تريد تخطيطه, أو انقر على أحد الأزرار أعلاه.',
         'today_minutes': 'اليوم', 'total_minutes': 'الإجمالي',
         'pause_btn': 'إيقاف مؤقت', 'sound_none': 'بدون صوت', 'sound_rain': 'مطر', 'sound_white': 'ضجيج أبيض', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'منشئ الاختبارات', 'generate_quiz_btn': 'توليد اختبار من الملاحظات', 'clear_quiz_btn': 'مسح الاختبار',
@@ -2648,7 +2663,7 @@ var extraTranslations = {
         'restore_btn': 'Restaurer', 'delete_btn': 'Supprimer', 'empty_trash_btn': 'Vider la corbeille', 'close_btn': 'Fermer',
         'switch_digital': 'Passer au numérique',
         'ai_planner_title': 'Planificateur IA StudyHub',
-        'ai_planner_desc': 'Décrivez ce que vous voulez — l\'IA le planifiera. Essayez "fais une routine toi-même", "plan week-end facile", "semaine d\'examens intense", "maths le matin, physique le soir", "3 heures aujourd\'hui" ou "concentre-toi sur la chimie cette semaine".',
+        'ai_planner_desc': 'Décrivez ce que vous voulez: l\'IA le planifiera. Essayez "fais une routine toi-même", "plan week-end facile", "semaine d\'examens intense", "maths le matin, physique le soir", "3 heures aujourd\'hui" ou "concentre-toi sur la chimie cette semaine".',
         'ai_planner_placeholder': 'Tapez votre demande ici...',
         'generate_plan_btn': 'Générer le plan',
         'chip_auto': 'Routine auto', 'chip_easy': 'Facile', 'chip_exam': 'Semaine d\'examens', 'chip_weekend': 'Week-end',
@@ -2660,8 +2675,8 @@ var extraTranslations = {
         'subjects_label': 'Matières', 'total_sessions_label': 'Sessions totales', 'across_label': 'sur', 'days_label': 'jour(s)',
         'apply_merge_btn': 'Appliquer au planificateur (fusionner)', 'replace_planner_btn': 'Remplacer le planificateur',
         'retry_variation_btn': 'Réessayer (nouvelle variation)', 'reset_planner_btn': 'Réinitialiser le planificateur',
-        'reset_confirm': 'Réinitialiser le planificateur ? Toutes les cellules seront effacées — action irréversible.',
-        'please_type_plan': 'Tapez ce que vous voulez planifier — ou cliquez sur un bouton ci-dessus.',
+        'reset_confirm': 'Réinitialiser le planificateur ? Toutes les cellules seront effacées: action irréversible.',
+        'please_type_plan': 'Tapez ce que vous voulez planifier, ou cliquez sur un bouton ci-dessus.',
         'today_minutes': 'Aujourd\'hui', 'total_minutes': 'Total',
         'pause_btn': 'Pause', 'sound_none': 'Aucun son', 'sound_rain': 'Pluie', 'sound_white': 'Bruit blanc', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Générateur de Quiz', 'generate_quiz_btn': 'Générer un Quiz depuis les Notes', 'clear_quiz_btn': 'Effacer le Quiz',
@@ -2675,7 +2690,7 @@ var extraTranslations = {
         'restore_btn': 'Восстановить', 'delete_btn': 'Удалить', 'empty_trash_btn': 'Очистить корзину', 'close_btn': 'Закрыть',
         'switch_digital': 'Переключиться на цифровые',
         'ai_planner_title': 'ИИ-планировщик StudyHub',
-        'ai_planner_desc': 'Опишите, что вы хотите — ИИ спланирует это. Попробуйте "составь рутину сам", "лёгкий план на выходные", "интенсивная неделя экзаменов", "математика утром, физика вечером", "3 часа сегодня" или "фокус на химии на этой неделе".',
+        'ai_planner_desc': 'Опишите, что вы хотите: ИИ спланирует это. Попробуйте "составь рутину сам", "лёгкий план на выходные", "интенсивная неделя экзаменов", "математика утром, физика вечером", "3 часа сегодня" или "фокус на химии на этой неделе".',
         'ai_planner_placeholder': 'Введите ваш запрос...',
         'generate_plan_btn': 'Создать план',
         'chip_auto': 'Авто-рутина', 'chip_easy': 'Легко', 'chip_exam': 'Неделя экзаменов', 'chip_weekend': 'Выходные',
@@ -2687,8 +2702,8 @@ var extraTranslations = {
         'subjects_label': 'Предметы', 'total_sessions_label': 'Всего сессий', 'across_label': 'в течение', 'days_label': 'дн.',
         'apply_merge_btn': 'Применить к планировщику (слить)', 'replace_planner_btn': 'Заменить планировщик',
         'retry_variation_btn': 'Повторить (новый вариант)', 'reset_planner_btn': 'Сбросить планировщик',
-        'reset_confirm': 'Сбросить планировщик? Все ячейки будут очищены — действие необратимо.',
-        'please_type_plan': 'Напишите, что хотите запланировать — или нажмите кнопку выше.',
+        'reset_confirm': 'Сбросить планировщик? Все ячейки будут очищены: действие необратимо.',
+        'please_type_plan': 'Напишите, что хотите запланировать, или нажмите кнопку выше.',
         'today_minutes': 'Сегодня', 'total_minutes': 'Всего',
         'pause_btn': 'Пауза', 'sound_none': 'Без звука', 'sound_rain': 'Дождь', 'sound_white': 'Белый шум', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Генератор тестов', 'generate_quiz_btn': 'Создать тест из заметок', 'clear_quiz_btn': 'Очистить тест',
@@ -2702,7 +2717,7 @@ var extraTranslations = {
         'restore_btn': 'Restaurar', 'delete_btn': 'Excluir', 'empty_trash_btn': 'Esvaziar Lixeira', 'close_btn': 'Fechar',
         'switch_digital': 'Mudar para Digital',
         'ai_planner_title': 'Planejador IA StudyHub',
-        'ai_planner_desc': 'Descreva o que você quer — a IA vai planejar. Tente "faça uma rotina você mesmo", "plano de fim de semana fácil", "semana de provas intensa", "matemática de manhã, física à noite", "3 horas hoje" ou "foco em química esta semana".',
+        'ai_planner_desc': 'Descreva o que você quer: a IA vai planejar. Tente "faça uma rotina você mesmo", "plano de fim de semana fácil", "semana de provas intensa", "matemática de manhã, física à noite", "3 horas hoje" ou "foco em química esta semana".',
         'ai_planner_placeholder': 'Digite seu pedido aqui...',
         'generate_plan_btn': 'Gerar Plano',
         'chip_auto': 'Rotina auto', 'chip_easy': 'Fácil', 'chip_exam': 'Semana de provas', 'chip_weekend': 'Fim de semana',
@@ -2714,8 +2729,8 @@ var extraTranslations = {
         'subjects_label': 'Disciplinas', 'total_sessions_label': 'Total de sessões', 'across_label': 'em', 'days_label': 'dia(s)',
         'apply_merge_btn': 'Aplicar ao Planejador (mesclar)', 'replace_planner_btn': 'Substituir Planejador',
         'retry_variation_btn': 'Tentar novamente (nova variação)', 'reset_planner_btn': 'Redefinir Planejador',
-        'reset_confirm': 'Redefinir o planejador? Todas as células serão apagadas — irreversível.',
-        'please_type_plan': 'Digite o que deseja planejar — ou clique em um chip acima.',
+        'reset_confirm': 'Redefinir o planejador? Todas as células serão apagadas: irreversível.',
+        'please_type_plan': 'Digite o que deseja planejar, ou clique em um chip acima.',
         'today_minutes': 'Hoje', 'total_minutes': 'Total',
         'pause_btn': 'Pausar', 'sound_none': 'Sem som', 'sound_rain': 'Chuva', 'sound_white': 'Ruído branco', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Gerador de Quiz', 'generate_quiz_btn': 'Gerar Quiz das Notas', 'clear_quiz_btn': 'Limpar Quiz',
@@ -2729,7 +2744,7 @@ var extraTranslations = {
         'restore_btn': 'পুনরুদ্ধার', 'delete_btn': 'মুছুন', 'empty_trash_btn': 'ট্র্যাশ খালি করুন', 'close_btn': 'বন্ধ করুন',
         'switch_digital': 'ডিজিটালে স্যুইচ করুন',
         'ai_planner_title': 'StudyHub AI প্ল্যানার',
-        'ai_planner_desc': 'আপনি কী চান তা বর্ণনা করুন — AI আপনার জন্য পরিকল্পনা করবে। চেষ্টা করুন "নিজেই একটি রুটিন বানাও", "সহজ সাপ্তাহিক ছুটির পরিকল্পনা", "তীব্র পরীক্ষার সপ্তাহ", "সকালে গণিত, সন্ধ্যায় পদার্থবিদ্যা", "আজ 3 ঘন্টা" বা "এই সপ্তাহে রসায়নে মনোযোগ দিন"।',
+        'ai_planner_desc': 'আপনি কী চান তা বর্ণনা করুন: AI আপনার জন্য পরিকল্পনা করবে। চেষ্টা করুন "নিজেই একটি রুটিন বানাও", "সহজ সাপ্তাহিক ছুটির পরিকল্পনা", "তীব্র পরীক্ষার সপ্তাহ", "সকালে গণিত, সন্ধ্যায় পদার্থবিদ্যা", "আজ 3 ঘন্টা" বা "এই সপ্তাহে রসায়নে মনোযোগ দিন"।',
         'ai_planner_placeholder': 'এখানে আপনার অনুরোধ লিখুন...',
         'generate_plan_btn': 'পরিকল্পনা তৈরি করুন',
         'chip_auto': 'স্বয়ংক্রিয় রুটিন', 'chip_easy': 'সহজ', 'chip_exam': 'পরীক্ষার সপ্তাহ', 'chip_weekend': 'সাপ্তাহিক ছুটি',
@@ -2741,8 +2756,8 @@ var extraTranslations = {
         'subjects_label': 'বিষয়', 'total_sessions_label': 'মোট সেশন', 'across_label': 'জুড়ে', 'days_label': 'দিন',
         'apply_merge_btn': 'প্ল্যানারে প্রয়োগ করুন (মার্জ)', 'replace_planner_btn': 'প্ল্যানার প্রতিস্থাপন করুন',
         'retry_variation_btn': 'আবার চেষ্টা করুন (নতুন)', 'reset_planner_btn': 'প্ল্যানার রিসেট করুন',
-        'reset_confirm': 'প্ল্যানার রিসেট করবেন? সব ঘর মুছে যাবে — এটি পূর্বাবস্থায় ফেরানো যাবে না।',
-        'please_type_plan': 'যা পরিকল্পনা করতে চান লিখুন — বা উপরের চিপে ক্লিক করুন।',
+        'reset_confirm': 'প্ল্যানার রিসেট করবেন? সব ঘর মুছে যাবে: এটি পূর্বাবস্থায় ফেরানো যাবে না।',
+        'please_type_plan': 'যা পরিকল্পনা করতে চান লিখুন, বা উপরের চিপে ক্লিক করুন।',
         'today_minutes': 'আজ', 'total_minutes': 'মোট',
         'pause_btn': 'বিরতি', 'sound_none': 'কোনো শব্দ নেই', 'sound_rain': 'বৃষ্টি', 'sound_white': 'সাদা শব্দ', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'কুইজ জেনারেটর', 'generate_quiz_btn': 'নোট থেকে কুইজ তৈরি করুন', 'clear_quiz_btn': 'কুইজ মুছুন',
@@ -2756,7 +2771,7 @@ var extraTranslations = {
         'restore_btn': 'بحال کریں', 'delete_btn': 'حذف کریں', 'empty_trash_btn': 'ردی خالی کریں', 'close_btn': 'بند کریں',
         'switch_digital': 'ڈیجیٹل پر سوئچ کریں',
         'ai_planner_title': 'StudyHub AI پلانر',
-        'ai_planner_desc': 'بتائیں آپ کیا چاہتے ہیں — AI آپ کے لیے منصوبہ بنائے گا۔ آزمائیں "خود ایک معمول بنائیں"، "آسان ویک اینڈ پلان"، "شدید امتحان ہفتہ"، "صبح ریاضی، شام فزکس"، "آج 3 گھنٹے" یا "اس ہفتے کیمسٹری پر توجہ دیں"۔',
+        'ai_planner_desc': 'بتائیں آپ کیا چاہتے ہیں: AI آپ کے لیے منصوبہ بنائے گا۔ آزمائیں "خود ایک معمول بنائیں"، "آسان ویک اینڈ پلان"، "شدید امتحان ہفتہ"، "صبح ریاضی، شام فزکس"، "آج 3 گھنٹے" یا "اس ہفتے کیمسٹری پر توجہ دیں"۔',
         'ai_planner_placeholder': 'یہاں اپنی درخواست لکھیں...',
         'generate_plan_btn': 'منصوبہ بنائیں',
         'chip_auto': 'خودکار معمول', 'chip_easy': 'آسان', 'chip_exam': 'امتحان ہفتہ', 'chip_weekend': 'ویک اینڈ',
@@ -2768,8 +2783,8 @@ var extraTranslations = {
         'subjects_label': 'مضامین', 'total_sessions_label': 'کل سیشن', 'across_label': 'میں', 'days_label': 'دن',
         'apply_merge_btn': 'پلانر پر لاگو کریں (ضم)', 'replace_planner_btn': 'پلانر تبدیل کریں',
         'retry_variation_btn': 'دوبارہ کوشش کریں (نیا)', 'reset_planner_btn': 'پلانر ری سیٹ کریں',
-        'reset_confirm': 'پلانر ری سیٹ کریں؟ تمام خلیے صاف ہو جائیں گے — اسے واپس نہیں کیا جا سکتا۔',
-        'please_type_plan': 'جو منصوبہ بنانا ہے لکھیں — یا اوپر کوئی چپ کلک کریں۔',
+        'reset_confirm': 'پلانر ری سیٹ کریں؟ تمام خلیے صاف ہو جائیں گے: اسے واپس نہیں کیا جا سکتا۔',
+        'please_type_plan': 'جو منصوبہ بنانا ہے لکھیں, یا اوپر کوئی چپ کلک کریں۔',
         'today_minutes': 'آج', 'total_minutes': 'کل',
         'pause_btn': 'وقفہ', 'sound_none': 'کوئی آواز نہیں', 'sound_rain': 'بارش', 'sound_white': 'سفید شور', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'کوئز جنریٹر', 'generate_quiz_btn': 'نوٹس سے کوئز بنائیں', 'clear_quiz_btn': 'کوئز صاف کریں',
@@ -2783,7 +2798,7 @@ var extraTranslations = {
         'restore_btn': 'Pulihkan', 'delete_btn': 'Hapus', 'empty_trash_btn': 'Kosongkan Sampah', 'close_btn': 'Tutup',
         'switch_digital': 'Beralih ke Digital',
         'ai_planner_title': 'Perencana AI StudyHub',
-        'ai_planner_desc': 'Jelaskan apa yang Anda inginkan — AI akan merencanakannya. Coba "buat rutinitas sendiri", "rencana akhir pekan santai", "minggu ujian intens", "matematika pagi, fisika malam", "3 jam hari ini" atau "fokus kimia minggu ini".',
+        'ai_planner_desc': 'Jelaskan apa yang Anda inginkan: AI akan merencanakannya. Coba "buat rutinitas sendiri", "rencana akhir pekan santai", "minggu ujian intens", "matematika pagi, fisika malam", "3 jam hari ini" atau "fokus kimia minggu ini".',
         'ai_planner_placeholder': 'Ketik permintaan Anda di sini...',
         'generate_plan_btn': 'Buat Rencana',
         'chip_auto': 'Rutinitas otomatis', 'chip_easy': 'Santai', 'chip_exam': 'Minggu ujian', 'chip_weekend': 'Akhir pekan',
@@ -2795,8 +2810,8 @@ var extraTranslations = {
         'subjects_label': 'Mata Pelajaran', 'total_sessions_label': 'Total sesi', 'across_label': 'dalam', 'days_label': 'hari',
         'apply_merge_btn': 'Terapkan ke Perencana (gabung)', 'replace_planner_btn': 'Ganti Perencana',
         'retry_variation_btn': 'Coba lagi (variasi baru)', 'reset_planner_btn': 'Atur Ulang Perencana',
-        'reset_confirm': 'Atur ulang perencana? Semua sel akan dihapus — tidak dapat dibatalkan.',
-        'please_type_plan': 'Ketik apa yang ingin Anda rencanakan — atau klik chip di atas.',
+        'reset_confirm': 'Atur ulang perencana? Semua sel akan dihapus: tidak dapat dibatalkan.',
+        'please_type_plan': 'Ketik apa yang ingin Anda rencanakan, atau klik chip di atas.',
         'today_minutes': 'Hari ini', 'total_minutes': 'Total',
         'pause_btn': 'Jeda', 'sound_none': 'Tanpa Suara', 'sound_rain': 'Hujan', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Pembuat Kuis', 'generate_quiz_btn': 'Buat Kuis dari Catatan', 'clear_quiz_btn': 'Hapus Kuis',
@@ -2810,7 +2825,7 @@ var extraTranslations = {
         'restore_btn': 'Wiederherstellen', 'delete_btn': 'Löschen', 'empty_trash_btn': 'Papierkorb leeren', 'close_btn': 'Schließen',
         'switch_digital': 'Auf Digital umschalten',
         'ai_planner_title': 'StudyHub KI-Planer',
-        'ai_planner_desc': 'Beschreiben Sie, was Sie möchten — die KI plant es für Sie. Probieren Sie "mach selbst eine Routine", "einfacher Wochenendplan", "intensive Prüfungswoche", "Mathe morgens, Physik abends", "3 Stunden heute" oder "Fokus auf Chemie diese Woche".',
+        'ai_planner_desc': 'Beschreiben Sie, was Sie möchten: die KI plant es für Sie. Probieren Sie "mach selbst eine Routine", "einfacher Wochenendplan", "intensive Prüfungswoche", "Mathe morgens, Physik abends", "3 Stunden heute" oder "Fokus auf Chemie diese Woche".',
         'ai_planner_placeholder': 'Geben Sie hier Ihre Anfrage ein...',
         'generate_plan_btn': 'Plan erstellen',
         'chip_auto': 'Auto-Routine', 'chip_easy': 'Einfach', 'chip_exam': 'Prüfungswoche', 'chip_weekend': 'Wochenende',
@@ -2822,8 +2837,8 @@ var extraTranslations = {
         'subjects_label': 'Fächer', 'total_sessions_label': 'Sitzungen gesamt', 'across_label': 'über', 'days_label': 'Tag(e)',
         'apply_merge_btn': 'Auf Planer anwenden (zusammenführen)', 'replace_planner_btn': 'Planer ersetzen',
         'retry_variation_btn': 'Erneut versuchen (neue Variante)', 'reset_planner_btn': 'Planer zurücksetzen',
-        'reset_confirm': 'Planer zurücksetzen? Alle Zellen werden gelöscht — nicht rückgängig zu machen.',
-        'please_type_plan': 'Geben Sie ein, was Sie planen möchten — oder klicken Sie oben auf einen Chip.',
+        'reset_confirm': 'Planer zurücksetzen? Alle Zellen werden gelöscht: nicht rückgängig zu machen.',
+        'please_type_plan': 'Geben Sie ein, was Sie planen möchten, oder klicken Sie oben auf einen Chip.',
         'today_minutes': 'Heute', 'total_minutes': 'Gesamt',
         'pause_btn': 'Pause', 'sound_none': 'Kein Ton', 'sound_rain': 'Regen', 'sound_white': 'Weißes Rauschen', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Quiz-Generator', 'generate_quiz_btn': 'Quiz aus Notizen erstellen', 'clear_quiz_btn': 'Quiz löschen',
@@ -2837,7 +2852,7 @@ var extraTranslations = {
         'restore_btn': '復元', 'delete_btn': '削除', 'empty_trash_btn': 'ゴミ箱を空にする', 'close_btn': '閉じる',
         'switch_digital': 'デジタルに切り替え',
         'ai_planner_title': 'StudyHub AIプランナー',
-        'ai_planner_desc': '何をしたいか説明してください — AIが計画します。「自分でルーチンを作って」「簡単な週末プラン」「集中的な試験週間」「朝は数学、夜は物理」「今日3時間」「今週は化学に集中」などを試してみてください。',
+        'ai_planner_desc': '何をしたいか説明してください: AIが計画します。「自分でルーチンを作って」「簡単な週末プラン」「集中的な試験週間」「朝は数学、夜は物理」「今日3時間」「今週は化学に集中」などを試してみてください。',
         'ai_planner_placeholder': 'ここにリクエストを入力...',
         'generate_plan_btn': 'プランを生成',
         'chip_auto': '自動ルーチン', 'chip_easy': '簡単', 'chip_exam': '試験週間', 'chip_weekend': '週末',
@@ -2849,7 +2864,7 @@ var extraTranslations = {
         'subjects_label': '科目', 'total_sessions_label': '合計セッション', 'across_label': '全体', 'days_label': '日',
         'apply_merge_btn': 'プランナーに適用（マージ）', 'replace_planner_btn': 'プランナーを置換',
         'retry_variation_btn': '再試行（新しいバリエーション）', 'reset_planner_btn': 'プランナーをリセット',
-        'reset_confirm': 'プランナーをリセットしますか？すべてのセルが消去されます — 元に戻せません。',
+        'reset_confirm': 'プランナーをリセットしますか？すべてのセルが消去されます: 元に戻せません。',
         'please_type_plan': '計画したいことを入力するか、上のチップをクリックしてください。',
         'today_minutes': '今日', 'total_minutes': '合計',
         'pause_btn': '一時停止', 'sound_none': '無音', 'sound_rain': '雨', 'sound_white': 'ホワイトノイズ', 'sound_lofi': 'Lo-Fi',
@@ -2864,7 +2879,7 @@ var extraTranslations = {
         'restore_btn': 'Rejesha', 'delete_btn': 'Futa', 'empty_trash_btn': 'Ondoa Takataka Zote', 'close_btn': 'Funga',
         'switch_digital': 'Badilisha hadi Dijitali',
         'ai_planner_title': 'Mpangaji AI wa StudyHub',
-        'ai_planner_desc': 'Eleza unachotaka — AI itapanga. Jaribu "tengeneza ratiba mwenyewe", "mpango rahisi wa wikendi", "wiki ngumu ya mitihani", "hisabati asubuhi, fizikia jioni", "saa 3 leo" au "zingatia kemia wiki hii".',
+        'ai_planner_desc': 'Eleza unachotaka: AI itapanga. Jaribu "tengeneza ratiba mwenyewe", "mpango rahisi wa wikendi", "wiki ngumu ya mitihani", "hisabati asubuhi, fizikia jioni", "saa 3 leo" au "zingatia kemia wiki hii".',
         'ai_planner_placeholder': 'Andika ombi lako hapa...',
         'generate_plan_btn': 'Tengeneza Mpango',
         'chip_auto': 'Ratiba otomatiki', 'chip_easy': 'Rahisi', 'chip_exam': 'Wiki ya mitihani', 'chip_weekend': 'Wikendi',
@@ -2876,8 +2891,8 @@ var extraTranslations = {
         'subjects_label': 'Masomo', 'total_sessions_label': 'Vipindi jumla', 'across_label': 'katika', 'days_label': 'siku',
         'apply_merge_btn': 'Tumia kwa Mpangaji (unganisha)', 'replace_planner_btn': 'Badilisha Mpangaji',
         'retry_variation_btn': 'Jaribu tena (tofauti mpya)', 'reset_planner_btn': 'Weka upya Mpangaji',
-        'reset_confirm': 'Weka upya mpangaji? Seli zote zitafutwa — haiwezi kutenduliwa.',
-        'please_type_plan': 'Andika unachotaka kupanga — au bofya chip hapo juu.',
+        'reset_confirm': 'Weka upya mpangaji? Seli zote zitafutwa: haiwezi kutenduliwa.',
+        'please_type_plan': 'Andika unachotaka kupanga, au bofya chip hapo juu.',
         'today_minutes': 'Leo', 'total_minutes': 'Jumla',
         'pause_btn': 'Sitisha', 'sound_none': 'Hakuna Sauti', 'sound_rain': 'Mvua', 'sound_white': 'Kelele Nyeupe', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Kitengeneza Maswali', 'generate_quiz_btn': 'Tengeneza Maswali kutoka Vidokezo', 'clear_quiz_btn': 'Futa Maswali',
@@ -2891,7 +2906,7 @@ var extraTranslations = {
         'restore_btn': 'Geri Yükle', 'delete_btn': 'Sil', 'empty_trash_btn': 'Çöpü Boşalt', 'close_btn': 'Kapat',
         'switch_digital': 'Dijitale Geç',
         'ai_planner_title': 'StudyHub AI Planlayıcı',
-        'ai_planner_desc': 'Ne istediğinizi açıklayın — AI sizin için planlasın. "Kendin bir rutin yap", "kolay hafta sonu planı", "yoğun sınav haftası", "sabah matematik, akşam fizik", "bugün 3 saat" veya "bu hafta kimyaya odaklan" gibi şeyler deneyin.',
+        'ai_planner_desc': 'Ne istediğinizi açıklayın: AI sizin için planlasın. "Kendin bir rutin yap", "kolay hafta sonu planı", "yoğun sınav haftası", "sabah matematik, akşam fizik", "bugün 3 saat" veya "bu hafta kimyaya odaklan" gibi şeyler deneyin.',
         'ai_planner_placeholder': 'İsteğinizi buraya yazın...',
         'generate_plan_btn': 'Plan Oluştur',
         'chip_auto': 'Otomatik rutin', 'chip_easy': 'Kolay', 'chip_exam': 'Sınav haftası', 'chip_weekend': 'Hafta sonu',
@@ -2903,8 +2918,8 @@ var extraTranslations = {
         'subjects_label': 'Dersler', 'total_sessions_label': 'Toplam oturum', 'across_label': 'boyunca', 'days_label': 'gün',
         'apply_merge_btn': 'Planlayıcıya Uygula (birleştir)', 'replace_planner_btn': 'Planlayıcıyı Değiştir',
         'retry_variation_btn': 'Tekrar dene (yeni varyasyon)', 'reset_planner_btn': 'Planlayıcıyı Sıfırla',
-        'reset_confirm': 'Planlayıcı sıfırlansın mı? Tüm hücreler silinecek — geri alınamaz.',
-        'please_type_plan': 'Ne planlamak istediğinizi yazın — veya yukarıdaki bir çipe tıklayın.',
+        'reset_confirm': 'Planlayıcı sıfırlansın mı? Tüm hücreler silinecek: geri alınamaz.',
+        'please_type_plan': 'Ne planlamak istediğinizi yazın, veya yukarıdaki bir çipe tıklayın.',
         'today_minutes': 'Bugün', 'total_minutes': 'Toplam',
         'pause_btn': 'Duraklat', 'sound_none': 'Ses Yok', 'sound_rain': 'Yağmur', 'sound_white': 'Beyaz Gürültü', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Test Oluşturucu', 'generate_quiz_btn': 'Notlardan Test Oluştur', 'clear_quiz_btn': 'Testi Temizle',
@@ -3017,7 +3032,7 @@ function checkReminders(data) {
         if (a._notified) return;
         a._notified = true;
         saveData(data);
-        new Notification('⏰ Assignment Due Tomorrow', {
+        new Notification('Assignment Due Tomorrow', {
             body: a.title + ' (' + a.subject + ')'
         });
     });
@@ -3104,7 +3119,7 @@ document.getElementById('statStreak').textContent = longestStreak;  // stat card
         tc.innerHTML = '<p class="empty-state">' + getTranslation('no_activity') + '</p>';
     } else {
         tc.innerHTML = todayActs.slice().reverse().map(function(h) {
-            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + new Date(h.timestamp).toLocaleTimeString() + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
+            return '<div class="activity-item"><span>' + escapeUserHtml(h.description) + '</span><span class="time">' + new Date(h.timestamp).toLocaleTimeString() + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
         }).join('');
     }
     document.getElementById('todayCount').textContent = todayActs.length + ' ' + getTranslation('entries');
@@ -3116,7 +3131,7 @@ document.getElementById('statStreak').textContent = longestStreak;  // stat card
         hc.innerHTML = '<p class="empty-state">' + getTranslation('no_history') + '</p>';
     } else {
         hc.innerHTML = allHist.slice().reverse().map(function(h) {
-            return '<div class="activity-item"><span>' + h.description + '</span><span class="time">' + h.date + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
+            return '<div class="activity-item"><span>' + escapeUserHtml(h.description) + '</span><span class="time">' + h.date + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
         }).join('');
     }
     document.getElementById('historyCount').textContent = allHist.length + ' ' + getTranslation('entries');
@@ -3131,7 +3146,7 @@ document.getElementById('statStreak').textContent = longestStreak;  // stat card
             assignEl.innerHTML = '<p class="empty-state">' + getTranslation('no_assignments') + '</p>';
         } else {
             assignEl.innerHTML = upcoming.map(function(a) {
-                return '<div class="assignment-item priority-' + a.priority + '"><span>' + a.title + ' <span class="tags">' + (a.tags ? '#' + a.tags.join(' #') : '') + '</span></span><span>' + a.due + '</span></div>';
+                return '<div class="assignment-item priority-' + a.priority + '"><span>' + escapeUserHtml(a.title) + ' <span class="tags">' + (a.tags ? '#' + a.tags.map(escapeUserHtml).join(' #') : '') + '</span></span><span>' + a.due + '</span></div>';
             }).join('');
         }
     }
@@ -3648,8 +3663,8 @@ function setupSummarizer() {
                     (r.points || []).map(function (p) { return '• ' + p; }).join('\n') +
                     '\n\nKey Topics: ' + (r.keywords || []).map(function (k) { return '#' + k; }).join(' ');
                 function done(ok) {
-                    copyBtn.textContent = ok ? '✅ Copied!' : '⚠️ Failed';
-                    setTimeout(function () { copyBtn.textContent = '📋 Copy Summary'; }, 1600);
+                    copyBtn.innerHTML = ok ? '<i class="ph ph-check-circle" aria-hidden="true"></i>Copied!' : '<i class="ph ph-warning" aria-hidden="true"></i>Failed';
+                    setTimeout(function () { copyBtn.innerHTML = '<i class="ph ph-clipboard-text" aria-hidden="true"></i>Copy Summary'; }, 1600);
                 }
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(plain).then(function () { done(true); }, function () { done(false); });
@@ -4390,7 +4405,7 @@ function setupAssignments() {
         list.innerHTML = data.assignments.sort(function(a, b) {
             return new Date(a.due) - new Date(b.due);
         }).map(function(a) {
-            return '<div class="assignment-item priority-' + a.priority + '"><div><span>' + a.title + '</span> <span class="tags">#' + a.subject + (a.tags ? a.tags.map(function(t) { return ' #' + t; }).join('') : '') + '</span> ' + (a.completed ? '✅' : '') + '</div><div>' + a.due + ' <button class="btn-danger-sm" data-id="' + a.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + a.id + '" data-action="toggle">' + (a.completed ? 'Undo' : getTranslation('done')) + '</button></div></div>';
+            return '<div class="assignment-item priority-' + a.priority + '"><div><span>' + escapeUserHtml(a.title) + '</span> <span class="tags">#' + escapeUserHtml(a.subject) + (a.tags ? a.tags.map(function(t) { return ' #' + escapeUserHtml(t); }).join('') : '') + '</span> ' + (a.completed ? '<i class="ph ph-check-circle" aria-hidden="true"></i>' : '') + '</div><div>' + a.due + ' <button class="btn-danger-sm" data-id="' + a.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + a.id + '" data-action="toggle">' + (a.completed ? 'Undo' : getTranslation('done')) + '</button></div></div>';
         }).join('');
 
         list.querySelectorAll('[data-id]').forEach(function(btn) {
@@ -4654,7 +4669,7 @@ function setupReading() {
         }
 
         list.innerHTML = data.readingList.map(function(r) {
-            return '<div class="assignment-item"><span>' + r.title + (r.read ? ' ✅' : ' 📖') + ' <span class="tags">#' + r.subject + (r.tags ? r.tags.map(function(t) { return ' #' + t; }).join('') : '') + '</span></span><span><a href="' + r.url + '" target="_blank" style="color:#c084fc;">Link</a> <button class="btn-danger-sm" data-id="' + r.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + r.id + '" data-action="toggle">' + (r.read ? 'Unread' : getTranslation('read')) + '</button></span></div>';
+            return '<div class="assignment-item"><span>' + escapeUserHtml(r.title) + (r.read ? ' <i class="ph ph-check-circle" aria-hidden="true"></i>' : ' <i class="ph ph-book-open" aria-hidden="true"></i>') + ' <span class="tags">#' + escapeUserHtml(r.subject) + (r.tags ? r.tags.map(function(t) { return ' #' + escapeUserHtml(t); }).join('') : '') + '</span></span><span><a href="' + escapeUserHtml(r.url) + '" target="_blank" rel="noopener" style="color:#c084fc;">Link</a> <button class="btn-danger-sm" data-id="' + r.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + r.id + '" data-action="toggle">' + (r.read ? 'Unread' : getTranslation('read')) + '</button></span></div>';
         }).join('');
 
         list.querySelectorAll('[data-id]').forEach(function(btn) {
@@ -4710,7 +4725,7 @@ function setupFocusMode() {
     btn.addEventListener('click', function() {
         document.body.classList.toggle('focus-mode');
         this.classList.toggle('active');
-        this.textContent = document.body.classList.contains('focus-mode') ? '🔒 ' + getTranslation('focus_on') : '🔓 ' + getTranslation('focus_off');
+        this.innerHTML = '<i class="ph ' + (document.body.classList.contains('focus-mode') ? 'ph-lock' : 'ph-lock-open') + '" aria-hidden="true"></i> ' + getTranslation(document.body.classList.contains('focus-mode') ? 'focus_on' : 'focus_off');
     });
 }
 
@@ -4755,7 +4770,7 @@ function setupAIRecommendation() {
 
         var rec;
         if (best && bestScore > 0) {
-            rec = '💡 For that, I recommend ' + best.tool + ' — ' + best.why + '.';
+            rec = '💡 For that, I recommend ' + best.tool + ': ' + best.why + '.';
         } else {
             rec = '💡 ' + getTranslation('ai_fallback');
         }
@@ -5103,6 +5118,15 @@ function initCalculator() {
 // ================================================================
 // PRIORITY MATRIX (Eisenhower)
 // ================================================================
+// Canonical escaper for every user-text innerHTML sink (activity feed,
+// priority matrix, assignments, reading list). Top-level so every module
+// reaches it regardless of which page sections initialized.
+function escapeUserHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+        return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+    });
+}
+
 function setupPriorityMatrix() {
     var input = document.getElementById('priorityInput');
     var quadrant = document.getElementById('priorityQuadrant');
@@ -5120,7 +5144,7 @@ function setupPriorityMatrix() {
                 container.innerHTML = '<span style="color:#64748b; font-size:0.75rem;">Empty</span>';
             } else {
                 container.innerHTML = list.map(function(t) {
-                    return '<div class="priority-task"><span>' + t.text + '</span><button class="delete-item-btn" data-q="' + q + '" data-id="' + t.id + '">✕</button></div>';
+                    return '<div class="priority-task"><span>' + escapeUserHtml(t.text) + '</span><button class="delete-item-btn" data-q="' + q + '" data-id="' + t.id + '">✕</button></div>';
                 }).join('');
             }
         });
@@ -5406,7 +5430,7 @@ function updateTrashCount() {
         saveData(data);
     }
     var count = (data.trash || []).length;
-    btn.textContent = '🗑️ Trash (' + count + ')';
+    btn.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> Trash (' + count + ')';
 }
 
 function setupTrash() {
@@ -5710,46 +5734,46 @@ function openFile(fileId, mode) {
     // Groups: 'recent', 'go', 'do', 'make', 'tool', 'theme'
     var CP_COMMANDS = [
         // ---- Navigation ----
-        { id: 'go.dash',    group: 'go', icon: '🚀', label: 'Dashboard',         hint: 'home · overview · stats',    keywords: ['home','main','start','overview'], action: function () { location.href = 'index.html'; } },
-        { id: 'go.notes',   group: 'go', icon: '✍️', label: 'Notes',             hint: 'jot · writing · ideas',      keywords: ['note','jot','write'],             action: function () { location.href = 'notes.html'; } },
-        { id: 'go.habits',  group: 'go', icon: '🔥', label: 'Habits',            hint: 'streak · routine · daily',   keywords: ['habit','streak','routine'],       action: function () { location.href = 'habits.html'; } },
-        { id: 'go.ai',      group: 'go', icon: '🤖', label: 'AI Tools',          hint: 'summarize · gpt · tools',    keywords: ['ai','gpt','tools','assistant'],   action: function () { location.href = 'ai-tools.html'; } },
-        { id: 'go.files',   group: 'go', icon: '📂', label: 'Files',             hint: 'upload · storage · docs',    keywords: ['file','upload','storage'],        action: function () { location.href = 'files.html'; } },
-        { id: 'go.assign',  group: 'go', icon: '📋', label: 'Assignments',       hint: 'homework · deadline · due',  keywords: ['assignment','homework','task'],   action: function () { location.href = 'assignments.html'; } },
-        { id: 'go.planner', group: 'go', icon: '📅', label: 'Planner',           hint: 'schedule · timetable',       keywords: ['planner','schedule','calendar'],  action: function () { location.href = 'planner.html'; } },
-        { id: 'go.flash',   group: 'go', icon: '🃏', label: 'Flashcards',        hint: 'cards · decks · review',     keywords: ['flash','card','deck','review'],   action: function () { location.href = 'flashcards.html'; } },
-        { id: 'go.read',    group: 'go', icon: '📖', label: 'Reading',           hint: 'articles · links · read',    keywords: ['read','article','bookmark'],      action: function () { location.href = 'reading.html'; } },
-        { id: 'go.notice',  group: 'go', icon: '📢', label: 'Notice',            hint: 'pinboard · bulletin',        keywords: ['notice','announce','bulletin'],   action: function () { location.href = 'notice.html'; } },
+        { id: 'go.dash',    group: 'go', icon: '<i class="ph ph-rocket-launch" aria-hidden="true"></i>', label: 'Dashboard',         hint: 'home · overview · stats',    keywords: ['home','main','start','overview'], action: function () { location.href = 'index.html'; } },
+        { id: 'go.notes',   group: 'go', icon: '<i class="ph ph-pen-nib" aria-hidden="true"></i>', label: 'Notes',             hint: 'jot · writing · ideas',      keywords: ['note','jot','write'],             action: function () { location.href = 'notes.html'; } },
+        { id: 'go.habits',  group: 'go', icon: '<i class="ph ph-fire" aria-hidden="true"></i>', label: 'Habits',            hint: 'streak · routine · daily',   keywords: ['habit','streak','routine'],       action: function () { location.href = 'habits.html'; } },
+        { id: 'go.ai',      group: 'go', icon: '<i class="ph ph-robot" aria-hidden="true"></i>', label: 'AI Tools',          hint: 'summarize · gpt · tools',    keywords: ['ai','gpt','tools','assistant'],   action: function () { location.href = 'ai-tools.html'; } },
+        { id: 'go.files',   group: 'go', icon: '<i class="ph ph-folder-open" aria-hidden="true"></i>', label: 'Files',             hint: 'upload · storage · docs',    keywords: ['file','upload','storage'],        action: function () { location.href = 'files.html'; } },
+        { id: 'go.assign',  group: 'go', icon: '<i class="ph ph-clipboard-text" aria-hidden="true"></i>', label: 'Assignments',       hint: 'homework · deadline · due',  keywords: ['assignment','homework','task'],   action: function () { location.href = 'assignments.html'; } },
+        { id: 'go.planner', group: 'go', icon: '<i class="ph ph-calendar-blank" aria-hidden="true"></i>', label: 'Planner',           hint: 'schedule · timetable',       keywords: ['planner','schedule','calendar'],  action: function () { location.href = 'planner.html'; } },
+        { id: 'go.flash',   group: 'go', icon: '<i class="ph ph-cards" aria-hidden="true"></i>', label: 'Flashcards',        hint: 'cards · decks · review',     keywords: ['flash','card','deck','review'],   action: function () { location.href = 'flashcards.html'; } },
+        { id: 'go.read',    group: 'go', icon: '<i class="ph ph-book-open" aria-hidden="true"></i>', label: 'Reading',           hint: 'articles · links · read',    keywords: ['read','article','bookmark'],      action: function () { location.href = 'reading.html'; } },
+        { id: 'go.notice',  group: 'go', icon: '<i class="ph ph-megaphone" aria-hidden="true"></i>', label: 'Notice',            hint: 'pinboard · bulletin',        keywords: ['notice','announce','bulletin'],   action: function () { location.href = 'notice.html'; } },
 
         // ---- Actions ----
-        { id: 'do.pomoStart', group: 'do', icon: '▶',  label: 'Start Pomodoro',    hint: 'timer · focus 25',      keywords: ['pomo','timer','focus','start'],  action: function () { clickIfPresent('pomoStart'); } },
-        { id: 'do.pomoStop',  group: 'do', icon: '⏹',  label: 'Stop Pomodoro',     hint: 'pause timer',           keywords: ['stop','pause','pomo'],           action: function () { clickIfPresent('pomoStop'); } },
-        { id: 'do.pomoReset', group: 'do', icon: '⟳',  label: 'Reset Pomodoro',    hint: 'clear timer',           keywords: ['reset','clear','pomo'],          action: function () { clickIfPresent('pomoReset'); } },
-        { id: 'do.dwStart',   group: 'do', icon: '⏱',  label: 'Start Deep Work',   hint: 'flow · long focus',     keywords: ['deepwork','deep','flow','start'],action: function () { clickIfPresent('dwStart'); } },
-        { id: 'do.dwStop',    group: 'do', icon: '⏸',  label: 'Stop Deep Work',    hint: 'end deep session',      keywords: ['deepwork','stop','end'],         action: function () { clickIfPresent('dwStop'); } },
-        { id: 'do.dwReset',   group: 'do', icon: '⟳',  label: 'Reset Deep Work',   hint: 'clear deep timer',      keywords: ['deepwork','reset'],              action: function () { clickIfPresent('dwReset'); } },
-        { id: 'do.focusOn',   group: 'do', icon: '🔓', label: 'Toggle Focus Mode', hint: 'do not disturb · zen',  keywords: ['focus','zen','distraction'],     action: function () { clickIfPresent('focusToggle'); } },
-        { id: 'do.blocker',   group: 'do', icon: '🛡️', label: 'Blocker Settings',  hint: 'block · distractions',  keywords: ['block','shield','distraction'],  action: openBlockerSettingsSafe },
-        { id: 'do.blockerLog',group: 'do', icon: '📜', label: 'Blocker Log',       hint: 'blocked attempts',      keywords: ['block','log','history'],         action: function () {
+        { id: 'do.pomoStart', group: 'do', icon: '<i class="ph ph-play" aria-hidden="true"></i>',  label: 'Start Pomodoro',    hint: 'timer · focus 25',      keywords: ['pomo','timer','focus','start'],  action: function () { clickIfPresent('pomoStart'); } },
+        { id: 'do.pomoStop',  group: 'do', icon: '<i class="ph ph-stop" aria-hidden="true"></i>',  label: 'Stop Pomodoro',     hint: 'pause timer',           keywords: ['stop','pause','pomo'],           action: function () { clickIfPresent('pomoStop'); } },
+        { id: 'do.pomoReset', group: 'do', icon: '<i class="ph ph-arrow-clockwise" aria-hidden="true"></i>',  label: 'Reset Pomodoro',    hint: 'clear timer',           keywords: ['reset','clear','pomo'],          action: function () { clickIfPresent('pomoReset'); } },
+        { id: 'do.dwStart',   group: 'do', icon: '<i class="ph ph-timer" aria-hidden="true"></i>',  label: 'Start Deep Work',   hint: 'flow · long focus',     keywords: ['deepwork','deep','flow','start'],action: function () { clickIfPresent('dwStart'); } },
+        { id: 'do.dwStop',    group: 'do', icon: '<i class="ph ph-pause" aria-hidden="true"></i>',  label: 'Stop Deep Work',    hint: 'end deep session',      keywords: ['deepwork','stop','end'],         action: function () { clickIfPresent('dwStop'); } },
+        { id: 'do.dwReset',   group: 'do', icon: '<i class="ph ph-arrow-clockwise" aria-hidden="true"></i>',  label: 'Reset Deep Work',   hint: 'clear deep timer',      keywords: ['deepwork','reset'],              action: function () { clickIfPresent('dwReset'); } },
+        { id: 'do.focusOn',   group: 'do', icon: '<i class="ph ph-lock-open" aria-hidden="true"></i>', label: 'Toggle Focus Mode', hint: 'do not disturb · zen',  keywords: ['focus','zen','distraction'],     action: function () { clickIfPresent('focusToggle'); } },
+        { id: 'do.blocker',   group: 'do', icon: '<i class="ph ph-shield-check" aria-hidden="true"></i>', label: 'Blocker Settings',  hint: 'block · distractions',  keywords: ['block','shield','distraction'],  action: openBlockerSettingsSafe },
+        { id: 'do.blockerLog',group: 'do', icon: '<i class="ph ph-scroll" aria-hidden="true"></i>', label: 'Blocker Log',       hint: 'blocked attempts',      keywords: ['block','log','history'],         action: function () {
             if (window.studyHubBlocker && typeof window.studyHubBlocker.log === 'function') {
                 window.studyHubBlocker.log();
             }
         } },
 
         // ---- Create ----
-        { id: 'make.note',   group: 'make', icon: '📝', label: 'New Note',   hint: 'create · jot',    keywords: ['new','add','note','create'],  action: function () { goThenFocus('notes.html', 'noteInput'); } },
-        { id: 'make.habit',  group: 'make', icon: '➕', label: 'New Habit',  hint: 'create · add',    keywords: ['new','add','habit','create'], action: function () { goThenFocus('habits.html', 'habitInput'); } },
-        { id: 'make.notice', group: 'make', icon: '📌', label: 'New Notice', hint: 'pin · announce',  keywords: ['new','add','notice','pin'],   action: function () { goThenFocus('notice.html', 'noticeInput'); } },
+        { id: 'make.note',   group: 'make', icon: '<i class="ph ph-note-pencil" aria-hidden="true"></i>', label: 'New Note',   hint: 'create · jot',    keywords: ['new','add','note','create'],  action: function () { goThenFocus('notes.html', 'noteInput'); } },
+        { id: 'make.habit',  group: 'make', icon: '<i class="ph ph-plus" aria-hidden="true"></i>', label: 'New Habit',  hint: 'create · add',    keywords: ['new','add','habit','create'], action: function () { goThenFocus('habits.html', 'habitInput'); } },
+        { id: 'make.notice', group: 'make', icon: '<i class="ph ph-push-pin" aria-hidden="true"></i>', label: 'New Notice', hint: 'pin · announce',  keywords: ['new','add','notice','pin'],   action: function () { goThenFocus('notice.html', 'noticeInput'); } },
 
         // ---- Tools ----
-        { id: 'tool.trash',    group: 'tool', icon: '🗑️', label: 'Open Trash',        hint: 'restore · deleted',    keywords: ['trash','deleted','restore'],     action: openTrashSafe },
-        { id: 'tool.calendar', group: 'tool', icon: '📅', label: 'Open Calendar',     hint: 'month · view',         keywords: ['calendar','month','date'],       action: openCalendarSafe },
-        { id: 'tool.calc',     group: 'tool', icon: '🧮', label: 'Jump to Calculator',hint: 'math · numbers',       keywords: ['calc','calculator','math'],      action: function () {
+        { id: 'tool.trash',    group: 'tool', icon: '<i class="ph ph-trash" aria-hidden="true"></i>', label: 'Open Trash',        hint: 'restore · deleted',    keywords: ['trash','deleted','restore'],     action: openTrashSafe },
+        { id: 'tool.calendar', group: 'tool', icon: '<i class="ph ph-calendar-blank" aria-hidden="true"></i>', label: 'Open Calendar',     hint: 'month · view',         keywords: ['calendar','month','date'],       action: openCalendarSafe },
+        { id: 'tool.calc',     group: 'tool', icon: '<i class="ph ph-calculator" aria-hidden="true"></i>', label: 'Jump to Calculator',hint: 'math · numbers',       keywords: ['calc','calculator','math'],      action: function () {
             if (!scrollToSelector('.calculator-widget')) {
                 location.href = 'calculator.html';
             }
         } },
-        { id: 'tool.search',   group: 'tool', icon: '🔍', label: 'Focus Quick Search',hint: 'search bar',           keywords: ['search','find','query'],         action: function () {
+        { id: 'tool.search',   group: 'tool', icon: '<i class="ph ph-magnifying-glass" aria-hidden="true"></i>', label: 'Focus Quick Search',hint: 'search bar',           keywords: ['search','find','query'],         action: function () {
             var inp = document.getElementById('searchInput');
             if (inp) {
                 inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -5758,7 +5782,7 @@ function openFile(fileId, mode) {
         } },
 
         // ---- Appearance ----
-        { id: 'theme.picker',  group: 'theme', icon: '🎨', label: 'Customize Theme', hint: 'colors · wallpaper', keywords: ['theme','color','background','wallpaper'], action: function () {
+        { id: 'theme.picker',  group: 'theme', icon: '<i class="ph ph-palette" aria-hidden="true"></i>', label: 'Customize Theme', hint: 'colors · wallpaper', keywords: ['theme','color','background','wallpaper'], action: function () {
             var b = document.querySelector('.theme-picker-fab');
             if (b) b.click();
         } }
@@ -5767,12 +5791,12 @@ function openFile(fileId, mode) {
     // ---------- Group meta ----------
     var GROUP_ORDER = ['recent', 'go', 'do', 'make', 'tool', 'theme'];
     var GROUP_META = {
-        recent: { label: 'Recently Used', icon: '🕘' },
-        go:     { label: 'Go To',         icon: '🧭' },
-        do:     { label: 'Actions',       icon: '⚡' },
-        make:   { label: 'Create',        icon: '✨' },
-        tool:   { label: 'Tools',         icon: '🧰' },
-        theme:  { label: 'Appearance',    icon: '🎨' }
+        recent: { label: 'Recently Used', icon: '<i class="ph ph-clock" aria-hidden="true"></i>' },
+        go:     { label: 'Go To',         icon: '<i class="ph ph-compass" aria-hidden="true"></i>' },
+        do:     { label: 'Actions',       icon: '<i class="ph ph-lightning" aria-hidden="true"></i>' },
+        make:   { label: 'Create',        icon: '<i class="ph ph-sparkle" aria-hidden="true"></i>' },
+        tool:   { label: 'Tools',         icon: '<i class="ph ph-toolbox" aria-hidden="true"></i>' },
+        theme:  { label: 'Appearance',    icon: '<i class="ph ph-palette" aria-hidden="true"></i>' }
     };
 
     // ---------- Recent uses ----------
@@ -6257,7 +6281,7 @@ document.addEventListener('DOMContentLoaded', function() {
             function paint() {
                 var d = cleanTrash(readState());
                 writeState(d);
-                trashBtn.textContent = '🗑️ Trash (' + d.trash.length + ')';
+                trashBtn.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> Trash (' + d.trash.length + ')';
             }
 
             paint();
@@ -6274,7 +6298,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 modal.innerHTML =
                     '<div class="trash-modal-content">' +
                         '<div class="trash-modal-header">' +
-                            '<h2>🗑️ Trash (' + items.length + ')</h2>' +
+                            '<h2><i class="ph ph-trash" aria-hidden="true"></i> Trash (' + items.length + ')</h2>' +
                             '<button id="trashCloseBtn" class="btn-danger-sm">Close</button>' +
                         '</div>' +
                         (items.length === 0
@@ -6695,13 +6719,13 @@ document.addEventListener('DOMContentLoaded', function() {
             var warnings = [];
             var maxPerDay = Math.max.apply(null, Object.values(perDay).concat([0]));
             var minPerDay = Math.min.apply(null, Object.values(perDay).concat([Infinity]));
-            if (maxPerDay >= 6) warnings.push('⚠️ ' + maxPerDay + ' sessions on your busiest day — that\'s a marathon.');
+            if (maxPerDay >= 6) warnings.push('⚠️ ' + maxPerDay + ' sessions on your busiest day. That\'s a marathon.');
             if (minPerDay < 1 && result.days.length > 1) warnings.push('ℹ️ Some days are empty (rest days).');
             Object.keys(result.dayOf).forEach(function (d) {
                 var cnt = {};
                 result.dayOf[d].subjects.forEach(function (s) { cnt[s] = (cnt[s] || 0) + 1; });
                 Object.keys(cnt).forEach(function (s) {
-                    if (cnt[s] >= 3) warnings.push('⚠️ ' + cnt[s] + '× ' + s + ' on ' + d + ' — mix it up?');
+                    if (cnt[s] >= 3) warnings.push('⚠️ ' + cnt[s] + '× ' + s + ' on ' + d + '. Mix it up?');
                 });
             });
 
@@ -6861,7 +6885,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function generate() {
             var text = inputEl.value.trim();
             if (!text) {
-                output.innerHTML = '<div class="planner-ai-summary">📝 Type what you want to plan — or click one of the chips above.</div>';
+                output.innerHTML = '<div class="planner-ai-summary"><i class="ph ph-note-pencil" aria-hidden="true"></i>Type what you want to plan, or click one of the chips above.</div>';
                 return;
             }
             lastRequest = text;
@@ -6906,7 +6930,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var toast = document.createElement('div');
             toast.className = 'fbt-toast show';
-            toast.textContent = replace ? '✅ Planner replaced' : '✅ Plan merged into planner';
+            toast.innerHTML = replace ? '<i class="ph ph-check-circle" aria-hidden="true"></i>Planner replaced' : '<i class="ph ph-check-circle" aria-hidden="true"></i>Plan merged into planner';
             toast.style.borderColor = '#6ee7b7';
             document.body.appendChild(toast);
             setTimeout(function () { toast.classList.remove('show'); setTimeout(function () { toast.remove(); }, 400); }, 2200);
@@ -6978,28 +7002,28 @@ document.addEventListener('DOMContentLoaded', function() {
         var blocker = document.getElementById('blockerToggle');
         if (blocker) {
             var on = blocker.classList.contains('active');
-            blocker.textContent = on ? '🛡️ ' + getNewTranslation('blocker_on') : '🛡️ ' + getNewTranslation('blocker_off');
+            blocker.innerHTML = '<i class="ph ph-shield-check" aria-hidden="true"></i> ' + getNewTranslation(on ? 'blocker_on' : 'blocker_off');
         }
         // Trash button
         var trash = document.getElementById('trashBtn');
         if (trash) {
             var m = trash.textContent.match(/\((\d+)\)/);
             var n = m ? m[1] : '0';
-            trash.textContent = '🗑️ ' + getNewTranslation('trash_label') + ' (' + n + ')';
+            trash.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> ' + getNewTranslation('trash_label') + ' (' + n + ')';
         }
         // Clock toggle
         var clockBtn = document.getElementById('clockToggleBtn');
         if (clockBtn) {
             var isAnalog = document.getElementById('analogClock') && document.getElementById('analogClock').classList.contains('active');
             var label = isAnalog ? getNewTranslation('switch_digital') : getNewTranslation('switch_analog');
-            clockBtn.innerHTML = '⏰ ' + label;
+            clockBtn.innerHTML = '<i class="ph ' + (isAnalog ? 'ph-clock' : 'ph-alarm') + '" aria-hidden="true"></i> ' + label;
         }
         // AI planner title + description + placeholder
         var aiTitle = document.querySelector('.planner-ai-section h2 span[data-i18n]');
         if (!aiTitle) {
             var h2s = document.querySelectorAll('.planner-ai-section h2');
             if (h2s.length) {
-                h2s[0].innerHTML = '<span class="hl-purple">🧠</span> <span class="neon-text">' + getNewTranslation('ai_planner_title') + '</span>';
+                h2s[0].innerHTML = '<span class="hl-purple"><i class="ph ph-brain" aria-hidden="true"></i></span> <span class="neon-text">' + getNewTranslation('ai_planner_title') + '</span>';
             }
         }
         var aiDesc = document.querySelector('.planner-ai-section p');
@@ -7007,7 +7031,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var aiInput = document.getElementById('plannerAiInput');
         if (aiInput) aiInput.placeholder = getNewTranslation('ai_planner_placeholder');
         var aiBtn = document.getElementById('plannerAiBtn');
-        if (aiBtn) aiBtn.textContent = '✨ ' + getNewTranslation('generate_plan_btn');
+        if (aiBtn) aiBtn.innerHTML = '<i class="ph ph-sparkle" aria-hidden="true"></i>' + getNewTranslation('generate_plan_btn');
         // Chips
         var chipKeys = ['chip_auto','chip_easy','chip_exam','chip_weekend','chip_math_physics','chip_surprise','chip_3h'];
         var chipEmojis = ['🎲','☕','🔥','🏖️','📚','🎁','⏱'];
@@ -7019,15 +7043,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         // Reset planner button
         var resetBtn = document.getElementById('resetPlannerBtn');
-        if (resetBtn) resetBtn.textContent = '🔄 ' + getNewTranslation('reset_planner_btn');
+        if (resetBtn) resetBtn.innerHTML = '<i class="ph ph-arrow-clockwise" aria-hidden="true"></i>' + getNewTranslation('reset_planner_btn');
         // Quiz button texts (notes page)
         var genQuiz = document.getElementById('generateQuizBtn');
-        if (genQuiz) genQuiz.textContent = '⚡ ' + getNewTranslation('generate_quiz_btn');
+        if (genQuiz) genQuiz.innerHTML = '<i class="ph ph-lightning" aria-hidden="true"></i>' + getNewTranslation('generate_quiz_btn');
         var clearQuiz = document.getElementById('clearQuizBtn');
         if (clearQuiz) clearQuiz.textContent = getNewTranslation('clear_quiz_btn');
         // Flashcards auto-gen
         var autoFc = document.getElementById('autoGenFlashcardsBtn');
-        if (autoFc) autoFc.textContent = '⚡ ' + getNewTranslation('auto_flashcards_btn');
+        if (autoFc) autoFc.innerHTML = '<i class="ph ph-lightning" aria-hidden="true"></i>' + getNewTranslation('auto_flashcards_btn');
     }
 
     ready(function () {
@@ -7232,7 +7256,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fab.className = 'theme-picker-fab';
     fab.type = 'button';
     fab.title = 'Customize theme & background';
-    fab.innerHTML = '🎨';
+    fab.innerHTML = '<i class="ph ph-palette" aria-hidden="true"></i>';
     document.body.appendChild(fab);
 
     // Build overlay + panel
@@ -7241,12 +7265,12 @@ document.addEventListener('DOMContentLoaded', function() {
     overlay.innerHTML = `
         <div class="theme-picker-panel" role="dialog" aria-label="Theme and background picker">
             <div class="theme-picker-header">
-                <h2>🎨 Customize</h2>
+                <h2><i class="ph ph-palette" aria-hidden="true"></i> Customize</h2>
                 <button class="theme-picker-close" type="button" aria-label="Close">✕</button>
             </div>
             <div class="theme-picker-tabs">
-                <button class="theme-picker-tab active" data-tab="colors" type="button">🎨 Color Theme</button>
-                <button class="theme-picker-tab" data-tab="backgrounds" type="button">🖼️ Background</button>
+                <button class="theme-picker-tab active" data-tab="colors" type="button"><i class="ph ph-palette" aria-hidden="true"></i> Color Theme</button>
+                <button class="theme-picker-tab" data-tab="backgrounds" type="button"><i class="ph ph-image" aria-hidden="true"></i> Background</button>
             </div>
             <div class="theme-picker-body">
                 <div class="theme-picker-section active" data-section="colors">
@@ -7557,16 +7581,16 @@ document.addEventListener('DOMContentLoaded', function() {
         var icon, heading, body;
         if (kind === 'shortener') {
             icon = '⛓️'; heading = 'Shortened links aren\'t allowed.';
-            body = 'Please enter the site&rsquo;s real address — a shortener could be hiding anything.';
+            body = 'Please enter the site&rsquo;s real address. A shortener could be hiding anything.';
         } else if (kind === 'redirect') {
             icon = '🔁'; heading = 'Redirect links aren\'t allowed.';
             body = 'Please enter the site&rsquo;s real address directly, not through a redirect service.';
         } else if (kind === 'removed') {
-            icon = '🧹'; heading = 'Removed a blocked shortcut.';
+            icon = '<i class="ph ph-broom" aria-hidden="true"></i>'; heading = 'Removed a blocked shortcut.';
             body = '"' + (extraName || domain) + '" matched our blocked list (' + domain + ').';
             if (extraCount > 1) body += ' ' + extraCount + ' shortcuts were removed.';
         } else {
-            icon = '🛡️'; heading = 'Social media is banned here.';
+            icon = '<i class="ph ph-shield-warning" aria-hidden="true"></i>'; heading = 'Social media is banned here.';
             body = '"' + domain + '" can\'t be added. StudyHub is a distraction-free space for students.';
         }
         var t = document.createElement('div');
@@ -7575,7 +7599,7 @@ document.addEventListener('DOMContentLoaded', function() {
         t.innerHTML =
             '<span style="font-size:1.2rem;">' + icon + '</span>' +
             '<span><strong>' + heading + '</strong><br>' + body + '</span>' +
-            '<button class="toast-close" aria-label="Close">✕</button>';
+            '<button class="toast-close" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>';
         document.body.appendChild(t);
         requestAnimationFrame(function () { t.classList.add('show'); });
         t.querySelector('.toast-close').addEventListener('click', function () {
@@ -7628,7 +7652,7 @@ document.addEventListener('DOMContentLoaded', function() {
             editBtn.className = 'sc-edit';
             editBtn.type = 'button';
             editBtn.title = 'Edit shortcut';
-            editBtn.textContent = '✎';
+            editBtn.innerHTML = '<i class="ph ph-pencil-simple" aria-hidden="true"></i>';
             editBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -7640,7 +7664,7 @@ document.addEventListener('DOMContentLoaded', function() {
             delBtn.className = 'sc-delete';
             delBtn.type = 'button';
             delBtn.title = 'Remove shortcut';
-            delBtn.textContent = '✕';
+            delBtn.innerHTML = '<i class="ph ph-x" aria-hidden="true"></i>';
             delBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -7680,7 +7704,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="field">
                     <label for="scUrlInput">Website URL</label>
                     <input type="text" id="scUrlInput" placeholder="e.g. khanacademy.org" autocomplete="off" />
-                    <div class="hint">Paste the site&rsquo;s real address — no shorteners, no redirects.</div>
+                    <div class="hint">Paste the site&rsquo;s real address. No shorteners, no redirects.</div>
                 </div>
                 <div class="field">
                     <label for="scNameInput">Display name <span style="opacity:.6;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -7712,7 +7736,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function openAddModal() {
         editingId = null;
         var m = buildModal();
-        m.querySelector('#scModalTitle').innerHTML = '🔗 Add a shortcut';
+        m.querySelector('#scModalTitle').innerHTML = '<i class="ph ph-link" aria-hidden="true"></i>Add a shortcut';
         m.querySelector('#scSaveBtn').textContent = 'Save shortcut';
         m.querySelector('#scUrlInput').value = '';
         m.querySelector('#scNameInput').value = '';
@@ -7724,7 +7748,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function openEditModal(sc) {
         editingId = sc.id;
         var m = buildModal();
-        m.querySelector('#scModalTitle').innerHTML = '✎ Edit shortcut';
+        m.querySelector('#scModalTitle').innerHTML = '<i class="ph ph-pencil-simple" aria-hidden="true"></i>Edit shortcut';
         m.querySelector('#scSaveBtn').textContent = 'Save changes';
         m.querySelector('#scUrlInput').value = sc.url;
         m.querySelector('#scNameInput').value = sc.name;
@@ -7984,11 +8008,11 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.id = 'blockerModal';
         modal.innerHTML =
             '<div class="blocker-modal-panel">' +
-                '<div class="blocker-modal-icon">🛡️</div>' +
+                '<div class="blocker-modal-icon"><i class="ph ph-shield-warning" aria-hidden="true"></i></div>' +
                 '<h3>Blocked!</h3>' +
                 '<p class="blocker-domain">' + domain + '</p>' +
                 '<p class="blocker-cat">' + label + '</p>' +
-                '<p class="blocker-msg">This site is on your distraction list. Stay focused — you can do this.</p>' +
+                '<p class="blocker-msg">This site is on your distraction list. Stay focused. You can do this.</p>' +
                 '<div class="blocker-actions">' +
                     '<button class="btn-allow-once" data-domain="' + domain + '">Allow 5 min</button>' +
                     '<button class="btn-close-blocker">Got it</button>' +
@@ -8043,10 +8067,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // This handles the static banner that already exists inside index.html.
         if (!banner.querySelector('.blocker-banner-btn')) {
             banner.innerHTML =
-                '🛡️ <strong>Blocker is on.</strong>' +
+                '<i class="ph ph-shield-check" aria-hidden="true"></i> <strong>Blocker is on.</strong>' +
                 '<span class="blocker-count-chip"><span class="blocker-count">0</span> blocked today</span>' +
-                '<button class="blocker-banner-btn" data-act="settings">⚙ Settings</button>' +
-                '<button class="blocker-banner-btn" data-act="log">📜 Log</button>';
+                '<button class="blocker-banner-btn" data-act="settings"><i class="ph ph-gear" aria-hidden="true"></i>Settings</button>' +
+                '<button class="blocker-banner-btn" data-act="log"><i class="ph ph-scroll" aria-hidden="true"></i>Log</button>';
             banner.addEventListener('click', function (e) {
                 const b = e.target.closest('.blocker-banner-btn');
                 if (!b) return;
@@ -8086,9 +8110,9 @@ document.addEventListener('DOMContentLoaded', function() {
     modal.className = 'blocker-settings-modal';
     modal.id = 'blockerSettingsModal';
     let html = '<div class="blocker-settings-panel">';
-    html += '<div class="blocker-settings-head"><h2>🛡️ Blocker Settings</h2><button class="bs-close" type="button">✕</button></div>';
-    html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the 🛡️ button (or right-click it) to reopen this panel.</p>';
-    html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">— 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
+    html += '<div class="blocker-settings-head"><h2><i class="ph ph-shield-gear" aria-hidden="true"></i> Blocker Settings</h2><button class="bs-close" type="button"><i class="ph ph-x" aria-hidden="true"></i></button></div>';
+    html += '<p class="bs-desc">Choose which site categories to block while studying. Shift-click the shield button (or right-click it) to reopen this panel.</p>';
+    html += '<div class="bs-section"><h3>Categories <span style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0;font-size:.7rem;">· 🔒 locked ones can\'t be removed</span></h3><div class="bs-cats">';
     Object.keys(CATS).forEach(function (k) {
         var locked = !!LOCKED_CATS[k];
         html += '<label class="bs-cat' + (locked ? ' bs-cat-locked' : '') + '"' +
@@ -8455,7 +8479,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = document.getElementById('focusToggle');
         if (!btn) return;
         const on = isFocusOn();
-        btn.textContent = on ? '🔒 Focus On' : '🔓 Focus Off';
+        btn.innerHTML = '<i class="ph ' + (on ? 'ph-lock' : 'ph-lock-open') + '" aria-hidden="true"></i> ' + (on ? 'Focus On' : 'Focus Off');
         btn.classList.toggle('active', on);
     }
 

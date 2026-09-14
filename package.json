@@ -5,7 +5,7 @@
   "type": "module",
   "description": "StudyHub — all-in-one digital academic workspace (Hono + Cloudflare Pages + D1)",
   "scripts": {
-    "dev": "wrangler pages dev public --d1=DB --local --ip 0.0.0.0 --port 3000",
+    "dev": "wrangler pages dev public --local --ip 0.0.0.0 --port 3000",
     "start": "pm2 start ecosystem.config.cjs",
     "stop": "pm2 delete studyhub 2>/dev/null || true",
     "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
@@ -31,5 +31,9 @@
   "devDependencies": {
     "jsdom": "^30.0.1",
     "wrangler": "^4.130.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260908.1": true
   }
 }

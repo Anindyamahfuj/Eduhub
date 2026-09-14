@@ -23,6 +23,7 @@
  */
 import type { Env } from '../../src/lib/helpers.js';
 import { guardAdminPage, isAdminAsset } from '../../src/lib/adminGuard.js';
+// @ts-expect-error - JS module without type declarations; runtime contract is the exported ADMIN_SHELL string.
 import { ADMIN_SHELL } from '../../src/client/admin-shell.js';
 
 export const onRequest = async (context: {

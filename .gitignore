@@ -27,3 +27,7 @@ pids/
 
 # Test harness scratch
 .wrangler/
+
+# Throwaway test scaffolding (mock provider, generated worker types)
+scripts/tmp-mock-provider.cjs
+worker-configuration.d.ts

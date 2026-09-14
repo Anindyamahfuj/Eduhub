@@ -16,6 +16,7 @@ import { workspaceRoutes } from './routes/workspace.js';
 import { fileRoutes } from './routes/files.js';
 import { aiRoutes } from './routes/ai.js';
 import { adminRoutes } from './routes/admin.js';
+import { toolRoutes } from './routes/tools.js';
 import { writeAudit } from './lib/audit.js';
 
 export const app = new Hono<{ Bindings: Env }>().basePath('/api');
@@ -37,6 +38,8 @@ app.route('/auth', authRoutes);
 app.route('/workspace', workspaceRoutes);
 app.route('/files', fileRoutes);
 app.route('/ai', aiRoutes);
+// Public, unauthenticated: the enabled site tools for the student nav.
+app.route('/tools', toolRoutes);
 // Developer-only. Every route inside is behind `requireDeveloper`, which is
 // enforced server-side against `users.role` (see src/lib/helpers.ts).
 app.route('/admin', adminRoutes);

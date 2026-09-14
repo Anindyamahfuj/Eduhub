@@ -67,7 +67,7 @@ export async function guardAdminPage(
   request: Request,
   pathname: string
 ): Promise<Response | null> {
-  const user = await resolveUser(env, request.headers.get('Cookie'));
+  const user = await resolveUser(env, request.headers.get('Cookie') ?? undefined);
 
   if (!user) {
     return new Response(null, {
