@@ -18,8 +18,8 @@ This repository is the **full-stack** version. The original project was a purely
 ## URLs
 
 - **Local**: http://localhost:3000
-- **Production**: https://studyhub-b3t.pages.dev
-- **Cloudflare project**: studyhub
+- **Vercel**: https://studyhub-ruddy.vercel.app
+- **Cloudflare**: https://studyhub-b3t.pages.dev
 - **Original upstream**: https://github.com/Anindyamahfuj/Eduhub
 
 ## How the frontend stays unchanged
