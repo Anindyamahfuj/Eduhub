@@ -1,0 +1,20 @@
+{
+  "buildCommand": "node scripts/build.mjs",
+  "outputDirectory": "public",
+  "installCommand": "npm install --production",
+  "framework": "vercel",
+  "functions": {
+    "api/[...route].ts": { "runtime": "nodejs" },
+    "api/admin/index.ts": { "runtime": "nodejs" }
+  },
+  "rewrites": [
+    { "source": "/api/admin/(.*)", "destination": "/api/admin/index.ts" },
+    { "source": "/api/(.*)", "destination": "/api/[...route].ts" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": { "Cache-Control": "no-store" }
+    }
+  ]
+}

@@ -175,3 +175,21 @@ No key or model is assumed. Set them as Cloudflare secrets at deploy time.
 - [ ] Move file storage to R2 for production
 - [ ] Add a logout control to the existing navigation (behavioural change — pending approval)
 - [ ] Custom domain
+
+
+## Deploying on Vercel
+
+This repo is authored for Cloudflare Pages, but it also deploys cleanly on
+Vercel. The differences:
+
+- `public/` is the served output (built by `scripts/build.mjs`). On Vercel it
+  must be committed; on Cloudflare Pages it is served directly from the build
+  output directory.
+- The admin shell is a static file (`public/admin/index.html`) on Vercel, and
+  is served only by `functions/admin/[[route]].ts` on Cloudflare Pages. The
+  generator (`scripts/generate-admin-page.mjs`) extracts the shell verbatim from
+  `src/client/admin-shell.js`, so both platforms ship identical markup.
+- The API runs on `node:sqlite` (a D1-compatible shim in `src/lib/db-vercel.ts`)
+  instead of a real D1 binding. Migrations apply automatically on first boot.
+- AI is opt-in: set `OPENAI_API_KEY` + `OPENAI_MODEL` (and optionally
+  `OPENAI_BASE_URL`) in the Vercel project environment.

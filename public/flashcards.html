@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyHub · Flashcards</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+      <link rel="icon" type="image/x-icon" href="logoedu.png">
+</head>
+<body>
+        <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand"><i class="ph ph-graduation-cap" aria-hidden="true"></i> <span class="brand-highlight">Study</span>Hub</a>
+            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu"><i class="ph ph-list" aria-hidden="true"></i></button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active"><i class="ph ph-squares-four" aria-hidden="true"></i> <span data-i18n="dash_title">Dashboard</span></a></li>
+                <li><a href="ai-tools.html"><i class="ph ph-robot" aria-hidden="true"></i> <span data-i18n="ai_tools">AI Tools</span></a></li>
+                <li><a href="calculator.html"><i class="ph ph-calculator" aria-hidden="true"></i> Calculator</a></li>
+                <li><a href="files.html"><i class="ph ph-folder-open" aria-hidden="true"></i> <span data-i18n="files">Files</span></a></li>
+                <li><a href="habits.html"><i class="ph ph-fire" aria-hidden="true"></i> <span data-i18n="habits">Habits</span></a></li>
+                <li><a href="notice.html"><i class="ph ph-megaphone" aria-hidden="true"></i> <span data-i18n="notice">Notice</span></a></li>
+                <li><a href="notes.html"><i class="ph ph-note-pencil" aria-hidden="true"></i> <span data-i18n="notes">Notes</span></a></li>
+                <li><a href="assignments.html"><i class="ph ph-clipboard-text" aria-hidden="true"></i> <span data-i18n="assignments">Assignments</span></a></li>
+                <li><a href="planner.html"><i class="ph ph-calendar-blank" aria-hidden="true"></i> <span data-i18n="planner">Planner</span></a></li>
+                <li><a href="flashcards.html"><i class="ph ph-cards" aria-hidden="true"></i> <span data-i18n="flashcards">Flashcards</span></a></li>
+                <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
+            </ul>
+            <div class="nav-right">
+                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="ar">🇸🇦 العربية</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="ur">🇵🇰 اردو</option>
+                    <option value="id">🇮🇩 Indonesia</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="sw">🇰🇪 Kiswahili</option>
+                    <option value="tr">🇹🇷 Türkçe</option>
+                </select>
+               
+                <button id="trashBtn" class="focus-toggle"><i class="ph ph-trash" aria-hidden="true"></i> Trash (0)</button>
+               
+                <button id="focusToggle" class="focus-toggle"><i class="ph ph-lock-open" aria-hidden="true"></i> <span data-i18n="focus_off">Focus Off</span></button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="clock-section mini-clock">
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle"><i class="ph ph-alarm" aria-hidden="true"></i> <span data-i18n="switch_analog">Switch to Analog</span></button></div>
+            <div class="clock-container">
+                <div id="digitalClock" class="digital-clock active">00:00:00</div>
+                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
+            </div>
+            <div class="clock-date" id="clockDate"></div>
+
+            <div class="calendar-widget">
+                <div class="calendar-compact">
+                    <div class="cal-day" id="calCompactDay">-</div>
+                    <div class="cal-date" id="calCompactDate">-</div>
+                    <div class="cal-month" id="calCompactMonth">-</div>
+                </div>
+                <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar"><i class="ph ph-calendar-blank" aria-hidden="true"></i></button>
+            </div>
+        </section>
+
+        <div class="calendar-modal" id="calendarModal" style="display:none;">
+            <div class="calendar-modal-content">
+                <div class="calendar-modal-header">
+                    <button id="calPrevYear" title="Previous year">«</button>
+                    <button id="calPrevMonth" title="Previous month">‹</button>
+                    <span id="calModalTitle">-</span>
+                    <button id="calNextMonth" title="Next month">›</button>
+                    <button id="calNextYear" title="Next year">»</button>
+                    <button id="calendarCloseBtn" class="cal-close-btn" title="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+        </div>
+
+        <header class="page-header">
+            <h1><span class="hl-orange"><i class="ph ph-cards" aria-hidden="true"></i></span> <span class="neon-text" data-i18n="flashcards">Flashcards</span></h1>
+            <p data-i18n="flashcards_subtitle">Spaced repetition, review due cards regularly.</p>
+        </header>
+
+        <section class="glass-card">
+            <button id="addDeckBtn" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="new_deck">New Deck</span></button>
+            <button id="autoGenFlashcardsBtn" class="btn-primary" style="margin-left:0.5rem;"><i class="ph ph-lightning" aria-hidden="true"></i> Auto‑Generate from Notes</button>
+        </section>
+
+        <section class="glass-card" id="flashcardList"></section>
+
+        <section class="glass-card" id="flashcardReview" style="display:none;">
+            <div class="flashcard-review">
+                <div class="card-front" id="reviewFront"></div>
+                <div class="card-back" id="reviewBack"></div>
+                <p style="color:#94a3b8;margin-top:1rem;"><span data-i18n="click_to_flip">Click card to flip.</span> <span data-i18n="rate_difficulty">Rate difficulty:</span></p>
+                <div class="flashcard-difficulty">
+                    <button data-diff="1"><span data-i18n="hard">Hard</span></button>
+                    <button data-diff="2"><span data-i18n="medium">Medium</span></button>
+                    <button data-diff="3"><span data-i18n="easy">Easy</span></button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
+    <script src="script.js"></script>
+</body>
+</html>

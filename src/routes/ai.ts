@@ -48,7 +48,8 @@ aiRoutes.get('/models', async (c) => {
   }
   try {
     const res = await fetch(`${cfg.baseUrl}/models`, {
-      headers: { Authorization: `Bearer ${cfg.apiKey}` }
+      headers: { Authorization: `Bearer ${cfg.apiKey}` },
+      signal: AbortSignal.timeout(10_000)
     });
     const body = await res.text();
     return new Response(body, {
@@ -95,6 +96,10 @@ aiRoutes.post('/chat/completions', async (c) => {
     );
   }
 
+  // The validated admin model wins when both are set: the developer chose it
+  // deliberately, and a client-supplied model must not silently bypass that.
+  const model = cfg.model || (typeof body.model === 'string' && body.model.trim()) || null;
+
   try {
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -102,7 +107,8 @@ aiRoutes.post('/chat/completions', async (c) => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify({ model: cfg.model || body.model, ...body })
+      body: JSON.stringify({ ...body, model }),
+      signal: AbortSignal.timeout(60_000)
     });
     const text = await res.text();
     return new Response(text, {

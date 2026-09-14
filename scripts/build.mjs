@@ -142,9 +142,12 @@ for (const file of adminRequired) {
   }
   console.log(`  OK       admin/${file}`);
 }
-// Guard against a static admin shell reappearing (a guard bypass).
-if (existsSync(join(out, 'admin', 'index.html'))) {
-  console.error('  ERROR    public/admin/index.html exists — shell must be served only by the guard');
+// Guard against a static admin shell reappearing on Cloudflare Pages (a
+// guard bypass). On Vercel there is no server-side guard, so the shell MUST be
+// a static file -- the authorization lives in /api/admin/* via requireDeveloper.
+// The generator (step 5) materializes it after this check passes.
+if (process.env.VERCEL !== '1' && existsSync(join(out, 'admin', 'index.html'))) {
+  console.error('  ERROR    public/admin/index.html exists � shell must be served only by the guard');
   failed = true;
 }
 writeFileSync(join(root, 'dist', 'admin-manifest.json'), JSON.stringify(adminManifest, null, 2));
@@ -160,3 +163,53 @@ if (failed || !prefixIntact) {
 }
 
 console.log('Build passed.');
+
+// 5. (Vercel) Bundle the TypeScript app to JS.
+//    The app uses `.js` import specifiers for `.ts` files (standard TS
+//    convention), which Node ESM cannot resolve. esbuild bundles
+//    src/index.ts -> dist/server.mjs, self-contained and platform=node so
+//    `node:sqlite` stays an external runtime import. Both Vercel API
+//    functions import from this bundle.
+try {
+  const { execSync } = await import('node:child_process');
+  const path = await import('node:path');
+  const bin = path.join(root, 'node_modules', 'esbuild', 'bin', 'esbuild');
+  const out = path.join(root, 'dist', 'server.mjs');
+  const cmd = [
+    JSON.stringify(bin),
+    JSON.stringify(path.join(root, 'src', 'index.ts')),
+    '--bundle',
+    '--format=esm',
+    '--platform=node',
+    '--outfile=' + JSON.stringify(out),
+    '--external:node:sqlite',
+    '--external:node:crypto',
+    '--external:node:fs',
+    '--external:node:path',
+    '--external:node:url',
+    '--external:node:child_process',
+    '--define:process.env.STORAGE_DRIVER=' + JSON.stringify(process.env.STORAGE_DRIVER || 'local'),
+    '--log-level=warning'
+  ].join(' ');
+  execSync(cmd, { cwd: root, stdio: 'inherit' });
+  console.log('  bundled  src/index.ts -> dist/server.mjs');
+} catch (e) {
+  if (e?.code !== 'MODULE_NOT_FOUND') throw e;
+}
+
+// 5. (Vercel only) Materialize public/admin/index.html from the shell source.
+//    On Cloudflare Pages the shell is served by functions/admin/[[route]].ts
+//    after the server-side guard; a static shell would loop through Pages'
+//    directory-index normalization and risk bypassing the guard. On Vercel
+//    there is no server-side guard, so the shell must be a static file -- the
+//    authorization lives in /api/admin/* via requireDeveloper. The generator
+//    extracts the ADMIN_SHELL string verbatim, so both platforms ship
+//    identical markup. Skipped (non-fatal) when the module is absent.
+if (process.env.VERCEL === '1') {
+  try {
+    const { generateAdminPage } = await import('./generate-admin-page.mjs');
+    await generateAdminPage();
+  } catch (e) {
+    if (e?.code !== 'MODULE_NOT_FOUND') throw e;
+  }
+}
