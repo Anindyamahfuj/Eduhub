@@ -193,3 +193,5 @@ Vercel. The differences:
   instead of a real D1 binding. Migrations apply automatically on first boot.
 - AI is opt-in: set `OPENAI_API_KEY` + `OPENAI_MODEL` (and optionally
   `OPENAI_BASE_URL`) in the Vercel project environment.
+ 
+ 
