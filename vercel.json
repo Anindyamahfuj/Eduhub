@@ -1,11 +1,10 @@
 {
   "buildCommand": "node scripts/build.mjs",
   "outputDirectory": "public",
-  "installCommand": "npm install --production",
-  "framework": "vercel",
+  "installCommand": "npm install",
   "functions": {
-    "api/[...route].ts": { "runtime": "nodejs" },
-    "api/admin/index.ts": { "runtime": "nodejs" }
+    "api/[...route].ts": { "runtime": "nodejs22.x" },
+    "api/admin/index.ts": { "runtime": "nodejs22.x" }
   },
   "rewrites": [
     { "source": "/api/admin/(.*)", "destination": "/api/admin/index.ts" },

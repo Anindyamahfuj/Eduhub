@@ -195,6 +195,17 @@ try {
   console.log('  bundled  src/index.ts -> dist/server.mjs');
 } catch (e) {
   if (e?.code !== 'MODULE_NOT_FOUND') throw e;
+  console.error('  WARNING  esbuild not found, skipping server bundle');
+}
+
+// 5b. On Vercel, fail the build if server.mjs was not created.
+if (process.env.VERCEL === '1') {
+  const serverPath = join(root, 'dist', 'server.mjs');
+  if (!existsSync(serverPath)) {
+    console.error('\nBuild failed: dist/server.mjs not found. esbuild must be available on Vercel.');
+    console.error('Ensure esbuild is in dependencies and installCommand runs without --production.');
+    process.exit(1);
+  }
 }
 
 // 5. (Vercel only) Materialize public/admin/index.html from the shell source.

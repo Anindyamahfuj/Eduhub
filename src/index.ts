@@ -21,8 +21,28 @@ import { writeAudit } from './lib/audit.js';
 
 export const app = new Hono<{ Bindings: Env }>().basePath('/api');
 
-// Same-origin in production; reflecting the origin keeps local tooling simple.
-app.use('*', cors({ origin: (origin) => origin, credentials: true }));
+// CORS: validate origin against allowlist to prevent CSRF attacks.
+const ALLOWED_ORIGINS = [
+  'https://studyhub-b3t.pages.dev',
+  'https://studyhub.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use('*', cors({
+  origin: (origin) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return origin;
+    // Allow same-origin requests
+    if (ALLOWED_ORIGINS.includes(origin)) return origin;
+    // Allow localhost variants for development
+    if (origin.match(/^https?:\/\/localhost(:\d+)?$/) || origin.match(/^https?:\/\/127\.0\.0\.1(:\d+)?$/)) {
+      return origin;
+    }
+    return '';
+  },
+  credentials: true
+}));
 
 app.get('/health', (c) =>
   json({

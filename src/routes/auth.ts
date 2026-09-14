@@ -137,8 +137,13 @@ authRoutes.post('/login', async (c) => {
 /** POST /api/auth/logout */
 authRoutes.post('/logout', async (c) => {
   const user = await getCurrentUser(c);
-  c.header('Set-Cookie', clearCookie(isSecureRequest(c)));
+  // Invalidate the session in the database before clearing the cookie.
   if (user) {
+    const token = readCookie(c.req.header('Cookie'), SESSION_COOKIE);
+    if (token) {
+      const tokenHash = await sha256Hex(token);
+      await c.env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(tokenHash).run().catch(() => {});
+    }
     c.executionCtx.waitUntil(
       writeAudit(c.env, {
         action: 'auth.logout',
@@ -149,6 +154,7 @@ authRoutes.post('/logout', async (c) => {
       })
     );
   }
+  c.header('Set-Cookie', clearCookie(isSecureRequest(c)));
   return ok();
 });
 
