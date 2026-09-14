@@ -27,6 +27,7 @@ export const ADMIN_SHELL = `<!DOCTYPE html>
     <link rel="stylesheet" href="/admin/admin.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 </head>
 <body>
     <div class="admin-shell">
