@@ -18,6 +18,11 @@
  *     c.executionCtx.waitUntil), so a Node no-op ctx is passed explicitly.
  *   - Next's body parser is disabled; the raw body is forwarded so Hono
  *     sees the exact bytes (logins, file uploads, etc.).
+ *   - Developer bootstrap via DEVELOPER_EMAILS (comma-separated): right after
+ *     a successful POST /api/auth/login or /api/auth/register, the account's
+ *     email is compared (lowercased) and granted role='developer' on match.
+ *     Original auth code stays untouched; without this a fresh DB has zero
+ *     developers and the admin panel can never be entered.
  */
 import { getD1 } from '../../src/lib/db-vercel.js';
 
@@ -72,17 +77,41 @@ export default async function handler(req, res) {
 
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
+    const pathname = String(req.url || '/').split('?')[0];
+
+    let rawBody;
+    if (req.method !== 'GET' && req.method !== 'HEAD') rawBody = await readRawBody(req);
     const request = new Request(`${protocol}://${host}${req.url}`, {
       method: req.method,
       headers: req.headers,
       duplex: 'half',
-      body: await (async () => {
-        if (req.method === 'GET' || req.method === 'HEAD') return undefined;
-        return readRawBody(req);
-      })()
+      body: rawBody && rawBody.length ? rawBody : undefined
     });
 
     const response = await app.fetch(request, env, executionCtx);
+
+    // Developer bootstrap: see header comment. Must never break auth.
+    if (
+      response.ok &&
+      (pathname === '/api/auth/login' || pathname === '/api/auth/register')
+    ) {
+      try {
+        const allow = String(process.env.DEVELOPER_EMAILS || '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        if (allow.length && rawBody && rawBody.length) {
+          const parsed = JSON.parse(rawBody.toString('utf8'));
+          const email =
+            parsed && typeof parsed.email === 'string' ? parsed.email.trim().toLowerCase() : '';
+          if (email && allow.includes(email)) {
+            db.prepare("UPDATE users SET role = 'developer' WHERE email = ?").bind(email).run();
+          }
+        }
+      } catch {
+        /* bootstrap must never break auth */
+      }
+    }
 
     res.statusCode = response.status;
     response.headers.forEach((value, key) => {
