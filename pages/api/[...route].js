@@ -54,7 +54,7 @@ function readRawBody(req) {
 
 export default async function handler(req, res) {
   try {
-    const db = getD1();
+    const db = await getD1();
     if (typeof db.ensureMigrated === 'function') db.ensureMigrated();
     const app = await loadApp();
 
