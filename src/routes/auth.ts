@@ -8,13 +8,16 @@
 import { Hono } from 'hono';
 import type { Env } from '../lib/helpers.js';
 import {
+  SESSION_COOKIE,
   clearCookie,
   fail,
   isSecureRequest,
   issueSession,
   json,
   ok,
+  readCookie,
   sessionCookie,
+  sha256Hex,
   getCurrentUser
 } from '../lib/helpers.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';

@@ -578,10 +578,6 @@
                         <i class="ph ph-google-logo"></i>
                         Google
                     </button>
-                    <button type="button" class="btn-social" onclick="handleGithubLogin()">
-                        <i class="ph ph-github-logo"></i>
-                        GitHub
-                    </button>
                 </div>
             </div>
 
@@ -618,10 +614,6 @@
                     <button type="button" class="btn-social" onclick="handleGoogleLogin()">
                         <i class="ph ph-google-logo"></i>
                         Google
-                    </button>
-                    <button type="button" class="btn-social" onclick="handleGithubLogin()">
-                        <i class="ph ph-github-logo"></i>
-                        GitHub
                     </button>
                 </div>
             </div>
@@ -709,7 +701,9 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    localStorage.setItem('authToken', data.token);
+                    // The session is an HttpOnly cookie set by the server -- there is
+                    // no token in the response, and nothing client-side may pretend
+                    // otherwise. Only the display name is cached for the UI.
                     localStorage.setItem('user', JSON.stringify(data.user));
                     showStatus('Login successful! Redirecting...', 'success');
                     setTimeout(() => window.location.href = '/index.html', 1000);
@@ -755,19 +749,20 @@
             }
         }
 
-        // Social Login Stubs
+        // Social login stub. Google is the only provider offered; GitHub was
+        // removed. Until a Google OAuth client is configured the button says so
+        // rather than failing silently.
         function handleGoogleLogin() {
             showStatus('Google login coming soon!', 'error');
         }
 
-        function handleGithubLogin() {
-            showStatus('GitHub login coming soon!', 'error');
-        }
-
-        // Check if already logged in
-        if (localStorage.getItem('authToken')) {
-            window.location.href = '/index.html';
-        }
+        // Already signed in? Ask the server -- the session is an HttpOnly cookie,
+        // so no client-side flag can answer this. Trusting a stale localStorage
+        // value here used to bounce signed-out visitors back to the dashboard,
+        // which then bounced them here again: an endless login <-> dashboard loop.
+        fetch('/api/auth/me', { credentials: 'same-origin' })
+            .then(function (res) { if (res.ok) window.location.href = '/index.html'; })
+            .catch(function () { /* stay on the login page */ });
     </script>
 </body>
 </html>

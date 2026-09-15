@@ -530,9 +530,7 @@ const translations = {
         'stat_tasks': 'Tasks Done Today',
         'stat_streak': 'Longest Streak',
         'stat_pomodoros': 'Pomodoros Today',
-        'today_activity': 'Today\'s Activity',
         'all_history': 'All History',
-        'delete_today': 'Delete Today\'s Activity',
         'delete_all': 'Delete All History',
         'search_placeholder': 'What are you looking for?',
         'search_button': 'Search',
@@ -548,7 +546,6 @@ const translations = {
         'journal_placeholder': 'How did your study session go? What did you learn?',
         'upcoming_assignments': 'Upcoming Assignments',
         'no_assignments': 'No pending assignments.',
-        'no_activity': 'No activity recorded today yet.',
         'no_history': 'No history recorded yet.',
         'no_files': 'No files uploaded yet.',
         'no_notes': 'No notes yet.',
@@ -625,8 +622,11 @@ const translations = {
         'switch_analog': 'Switch to Analog',
         'today': 'Today',
         'entries': 'entries',
+        'entry': 'entry',
         'quick_search': 'Quick Search',
         'focus_off': 'Focus Off',
+        'sign_out': 'Sign out',
+        'open_history': 'Open history',
         'focus_on': 'Focus On',
         'allowed': 'Allowed',
         'math_tag': 'Math',
@@ -658,9 +658,7 @@ const translations = {
         'stat_tasks': 'Tareas Completadas Hoy',
         'stat_streak': 'Racha Más Larga',
         'stat_pomodoros': 'Pomodoros Hoy',
-        'today_activity': 'Actividad de Hoy',
         'all_history': 'Todo el Historial',
-        'delete_today': 'Eliminar Actividad de Hoy',
         'delete_all': 'Eliminar Todo el Historial',
         'search_placeholder': '¿Qué estás buscando?',
         'search_button': 'Buscar',
@@ -676,7 +674,6 @@ const translations = {
         'journal_placeholder': '¿Cómo fue tu sesión de estudio? ¿Qué aprendiste?',
         'upcoming_assignments': 'Próximas Tareas',
         'no_assignments': 'No hay tareas pendientes.',
-        'no_activity': 'Aún no se ha registrado actividad hoy.',
         'no_history': 'Aún no se ha registrado historial.',
         'no_files': 'Aún no se han subido archivos.',
         'no_notes': 'Aún no hay notas.',
@@ -753,8 +750,11 @@ const translations = {
         'switch_analog': 'Cambiar a Analógico',
         'today': 'Hoy',
         'entries': 'entradas',
+        'entry': 'entrada',
         'quick_search': 'Búsqueda Rápida',
         'focus_off': 'Enfoque Desactivado',
+        'sign_out': 'Cerrar sesión',
+        'open_history': 'Abrir historial',
         'focus_on': 'Enfoque Activado',
         'allowed': 'Permitido',
         'math_tag': 'Matemáticas',
@@ -786,9 +786,7 @@ const translations = {
         'stat_tasks': '今日完成任务',
         'stat_streak': '最长连续天数',
         'stat_pomodoros': '今日番茄钟',
-        'today_activity': '今日活动',
         'all_history': '全部历史',
-        'delete_today': '删除今日活动',
         'delete_all': '删除全部历史',
         'search_placeholder': '你在找什么？',
         'search_button': '搜索',
@@ -804,7 +802,6 @@ const translations = {
         'journal_placeholder': '你的学习情况如何？学到了什么？',
         'upcoming_assignments': '即将到来的任务',
         'no_assignments': '暂无待办任务。',
-        'no_activity': '今日尚未记录活动。',
         'no_history': '暂无历史记录。',
         'no_files': '尚未上传文件。',
         'no_notes': '暂无笔记。',
@@ -881,8 +878,11 @@ const translations = {
         'switch_analog': '切换到模拟时钟',
         'today': '今日',
         'entries': '条目',
+        'entry': '条记录',
         'quick_search': '快速搜索',
         'focus_off': '专注关闭',
+        'sign_out': '退出登录',
+        'open_history': '打开历史记录',
         'focus_on': '专注开启',
         'allowed': '允许',
         'math_tag': '数学',
@@ -914,9 +914,7 @@ const translations = {
         'stat_tasks': 'आज पूर्ण किए गए कार्य',
         'stat_streak': 'सबसे लंबी स्ट्रीक',
         'stat_pomodoros': 'आज के पोमोडोरो',
-        'today_activity': 'आज की गतिविधि',
         'all_history': 'सभी इतिहास',
-        'delete_today': 'आज की गतिविधि हटाएं',
         'delete_all': 'सभी इतिहास हटाएं',
         'search_placeholder': 'आप क्या खोज रहे हैं?',
         'search_button': 'खोजें',
@@ -932,7 +930,6 @@ const translations = {
         'journal_placeholder': 'आपका अध्ययन सत्र कैसा रहा? आपने क्या सीखा?',
         'upcoming_assignments': 'आगामी कार्य',
         'no_assignments': 'कोई लंबित कार्य नहीं।',
-        'no_activity': 'आज अभी तक कोई गतिविधि दर्ज नहीं।',
         'no_history': 'अभी तक कोई इतिहास दर्ज नहीं।',
         'no_files': 'अभी तक कोई फ़ाइल अपलोड नहीं।',
         'no_notes': 'अभी तक कोई नोट नहीं।',
@@ -1009,8 +1006,11 @@ const translations = {
         'switch_analog': 'एनालॉग पर स्विच करें',
         'today': 'आज',
         'entries': 'प्रविष्टियाँ',
+        'entry': 'प्रविष्टि',
         'quick_search': 'त्वरित खोज',
         'focus_off': 'फोकस बंद',
+        'sign_out': 'साइन आउट',
+        'open_history': 'इतिहास खोलें',
         'focus_on': 'फोकस चालू',
         'allowed': 'अनुमत',
         'math_tag': 'गणित',
@@ -1042,9 +1042,7 @@ const translations = {
         'stat_tasks': 'المهام المكتملة اليوم',
         'stat_streak': 'أطول سلسلة متتالية',
         'stat_pomodoros': 'بومودورو اليوم',
-        'today_activity': 'نشاط اليوم',
         'all_history': 'كل التاريخ',
-        'delete_today': 'حذف نشاط اليوم',
         'delete_all': 'حذف كل التاريخ',
         'search_placeholder': 'ما الذي تبحث عنه؟',
         'search_button': 'بحث',
@@ -1060,7 +1058,6 @@ const translations = {
         'journal_placeholder': 'كيف كانت جلسة دراستك؟ ماذا تعلمت؟',
         'upcoming_assignments': 'الواجبات القادمة',
         'no_assignments': 'لا توجد واجبات معلقة.',
-        'no_activity': 'لم يتم تسجيل أي نشاط اليوم حتى الآن.',
         'no_history': 'لم يتم تسجيل أي تاريخ حتى الآن.',
         'no_files': 'لم يتم رفع أي ملفات حتى الآن.',
         'no_notes': 'لا توجد ملاحظات حتى الآن.',
@@ -1137,8 +1134,11 @@ const translations = {
         'switch_analog': 'التبديل إلى التناظري',
         'today': 'اليوم',
         'entries': 'إدخالات',
+        'entry': 'إدخال',
         'quick_search': 'بحث سريع',
         'focus_off': 'إيقاف التركيز',
+        'sign_out': 'تسجيل الخروج',
+        'open_history': 'فتح السجل',
         'focus_on': 'تشغيل التركيز',
         'allowed': 'مسموح',
         'math_tag': 'رياضيات',
@@ -1170,9 +1170,7 @@ const translations = {
         'stat_tasks': 'Tâches terminées aujourd\'hui',
         'stat_streak': 'Plus longue série',
         'stat_pomodoros': 'Pomodoros aujourd\'hui',
-        'today_activity': 'Activité d\'aujourd\'hui',
         'all_history': 'Tout l\'historique',
-        'delete_today': 'Supprimer l\'activité d\'aujourd\'hui',
         'delete_all': 'Supprimer tout l\'historique',
         'search_placeholder': 'Que cherchez-vous ?',
         'search_button': 'Rechercher',
@@ -1188,7 +1186,6 @@ const translations = {
         'journal_placeholder': 'Comment s\'est passée votre séance d\'étude ? Qu\'avez-vous appris ?',
         'upcoming_assignments': 'Devoirs à venir',
         'no_assignments': 'Aucun devoir en attente.',
-        'no_activity': 'Aucune activité enregistrée aujourd\'hui.',
         'no_history': 'Aucun historique enregistré.',
         'no_files': 'Aucun fichier téléchargé.',
         'no_notes': 'Aucune note.',
@@ -1265,8 +1262,11 @@ const translations = {
         'switch_analog': 'Passer à l\'analogique',
         'today': 'Aujourd\'hui',
         'entries': 'entrées',
+        'entry': 'entrée',
         'quick_search': 'Recherche rapide',
         'focus_off': 'Focus désactivé',
+        'sign_out': 'Se déconnecter',
+        'open_history': 'Ouvrir l\'historique',
         'focus_on': 'Focus activé',
         'allowed': 'Autorisé',
         'math_tag': 'Maths',
@@ -1298,9 +1298,7 @@ const translations = {
         'stat_tasks': 'Задач выполнено сегодня',
         'stat_streak': 'Самая длинная серия',
         'stat_pomodoros': 'Помодоро сегодня',
-        'today_activity': 'Активность сегодня',
         'all_history': 'Вся история',
-        'delete_today': 'Удалить активность за сегодня',
         'delete_all': 'Удалить всю историю',
         'search_placeholder': 'Что вы ищете?',
         'search_button': 'Поиск',
@@ -1316,7 +1314,6 @@ const translations = {
         'journal_placeholder': 'Как прошла ваша учебная сессия? Что вы узнали?',
         'upcoming_assignments': 'Предстоящие задания',
         'no_assignments': 'Нет ожидающих заданий.',
-        'no_activity': 'Сегодня пока нет активности.',
         'no_history': 'История пока пуста.',
         'no_files': 'Файлы пока не загружены.',
         'no_notes': 'Нет заметок.',
@@ -1393,8 +1390,11 @@ const translations = {
         'switch_analog': 'Переключить на аналоговые',
         'today': 'Сегодня',
         'entries': 'записей',
+        'entry': 'запись',
         'quick_search': 'Быстрый поиск',
         'focus_off': 'Фокус выключен',
+        'sign_out': 'Выйти',
+        'open_history': 'Открыть историю',
         'focus_on': 'Фокус включён',
         'allowed': 'Разрешено',
         'math_tag': 'Математика',
@@ -1426,9 +1426,7 @@ const translations = {
         'stat_tasks': 'Tarefas Concluídas Hoje',
         'stat_streak': 'Maior Sequência',
         'stat_pomodoros': 'Pomodoros Hoje',
-        'today_activity': 'Atividade de Hoje',
         'all_history': 'Todo o Histórico',
-        'delete_today': 'Eliminar Atividade de Hoje',
         'delete_all': 'Eliminar Todo o Histórico',
         'search_placeholder': 'O que você está procurando?',
         'search_button': 'Pesquisar',
@@ -1444,7 +1442,6 @@ const translations = {
         'journal_placeholder': 'Como correu a sua sessão de estudo? O que aprendeu?',
         'upcoming_assignments': 'Trabalhos Futuros',
         'no_assignments': 'Nenhum trabalho pendente.',
-        'no_activity': 'Nenhuma atividade registada hoje ainda.',
         'no_history': 'Nenhum histórico registado ainda.',
         'no_files': 'Nenhum arquivo carregado ainda.',
         'no_notes': 'Nenhuma nota ainda.',
@@ -1521,8 +1518,11 @@ const translations = {
         'switch_analog': 'Mudar para Analógico',
         'today': 'Hoje',
         'entries': 'entradas',
+        'entry': 'entrada',
         'quick_search': 'Pesquisa Rápida',
         'focus_off': 'Foco Desligado',
+        'sign_out': 'Sair',
+        'open_history': 'Abrir histórico',
         'focus_on': 'Foco Ligado',
         'allowed': 'Permitido',
         'math_tag': 'Matemática',
@@ -1554,9 +1554,7 @@ const translations = {
         'stat_tasks': 'আজকের সম্পন্ন কাজ',
         'stat_streak': 'দীর্ঘতম ধারা',
         'stat_pomodoros': 'আজকের পোমোডোরো',
-        'today_activity': 'আজকের কার্যকলাপ',
         'all_history': 'সমস্ত ইতিহাস',
-        'delete_today': 'আজকের কার্যকলাপ মুছুন',
         'delete_all': 'সমস্ত ইতিহাস মুছুন',
         'search_placeholder': 'আপনি কী খুঁজছেন?',
         'search_button': 'অনুসন্ধান',
@@ -1572,7 +1570,6 @@ const translations = {
         'journal_placeholder': 'আপনার স্টাডি সেশন কেমন ছিল? আপনি কী শিখলেন?',
         'upcoming_assignments': 'আসন্ন অ্যাসাইনমেন্ট',
         'no_assignments': 'কোনো pending অ্যাসাইনমেন্ট নেই।',
-        'no_activity': 'আজ এখনও কোনো কার্যকলাপ রেকর্ড করা হয়নি।',
         'no_history': 'এখনও কোনো ইতিহাস রেকর্ড করা হয়নি।',
         'no_files': 'এখনও কোনো ফাইল আপলোড করা হয়নি।',
         'no_notes': 'এখনও কোনো নোট নেই।',
@@ -1649,8 +1646,11 @@ const translations = {
         'switch_analog': 'অ্যানালগে স্যুইচ করুন',
         'today': 'আজ',
         'entries': 'এন্ট্রি',
+        'entry': 'এন্ট্রি',
         'quick_search': 'দ্রুত অনুসন্ধান',
         'focus_off': 'ফোকাস বন্ধ',
+        'sign_out': 'সাইন আউট',
+        'open_history': 'ইতিহাস খুলুন',
         'focus_on': 'ফোকাস চালু',
         'allowed': 'অনুমোদিত',
         'math_tag': 'গণিত',
@@ -1682,9 +1682,7 @@ const translations = {
         'stat_tasks': 'آج مکمل ہونے والے کام',
         'stat_streak': 'طویل ترین تسلسل',
         'stat_pomodoros': 'آج کے پوموڈورو',
-        'today_activity': 'آج کی سرگرمی',
         'all_history': 'پوری تاریخ',
-        'delete_today': 'آج کی سرگرمی حذف کریں',
         'delete_all': 'پوری تاریخ حذف کریں',
         'search_placeholder': 'آپ کیا تلاش کر رہے ہیں؟',
         'search_button': 'تلاش کریں',
@@ -1700,7 +1698,6 @@ const translations = {
         'journal_placeholder': 'آپ کا مطالعاتی سیشن کیسا رہا؟ آپ نے کیا سیکھا؟',
         'upcoming_assignments': 'آنے والے اسائنمنٹس',
         'no_assignments': 'کوئی زیر التواء اسائنمنٹ نہیں۔',
-        'no_activity': 'آج ابھی تک کوئی سرگرمی ریکارڈ نہیں ہوئی۔',
         'no_history': 'ابھی تک کوئی تاریخ ریکارڈ نہیں ہوئی۔',
         'no_files': 'ابھی تک کوئی فائل اپ لوڈ نہیں ہوئی۔',
         'no_notes': 'ابھی تک کوئی نوٹ نہیں۔',
@@ -1777,8 +1774,11 @@ const translations = {
         'switch_analog': 'اینالاگ پر سوئچ کریں',
         'today': 'آج',
         'entries': 'اندراجات',
+        'entry': 'اندراج',
         'quick_search': 'فوری تلاش',
         'focus_off': 'توجہ بند',
+        'sign_out': 'سائن آؤٹ',
+        'open_history': 'تاریخ کھولیں',
         'focus_on': 'توجہ آن',
         'allowed': 'اجازت ہے',
         'math_tag': 'ریاضی',
@@ -1810,9 +1810,7 @@ const translations = {
         'stat_tasks': 'Tugas Selesai Hari Ini',
         'stat_streak': 'Streak Terpanjang',
         'stat_pomodoros': 'Pomodoros Hari Ini',
-        'today_activity': 'Aktivitas Hari Ini',
         'all_history': 'Semua Riwayat',
-        'delete_today': 'Hapus Aktivitas Hari Ini',
         'delete_all': 'Hapus Semua Riwayat',
         'search_placeholder': 'Apa yang Anda cari?',
         'search_button': 'Cari',
@@ -1828,7 +1826,6 @@ const translations = {
         'journal_placeholder': 'Bagaimana sesi belajar Anda? Apa yang Anda pelajari?',
         'upcoming_assignments': 'Tugas Mendatang',
         'no_assignments': 'Tidak ada tugas tertunda.',
-        'no_activity': 'Belum ada aktivitas tercatat hari ini.',
         'no_history': 'Belum ada riwayat tercatat.',
         'no_files': 'Belum ada file diunggah.',
         'no_notes': 'Belum ada catatan.',
@@ -1905,8 +1902,11 @@ const translations = {
         'switch_analog': 'Beralih ke Analog',
         'today': 'Hari Ini',
         'entries': 'entri',
+        'entry': 'entri',
         'quick_search': 'Pencarian Cepat',
         'focus_off': 'Fokus Mati',
+        'sign_out': 'Keluar',
+        'open_history': 'Buka riwayat',
         'focus_on': 'Fokus Hidup',
         'allowed': 'Diizinkan',
         'math_tag': 'Matematika',
@@ -1938,9 +1938,7 @@ const translations = {
         'stat_tasks': 'Heute erledigte Aufgaben',
         'stat_streak': 'Längste Serie',
         'stat_pomodoros': 'Pomodoros heute',
-        'today_activity': 'Aktivität heute',
         'all_history': 'Gesamte Historie',
-        'delete_today': 'Aktivität von heute löschen',
         'delete_all': 'Gesamte Historie löschen',
         'search_placeholder': 'Wonach suchen Sie?',
         'search_button': 'Suchen',
@@ -1956,7 +1954,6 @@ const translations = {
         'journal_placeholder': 'Wie war Ihre Lerneinheit? Was haben Sie gelernt?',
         'upcoming_assignments': 'Anstehende Aufgaben',
         'no_assignments': 'Keine ausstehenden Aufgaben.',
-        'no_activity': 'Heute wurde noch keine Aktivität aufgezeichnet.',
         'no_history': 'Es wurde noch keine Historie aufgezeichnet.',
         'no_files': 'Es wurden noch keine Dateien hochgeladen.',
         'no_notes': 'Noch keine Notizen.',
@@ -2033,8 +2030,11 @@ const translations = {
         'switch_analog': 'Zu Analog wechseln',
         'today': 'Heute',
         'entries': 'Einträge',
+        'entry': 'Eintrag',
         'quick_search': 'Schnellsuche',
         'focus_off': 'Fokus aus',
+        'sign_out': 'Abmelden',
+        'open_history': 'Verlauf öffnen',
         'focus_on': 'Fokus an',
         'allowed': 'Erlaubt',
         'math_tag': 'Mathe',
@@ -2066,9 +2066,7 @@ const translations = {
         'stat_tasks': '今日完了したタスク',
         'stat_streak': '最長連続記録',
         'stat_pomodoros': '今日のポモドーロ',
-        'today_activity': '今日のアクティビティ',
         'all_history': '全履歴',
-        'delete_today': '今日のアクティビティを削除',
         'delete_all': '全履歴を削除',
         'search_placeholder': '何をお探しですか？',
         'search_button': '検索',
@@ -2084,7 +2082,6 @@ const translations = {
         'journal_placeholder': '学習セッションはどうでしたか？何を学びましたか？',
         'upcoming_assignments': '今後の課題',
         'no_assignments': '保留中の課題はありません。',
-        'no_activity': '今日はまだアクティビティが記録されていません。',
         'no_history': 'まだ履歴が記録されていません。',
         'no_files': 'まだファイルがアップロードされていません。',
         'no_notes': 'まだノートがありません。',
@@ -2161,8 +2158,11 @@ const translations = {
         'switch_analog': 'アナログに切り替え',
         'today': '今日',
         'entries': 'エントリ',
+        'entry': '件',
         'quick_search': 'クイック検索',
         'focus_off': 'フォーカスオフ',
+        'sign_out': 'サインアウト',
+        'open_history': '履歴を開く',
         'focus_on': 'フォーカスオン',
         'allowed': '許可',
         'math_tag': '数学',
@@ -2194,9 +2194,7 @@ const translations = {
         'stat_tasks': 'Kazi Zilizokamilishwa Leo',
         'stat_streak': 'Mfululizo Mrefu Zaidi',
         'stat_pomodoros': 'Pomodoros Leo',
-        'today_activity': 'Shughuli za Leo',
         'all_history': 'Historia Yote',
-        'delete_today': 'Futa Shughuli za Leo',
         'delete_all': 'Futa Historia Yote',
         'search_placeholder': 'Unatafuta nini?',
         'search_button': 'Tafuta',
@@ -2212,7 +2210,6 @@ const translations = {
         'journal_placeholder': 'Kikao chako cha kujifunza kilikuwaje? Ulijifunza nini?',
         'upcoming_assignments': 'Kazi Zinazokuja',
         'no_assignments': 'Hakuna kazi zinazosubiri.',
-        'no_activity': 'Hakuna shughuli iliyorekodiwa leo bado.',
         'no_history': 'Hakuna historia iliyorekodiwa bado.',
         'no_files': 'Hakuna faili zilizopakiwa bado.',
         'no_notes': 'Hakuna maelezo bado.',
@@ -2289,8 +2286,11 @@ const translations = {
         'switch_analog': 'Badilisha hadi Analog',
         'today': 'Leo',
         'entries': 'maingizo',
+        'entry': 'kumbukumbu',
         'quick_search': 'Utafutaji wa Haraka',
         'focus_off': 'Umakini Zima',
+        'sign_out': 'Toka',
+        'open_history': 'Fungua historia',
         'focus_on': 'Umakini Washa',
         'allowed': 'Inaruhusiwa',
         'math_tag': 'Hisabati',
@@ -2322,9 +2322,7 @@ const translations = {
         'stat_tasks': 'Bugün Tamamlanan Görevler',
         'stat_streak': 'En Uzun Seri',
         'stat_pomodoros': 'Bugünkü Pomodorolar',
-        'today_activity': 'Bugünün Etkinliği',
         'all_history': 'Tüm Geçmiş',
-        'delete_today': 'Bugünün Etkinliğini Sil',
         'delete_all': 'Tüm Geçmişi Sil',
         'search_placeholder': 'Ne arıyorsunuz?',
         'search_button': 'Ara',
@@ -2340,7 +2338,6 @@ const translations = {
         'journal_placeholder': 'Çalışma seansınız nasıldı? Ne öğrendiniz?',
         'upcoming_assignments': 'Yaklaşan Ödevler',
         'no_assignments': 'Bekleyen ödev yok.',
-        'no_activity': 'Bugün henüz etkinlik kaydedilmedi.',
         'no_history': 'Henüz geçmiş kaydedilmedi.',
         'no_files': 'Henüz dosya yüklenmedi.',
         'no_notes': 'Henüz not yok.',
@@ -2417,8 +2414,11 @@ const translations = {
         'switch_analog': 'Analog\'a Geç',
         'today': 'Bugün',
         'entries': 'giriş',
+        'entry': 'kayıt',
         'quick_search': 'Hızlı Arama',
         'focus_off': 'Odak Kapalı',
+        'sign_out': 'Çıkış yap',
+        'open_history': 'Geçmişi aç',
         'focus_on': 'Odak Açık',
         'allowed': 'İzin Verildi',
         'math_tag': 'Matematik',
@@ -2477,6 +2477,14 @@ var extraTranslations = {
         'today_minutes': 'Today', 'total_minutes': 'Total',
         'pause_btn': 'Pause', 'sound_none': 'No Sound', 'sound_rain': 'Rain', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Quiz Generator', 'generate_quiz_btn': 'Generate Quiz from Notes', 'clear_quiz_btn': 'Clear Quiz',
+        'quiz_next': 'Next',
+        'quiz_results': 'Results',
+        'quiz_score': 'Score',
+        'quiz_review': 'Review',
+        'quiz_source': 'From your note',
+        'quiz_fill_blank': 'Fill in the blank',
+        'quiz_cards_saved': 'Wrong answers saved to your flashcards.',
+        'quiz_retry_missed': 'Retry missed',
         'auto_flashcards_btn': 'Auto-Generate from Notes',
 
         // ===== v3 additions =====
@@ -2667,6 +2675,14 @@ var extraTranslations = {
         'today_minutes': 'Hoy', 'total_minutes': 'Total',
         'pause_btn': 'Pausar', 'sound_none': 'Sin Sonido', 'sound_rain': 'Lluvia', 'sound_white': 'Ruido Blanco', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Generador de Cuestionarios', 'generate_quiz_btn': 'Generar Cuestionario desde Notas', 'clear_quiz_btn': 'Borrar Cuestionario',
+        'quiz_next': 'Siguiente',
+        'quiz_results': 'Resultados',
+        'quiz_score': 'Puntuación',
+        'quiz_review': 'Repaso',
+        'quiz_source': 'De tu apunte',
+        'quiz_fill_blank': 'Completa el espacio',
+        'quiz_cards_saved': 'Respuestas incorrectas guardadas en tus tarjetas.',
+        'quiz_retry_missed': 'Reintentar falladas',
         'auto_flashcards_btn': 'Auto-Generar desde Notas'
     },
     zh: {
@@ -2694,6 +2710,14 @@ var extraTranslations = {
         'today_minutes': '今天', 'total_minutes': '总计',
         'pause_btn': '暂停', 'sound_none': '无声', 'sound_rain': '雨声', 'sound_white': '白噪音', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': '测验生成器', 'generate_quiz_btn': '从笔记生成测验', 'clear_quiz_btn': '清除测验',
+        'quiz_next': '下一个',
+        'quiz_results': '结果',
+        'quiz_score': '得分',
+        'quiz_review': '复习',
+        'quiz_source': '来自你的笔记',
+        'quiz_fill_blank': '填空',
+        'quiz_cards_saved': '错题已保存到抽认卡。',
+        'quiz_retry_missed': '重做错题',
         'auto_flashcards_btn': '从笔记自动生成'
     },
     hi: {
@@ -2721,6 +2745,14 @@ var extraTranslations = {
         'today_minutes': 'आज', 'total_minutes': 'कुल',
         'pause_btn': 'रोकें', 'sound_none': 'कोई ध्वनि नहीं', 'sound_rain': 'बारिश', 'sound_white': 'सफेद शोर', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'क्विज़ जनरेटर', 'generate_quiz_btn': 'नोट्स से क्विज़ बनाएं', 'clear_quiz_btn': 'क्विज़ साफ करें',
+        'quiz_next': 'अगला',
+        'quiz_results': 'परिणाम',
+        'quiz_score': 'स्कोर',
+        'quiz_review': 'समीक्षा',
+        'quiz_source': 'आपके नोट से',
+        'quiz_fill_blank': 'रिक्त स्थान भरें',
+        'quiz_cards_saved': 'गलत उत्तर फ्लैशकार्ड में सहेजे गए।',
+        'quiz_retry_missed': 'छूटे हुए दोबारा',
         'auto_flashcards_btn': 'नोट्स से स्वतः बनाएं'
     },
     ar: {
@@ -2748,6 +2780,14 @@ var extraTranslations = {
         'today_minutes': 'اليوم', 'total_minutes': 'الإجمالي',
         'pause_btn': 'إيقاف مؤقت', 'sound_none': 'بدون صوت', 'sound_rain': 'مطر', 'sound_white': 'ضجيج أبيض', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'منشئ الاختبارات', 'generate_quiz_btn': 'توليد اختبار من الملاحظات', 'clear_quiz_btn': 'مسح الاختبار',
+        'quiz_next': 'التالي',
+        'quiz_results': 'النتائج',
+        'quiz_score': 'النتيجة',
+        'quiz_review': 'المراجعة',
+        'quiz_source': 'من ملاحظتك',
+        'quiz_fill_blank': 'أكمل الفراغ',
+        'quiz_cards_saved': 'تم حفظ الإجابات الخاطئة في بطاقاتك.',
+        'quiz_retry_missed': 'أعد المحاولة',
         'auto_flashcards_btn': 'توليد تلقائي من الملاحظات'
     },
     fr: {
@@ -2775,6 +2815,14 @@ var extraTranslations = {
         'today_minutes': 'Aujourd\'hui', 'total_minutes': 'Total',
         'pause_btn': 'Pause', 'sound_none': 'Aucun son', 'sound_rain': 'Pluie', 'sound_white': 'Bruit blanc', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Générateur de Quiz', 'generate_quiz_btn': 'Générer un Quiz depuis les Notes', 'clear_quiz_btn': 'Effacer le Quiz',
+        'quiz_next': 'Suivant',
+        'quiz_results': 'Résultats',
+        'quiz_score': 'Score',
+        'quiz_review': 'Révision',
+        'quiz_source': 'De ta note',
+        'quiz_fill_blank': 'Complète le blanc',
+        'quiz_cards_saved': 'Réponses fausses ajoutées à tes cartes.',
+        'quiz_retry_missed': 'Refaire les ratées',
         'auto_flashcards_btn': 'Auto-générer depuis les Notes'
     },
     ru: {
@@ -2802,6 +2850,14 @@ var extraTranslations = {
         'today_minutes': 'Сегодня', 'total_minutes': 'Всего',
         'pause_btn': 'Пауза', 'sound_none': 'Без звука', 'sound_rain': 'Дождь', 'sound_white': 'Белый шум', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Генератор тестов', 'generate_quiz_btn': 'Создать тест из заметок', 'clear_quiz_btn': 'Очистить тест',
+        'quiz_next': 'Далее',
+        'quiz_results': 'Результаты',
+        'quiz_score': 'Счёт',
+        'quiz_review': 'Повторение',
+        'quiz_source': 'Из заметки',
+        'quiz_fill_blank': 'Заполните пропуск',
+        'quiz_cards_saved': 'Неверные ответы сохранены в карточки.',
+        'quiz_retry_missed': 'Повторить ошибки',
         'auto_flashcards_btn': 'Автогенерация из заметок'
     },
     pt: {
@@ -2829,6 +2885,14 @@ var extraTranslations = {
         'today_minutes': 'Hoje', 'total_minutes': 'Total',
         'pause_btn': 'Pausar', 'sound_none': 'Sem som', 'sound_rain': 'Chuva', 'sound_white': 'Ruído branco', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Gerador de Quiz', 'generate_quiz_btn': 'Gerar Quiz das Notas', 'clear_quiz_btn': 'Limpar Quiz',
+        'quiz_next': 'Seguinte',
+        'quiz_results': 'Resultados',
+        'quiz_score': 'Pontuação',
+        'quiz_review': 'Revisão',
+        'quiz_source': 'Da tua nota',
+        'quiz_fill_blank': 'Completa a lacuna',
+        'quiz_cards_saved': 'Respostas erradas guardadas nos teus cartões.',
+        'quiz_retry_missed': 'Repetir erradas',
         'auto_flashcards_btn': 'Auto-gerar das Notas'
     },
     bn: {
@@ -2856,6 +2920,14 @@ var extraTranslations = {
         'today_minutes': 'আজ', 'total_minutes': 'মোট',
         'pause_btn': 'বিরতি', 'sound_none': 'কোনো শব্দ নেই', 'sound_rain': 'বৃষ্টি', 'sound_white': 'সাদা শব্দ', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'কুইজ জেনারেটর', 'generate_quiz_btn': 'নোট থেকে কুইজ তৈরি করুন', 'clear_quiz_btn': 'কুইজ মুছুন',
+        'quiz_next': 'পরবর্তী',
+        'quiz_results': 'ফলাফল',
+        'quiz_score': 'স্কোর',
+        'quiz_review': 'পুনরালোচনা',
+        'quiz_source': 'তোমার নোট থেকে',
+        'quiz_fill_blank': 'শূন্যস্থান পূরণ করো',
+        'quiz_cards_saved': 'ভুল উত্তর ফ্ল্যাশকার্ডে সংরক্ষিত হয়েছে।',
+        'quiz_retry_missed': 'ভুলগুলো আবার করো',
         'auto_flashcards_btn': 'নোট থেকে স্বয়ংক্রিয়'
     },
     ur: {
@@ -2883,6 +2955,14 @@ var extraTranslations = {
         'today_minutes': 'آج', 'total_minutes': 'کل',
         'pause_btn': 'وقفہ', 'sound_none': 'کوئی آواز نہیں', 'sound_rain': 'بارش', 'sound_white': 'سفید شور', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'کوئز جنریٹر', 'generate_quiz_btn': 'نوٹس سے کوئز بنائیں', 'clear_quiz_btn': 'کوئز صاف کریں',
+        'quiz_next': 'اگلا',
+        'quiz_results': 'نتائج',
+        'quiz_score': 'اسکور',
+        'quiz_review': 'جائزہ',
+        'quiz_source': 'آپ کے نوٹ سے',
+        'quiz_fill_blank': 'خالی جگہ بھریں',
+        'quiz_cards_saved': 'غلط جوابات فلیش کارڈز میں محفوظ ہو گئے۔',
+        'quiz_retry_missed': 'غلط دوبارہ حل کریں',
         'auto_flashcards_btn': 'نوٹس سے خودکار'
     },
     id: {
@@ -2910,6 +2990,14 @@ var extraTranslations = {
         'today_minutes': 'Hari ini', 'total_minutes': 'Total',
         'pause_btn': 'Jeda', 'sound_none': 'Tanpa Suara', 'sound_rain': 'Hujan', 'sound_white': 'White Noise', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Pembuat Kuis', 'generate_quiz_btn': 'Buat Kuis dari Catatan', 'clear_quiz_btn': 'Hapus Kuis',
+        'quiz_next': 'Berikutnya',
+        'quiz_results': 'Hasil',
+        'quiz_score': 'Skor',
+        'quiz_review': 'Ulasan',
+        'quiz_source': 'Dari catatanmu',
+        'quiz_fill_blank': 'Isi bagian kosong',
+        'quiz_cards_saved': 'Jawaban salah disimpan ke kartu belajar.',
+        'quiz_retry_missed': 'Ulangi yang salah',
         'auto_flashcards_btn': 'Otomatis dari Catatan'
     },
     de: {
@@ -2937,6 +3025,14 @@ var extraTranslations = {
         'today_minutes': 'Heute', 'total_minutes': 'Gesamt',
         'pause_btn': 'Pause', 'sound_none': 'Kein Ton', 'sound_rain': 'Regen', 'sound_white': 'Weißes Rauschen', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Quiz-Generator', 'generate_quiz_btn': 'Quiz aus Notizen erstellen', 'clear_quiz_btn': 'Quiz löschen',
+        'quiz_next': 'Weiter',
+        'quiz_results': 'Ergebnisse',
+        'quiz_score': 'Punktzahl',
+        'quiz_review': 'Wiederholung',
+        'quiz_source': 'Aus deiner Notiz',
+        'quiz_fill_blank': 'Lücke füllen',
+        'quiz_cards_saved': 'Falsche Antworten in den Karten gespeichert.',
+        'quiz_retry_missed': 'Falsche wiederholen',
         'auto_flashcards_btn': 'Automatisch aus Notizen'
     },
     ja: {
@@ -2964,6 +3060,14 @@ var extraTranslations = {
         'today_minutes': '今日', 'total_minutes': '合計',
         'pause_btn': '一時停止', 'sound_none': '無音', 'sound_rain': '雨', 'sound_white': 'ホワイトノイズ', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'クイズジェネレーター', 'generate_quiz_btn': 'ノートからクイズを生成', 'clear_quiz_btn': 'クイズをクリア',
+        'quiz_next': '次へ',
+        'quiz_results': '結果',
+        'quiz_score': 'スコア',
+        'quiz_review': '復習',
+        'quiz_source': 'ノートから',
+        'quiz_fill_blank': '空欄を埋める',
+        'quiz_cards_saved': '間違えた回答をカードに保存しました。',
+        'quiz_retry_missed': '間違いをやり直す',
         'auto_flashcards_btn': 'ノートから自動生成'
     },
     sw: {
@@ -2991,6 +3095,14 @@ var extraTranslations = {
         'today_minutes': 'Leo', 'total_minutes': 'Jumla',
         'pause_btn': 'Sitisha', 'sound_none': 'Hakuna Sauti', 'sound_rain': 'Mvua', 'sound_white': 'Kelele Nyeupe', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Kitengeneza Maswali', 'generate_quiz_btn': 'Tengeneza Maswali kutoka Vidokezo', 'clear_quiz_btn': 'Futa Maswali',
+        'quiz_next': 'Ifuatayo',
+        'quiz_results': 'Matokeo',
+        'quiz_score': 'Alama',
+        'quiz_review': 'Marudio',
+        'quiz_source': 'Kutoka kwa noti yako',
+        'quiz_fill_blank': 'Jaza pengo',
+        'quiz_cards_saved': 'Majibu yasiyo sahihi yamehifadhiwa kwenye kadi.',
+        'quiz_retry_missed': 'Jaribu zilizokosekana',
         'auto_flashcards_btn': 'Otomatiki kutoka Vidokezo'
     },
     tr: {
@@ -3018,6 +3130,14 @@ var extraTranslations = {
         'today_minutes': 'Bugün', 'total_minutes': 'Toplam',
         'pause_btn': 'Duraklat', 'sound_none': 'Ses Yok', 'sound_rain': 'Yağmur', 'sound_white': 'Beyaz Gürültü', 'sound_lofi': 'Lo-Fi',
         'quiz_generator': 'Test Oluşturucu', 'generate_quiz_btn': 'Notlardan Test Oluştur', 'clear_quiz_btn': 'Testi Temizle',
+        'quiz_next': 'Sonraki',
+        'quiz_results': 'Sonuçlar',
+        'quiz_score': 'Puan',
+        'quiz_review': 'Tekrar',
+        'quiz_source': 'Notundan',
+        'quiz_fill_blank': 'Boşluğu doldur',
+        'quiz_cards_saved': 'Yanlış cevaplar kartlarına kaydedildi.',
+        'quiz_retry_missed': 'Yanlışları tekrar et',
         'auto_flashcards_btn': 'Notlardan Otomatik Oluştur'
     }
 };
@@ -3094,15 +3214,6 @@ function initTranslations() {
 // ================================================================
 // DELETE HISTORY (bulk)
 // ================================================================
-function deleteTodayHistory() {
-    if (!confirm('Delete all activity for today?')) return;
-    var data = loadData();
-    var today = new Date().toISOString().slice(0, 10);
-    data.history = data.history.filter(function(h) { return h.date !== today; });
-    saveData(data);
-    renderDashboard();
-}
-
 function deleteAllHistory() {
     if (!confirm('Delete ALL history entries? This cannot be undone.')) return;
     var data = loadData();
@@ -3207,19 +3318,7 @@ document.getElementById('statFiles').textContent = data.files.length;
 document.getElementById('statTasks').textContent = todayTasks;
 document.getElementById('statStreak').textContent = longestStreak;  // stat card shows longest
 
-    // Today Activity
-    var todayActs = data.history.filter(function(h) { return h.date === today; });
-    var tc = document.getElementById('todayActivity');
-    if (todayActs.length === 0) {
-        tc.innerHTML = '<p class="empty-state">' + getTranslation('no_activity') + '</p>';
-    } else {
-        tc.innerHTML = todayActs.slice().reverse().map(function(h) {
-            return '<div class="activity-item"><span>' + escapeUserHtml(h.description) + '</span><span class="time">' + new Date(h.timestamp).toLocaleTimeString() + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
-        }).join('');
-    }
-    document.getElementById('todayCount').textContent = todayActs.length + ' ' + getTranslation('entries');
-
-    // All History
+    // All History (rendered inside the history overlay)
     var allHist = data.history;
     var hc = document.getElementById('historyActivity');
     if (allHist.length === 0) {
@@ -3229,7 +3328,7 @@ document.getElementById('statStreak').textContent = longestStreak;  // stat card
             return '<div class="activity-item"><span>' + escapeUserHtml(h.description) + '</span><span class="time">' + h.date + ' <button class="delete-item-btn" data-timestamp="' + h.timestamp + '">✕</button></span></div>';
         }).join('');
     }
-    document.getElementById('historyCount').textContent = allHist.length + ' ' + getTranslation('entries');
+    document.getElementById('historyCount').textContent = allHist.length + ' ' + getTranslation(allHist.length === 1 ? 'entry' : 'entries');
 
     // Upcoming Assignments
     var assignEl = document.getElementById('upcomingAssignments');
@@ -3268,7 +3367,7 @@ document.getElementById('statStreak').textContent = longestStreak;  // stat card
     }
 
     // Attach delete listeners for history items
-    document.querySelectorAll('#todayActivity .delete-item-btn, #historyActivity .delete-item-btn').forEach(function(btn) {
+    document.querySelectorAll('#historyActivity .delete-item-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var ts = parseInt(this.dataset.timestamp);
             if (confirm('Delete this history entry?')) {
@@ -5077,8 +5176,25 @@ document.addEventListener('DOMContentLoaded', function() {
         initPomodoro();
         setupSearch();
 
-        var dToday = document.getElementById('deleteTodayBtn');
-        if (dToday) dToday.addEventListener('click', deleteTodayHistory);
+        // History opens as an overlay, mirroring the calendar: trigger from the
+        // sidebar card, dismiss via the close button, the backdrop or Escape.
+        var historyModal = document.getElementById('historyModal');
+        var historyOpen = document.getElementById('historyOpenBtn');
+        var historyClose = document.getElementById('historyCloseBtn');
+        if (historyModal && historyOpen) {
+            historyOpen.addEventListener('click', function() { historyModal.style.display = 'flex'; });
+        }
+        if (historyModal && historyClose) {
+            historyClose.addEventListener('click', function() { historyModal.style.display = 'none'; });
+        }
+        if (historyModal) {
+            historyModal.addEventListener('click', function(e) {
+                if (e.target === historyModal) historyModal.style.display = 'none';
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && historyModal.style.display === 'flex') historyModal.style.display = 'none';
+            });
+        }
 
         var dAll = document.getElementById('deleteAllBtn');
         if (dAll) dAll.addEventListener('click', deleteAllHistory);
@@ -5460,91 +5576,553 @@ function attachFocusSoundToPomodoro() {
 // ================================================================
 // QUIZ GENERATOR
 // ================================================================
-function generateQuizFromNotes() {
-    var container = document.getElementById('quizContainer');
-    if (!container) return;
+var quizState = null;
+
+/* Function words carry no topic meaning: never blanked, never a distractor. */
+var QUIZ_STOPWORDS = ['about', 'above', 'after', 'again', 'against', 'almost', 'along', 'also', 'although',
+    'always', 'among', 'another', 'any', 'anyone', 'anything', 'around', 'back', 'because', 'become', 'been',
+    'before', 'behind', 'being', 'below', 'beside', 'better', 'between', 'beyond', 'both', 'cannot', 'could',
+    'did', 'does', 'doing', 'done', 'down', 'during', 'each', 'either', 'else', 'enough', 'even', 'ever',
+    'every', 'everything', 'except', 'few', 'first', 'found', 'from', 'further', 'gave', 'give', 'goes',
+    'going', 'gone', 'good', 'got', 'had', 'has', 'have', 'having', 'here', 'hers', 'himself', 'however',
+    'into', 'itself', 'just', 'keep', 'kept', 'know', 'known', 'last', 'later', 'least', 'less', 'like',
+    'little', 'long', 'made', 'make', 'many', 'might', 'mine', 'more', 'most', 'much', 'must', 'near', 'need',
+    'never', 'next', 'none', 'nothing', 'often', 'once', 'only', 'other', 'others', 'ought', 'over', 'own',
+    'perhaps', 'quite', 'rather', 'really', 'same', 'said', 'several', 'shall', 'should', 'since', 'some',
+    'someone', 'something', 'sometimes', 'still', 'such', 'take', 'taken', 'than', 'that', 'their', 'them',
+    'themselves', 'then', 'there', 'therefore', 'these', 'they', 'thing', 'things', 'this', 'those', 'though',
+    'through', 'thus', 'time', 'together', 'too', 'toward', 'under', 'until', 'upon', 'used', 'using', 'very',
+    'want', 'well', 'were', 'what', 'when', 'where', 'whether', 'which', 'while', 'whom', 'whose', 'will',
+    'with', 'within', 'without', 'would', 'your', 'yours'];
+
+function quizIsStopword(word) {
+    return QUIZ_STOPWORDS.indexOf(String(word).toLowerCase()) !== -1;
+}
+
+function quizId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function quizEsc(s) {
+    return escapeUserHtml(String(s == null ? '' : s));
+}
+
+function quizContainer() {
+    return document.getElementById('quizContainer');
+}
+
+/* Sentences long enough to hide a term in, short enough to read as a question. */
+function quizSentences(text) {
+    var s = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+    var out = [], buf = '';
+    for (var i = 0; i < s.length; i++) {
+        buf += s[i];
+        if (s[i] === '.' || s[i] === '!' || s[i] === '?') {
+            var t = buf.trim();
+            if (t.length >= 30 && t.length <= 220) out.push(t);
+            buf = '';
+        }
+    }
+    var tail = buf.trim();
+    if (tail.length >= 30 && tail.length <= 220) out.push(tail);
+    return out;
+}
+
+/* Meaningful words in a sentence, longest first: the longest reads as the key term. */
+function quizTerms(text) {
+    var seen = {}, terms = [];
+    String(text == null ? '' : text).split(/[^A-Za-z0-9'\u00c0-\u024f]+/).forEach(function (w) {
+        var t = w.replace(/^'+|'+$/g, '');
+        if (t.length < 5 || quizIsStopword(t) || /^\d+$/.test(t)) return;
+        var key = t.toLowerCase();
+        if (seen[key]) return;
+        seen[key] = true;
+        terms.push(t);
+    });
+    return terms.sort(function (a, b) { return b.length - a.length; });
+}
+
+function quizEscapeRe(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Distractors of comparable length to the answer. Nothing is padded with filler
+ * when the pool is thin - an obvious length giveaway, or a bogus "none of the
+ * above (2)" option, makes a question worth nothing - so a note that cannot
+ * produce honest options is skipped instead.
+ */
+function quizDistractors(pool, correctKey, correctLength, howMany) {
+    var tolerance = Math.max(2, Math.round(correctLength * 0.6));
+    var seen = {}, ranked = [];
+    pool.forEach(function (term) {
+        var key = String(term).toLowerCase();
+        if (key === correctKey || seen[key]) return;
+        if (Math.abs(term.length - correctLength) > tolerance) return;
+        seen[key] = true;
+        ranked.push(term);
+    });
+    ranked.sort(function (a, b) {
+        return Math.abs(a.length - correctLength) - Math.abs(b.length - correctLength);
+    });
+    return ranked.slice(0, howMany * 3).sort(function () { return Math.random() - 0.5; }).slice(0, howMany);
+}
+
+/* Every usable term in the notebook, the pool distractors come from. */
+function quizTermPool(notes) {
+    var seen = {}, pool = [];
+    notes.forEach(function (note) {
+        quizTerms(note.text).forEach(function (t) {
+            var key = t.toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            pool.push(t);
+        });
+    });
+    return pool;
+}
+
+/* How often a term appears in a sentence (word boundaries, case-insensitive). */
+function quizOccurrences(sentence, term) {
+    var found = String(sentence).match(new RegExp('\\b' + quizEscapeRe(term) + '\\b', 'gi'));
+    return found ? found.length : 0;
+}
+
+/* One cloze question from a note, or null when it has nothing usable. */
+function quizClozeQuestion(note, pool) {
+    var candidates = [];
+    quizSentences(note.text).forEach(function (sentence) {
+        var terms = quizTerms(sentence);
+        if (!terms.length) return;
+        // A term used twice in the sentence leaks its own answer the moment the
+        // first one is blanked, so a single-occurrence term is always preferred.
+        var once = terms.filter(function (t) { return quizOccurrences(sentence, t) === 1; });
+        var term = (once.length ? once : terms)[0];
+        candidates.push({
+            sentence: sentence,
+            term: term,
+            // Prefer a meaty term inside a sentence of comfortable length.
+            score: term.length + (sentence.length >= 60 && sentence.length <= 160 ? 4 : 0) + (once.length ? 6 : 0)
+        });
+    });
+    if (!candidates.length) return null;
+    candidates.sort(function (a, b) { return b.score - a.score; });
+    var best = candidates[0];
+
+    // Blank every occurrence, so nothing of the answer survives in the prompt.
+    var blanked = best.sentence.replace(new RegExp('\\b' + quizEscapeRe(best.term) + '\\b', 'gi'), '_____');
+    if (blanked === best.sentence) return null;   // the term was not found verbatim
+
+    var distractors = quizDistractors(pool, best.term.toLowerCase(), best.term.length, 3);
+    if (distractors.length < 2) return null;      // no honest question without real options
+
+    return {
+        kind: 'cloze',
+        question: blanked,
+        correct: best.term,
+        options: [best.term].concat(distractors).sort(function () { return Math.random() - 0.5; }),
+        why: best.sentence,
+        sourceId: note.id,
+        sourceText: String(note.text).slice(0, 120),
+        promptKey: 'quiz_fill_blank'
+    };
+}
+
+function quizBuildCloze(notes, count, pool) {
+    var used = {}, questions = [];
+    notes.forEach(function (note) {
+        if (questions.length >= count) return;
+        var q = quizClozeQuestion(note, pool);
+        if (!q) return;
+        var key = q.question.toLowerCase();
+        if (used[key]) return;
+        used[key] = true;
+        questions.push(q);
+    });
+    return questions;
+}
+
+/**
+ * Order notes by what is worth asking next: never-asked first, then the weakest
+ * accuracy, then the one left alone longest. Plain random sampling re-asked the
+ * same notes while others were never touched.
+ */
+function quizPickNotes(notes, count) {
+    var rows = notes.map(function (note) {
+        var s = note.quizStats || {};
+        var asked = Number(s.asked) || 0;
+        return {
+            note: note,
+            asked: asked,
+            accuracy: asked ? (Number(s.correct) || 0) / asked : -1,
+            lastAskedAt: Number(s.lastAskedAt) || 0
+        };
+    });
+    rows.sort(function (a, b) {
+        if ((a.asked === 0) !== (b.asked === 0)) return a.asked === 0 ? -1 : 1;
+        if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+        if (a.lastAskedAt !== b.lastAskedAt) return a.lastAskedAt - b.lastAskedAt;
+        return Math.random() - 0.5;
+    });
+    return rows.slice(0, count).map(function (r) { return r.note; });
+}
+
+function quizBatches(notes, budget) {
+    var batches = [], current = [], size = 0;
+    notes.forEach(function (note) {
+        var text = String(note.text).slice(0, 400);
+        if (current.length && size + text.length > budget) {
+            batches.push(current);
+            current = [];
+            size = 0;
+        }
+        current.push({ id: note.id, text: text });
+        size += text.length;
+    });
+    if (current.length) batches.push(current);
+    return batches;
+}
+
+/* Is the answer actually in the note a question claims to come from? */
+function quizSourceMatches(noteText, answer) {
+    var text = String(noteText || '').toLowerCase();
+    var ans = String(answer || '').toLowerCase().trim();
+    if (!text || !ans) return false;
+    if (text.indexOf(ans) !== -1) return true;
+    // Paraphrased answers: fall back to the answer's most distinctive word.
+    var words = ans.split(/[^a-z0-9\u00c0-\u024f]+/).filter(function (w) { return w.length >= 5; });
+    if (!words.length) return false;
+    words.sort(function (a, b) { return b.length - a.length; });
+    return text.indexOf(words[0]) !== -1;
+}
+
+/**
+ * Keep only well-formed questions, and reject the classic giveaway where the
+ * correct answer is by far the longest option - a model that pads the right
+ * answer produces a question that can be answered without knowing anything.
+ */
+function quizCleanAi(raw, batch, remaining) {
+    if (!Array.isArray(raw)) return [];
+    var byIndex = {};
+    batch.forEach(function (n, i) { byIndex[i + 1] = n; });
+    var seen = {}, out = [];
+    raw.slice(0, remaining).forEach(function (q) {
+        if (!q || typeof q.question !== 'string' || typeof q.correct !== 'string') return;
+        if (!Array.isArray(q.wrong)) return;
+        var correct = q.correct.trim();
+        if (!correct) return;
+
+        var wrongs = [];
+        q.wrong.slice(0, 6).forEach(function (w) {
+            if (typeof w !== 'string') return;
+            var t = w.trim();
+            if (!t || t.toLowerCase() === correct.toLowerCase()) return;
+            if (wrongs.indexOf(t) === -1) wrongs.push(t);
+        });
+        if (wrongs.length < 2) return;
+
+        // Reject a length giveaway, but only when the gap is large in both
+        // relative and absolute terms: "Newtons second law" against "Ohms law"
+        // is a good question, not a giveaway, so the rule must not fire on a
+        // handful of characters.
+        var lens = wrongs.map(function (w) { return w.length; });
+        var shortest = Math.min.apply(null, lens);
+        var longest = Math.max.apply(null, lens);
+        if (correct.length >= 8 && shortest >= 3) {
+            if (correct.length > Math.max(longest * 2.5, longest + 40)) return;
+            if (shortest > Math.max(correct.length * 2.5, correct.length + 40)) return;
+        }
+
+        var text = q.question.trim();
+        var qKey = text.toLowerCase();
+        if (!text || seen[qKey]) return;
+        seen[qKey] = true;
+
+        // A model can cite the wrong note. A wrong "from your note" claim - and
+        // the quiz stats it would pollute - is worse than none, so the question
+        // keeps its place but loses the attribution when the answer is not in
+        // the note it pointed at.
+        var src = byIndex[q.sourceIndex] || null;
+        if (src && !quizSourceMatches(src.text, correct)) src = null;
+        out.push({
+            kind: 'ai',
+            question: text,
+            correct: correct,
+            options: [correct].concat(wrongs.slice(0, 3)).sort(function () { return Math.random() - 0.5; }),
+            why: typeof q.why === 'string' && q.why.trim() ? q.why.trim().slice(0, 300) : '',
+            sourceId: src ? src.id : null,
+            sourceText: src ? String(src.text).slice(0, 120) : '',
+            promptKey: null
+        });
+    });
+    return out;
+}
+
+function quizAiBatch(batch, remaining) {
+    var corpus = batch.map(function (n, i) { return (i + 1) + '. ' + n.text; }).join('\n');
+    return StudyHubAI.chat([
+        {
+            role: 'system',
+            content: 'You write multiple-choice quiz questions from study notes. Reply with ONLY a JSON object: ' +
+                '{"questions":[{"question": string, "correct": string, "wrong": [three plausible but clearly wrong answers], "sourceIndex": number, "why": string}]}. ' +
+                '"sourceIndex" is the number of the note the question came from. "why" is one short sentence explaining the correct answer. ' +
+                'Every option must be similar in length and style to the correct answer so the answer is not obvious from its shape. ' +
+                'Write at most ' + remaining + ' questions. No markdown, no prose.'
+        },
+        { role: 'user', content: corpus }
+    ], { jsonMode: true, maxTokens: 1200, temperature: 0.5, timeoutMs: 40000 }).then(function (res) {
+        var j = StudyHubAI.parseJsonReply(res.text);
+        return quizCleanAi(j && j.questions, batch, remaining);
+    }).catch(function () { return []; });
+}
+
+/**
+ * Questions written by the configured provider.
+ *
+ * Notes are batched by size instead of truncating one corpus at 8000
+ * characters: that truncation (and the fixed 20-note slice) silently quizzed
+ * only the oldest notes in a large notebook. Batches are requested until the
+ * requested count is met or the notes run out.
+ */
+function quizAiQuestions(notes, count) {
+    if (typeof StudyHubAI === 'undefined') return Promise.resolve([]);
+    return StudyHubAI.status().then(function (st) {
+        if (!st || !st.configured) return [];
+        var batches = quizBatches(notes, 6000);
+        var collected = [];
+        function next(i) {
+            if (i >= batches.length || collected.length >= count) return Promise.resolve();
+            var remaining = count - collected.length;
+            return quizAiBatch(batches[i], remaining).then(function (qs) {
+                collected = collected.concat(qs);
+                return next(i + 1);
+            });
+        }
+        return next(0).then(function () { return collected; });
+    }).catch(function () { return []; });
+}
+
+function quizNoteById(data, id) {
+    var found = null;
+    (data.notes || []).forEach(function (n) { if (n.id === id) found = n; });
+    return found;
+}
+
+/* Remember how this note went, so later quizzes prefer the weak material. */
+function quizRecordAnswer(data, noteId, wasCorrect) {
+    var note = quizNoteById(data, noteId);
+    if (!note) return;
+    var s = note.quizStats || { asked: 0, correct: 0, lastAskedAt: 0 };
+    s.asked = (Number(s.asked) || 0) + 1;
+    if (wasCorrect) s.correct = (Number(s.correct) || 0) + 1;
+    s.lastAskedAt = Date.now();
+    note.quizStats = s;
+}
+
+/* Missed answers become cards, due today, for the flashcards page to surface. */
+function quizSaveMissed(data, missed) {
+    if (!missed.length) return 0;
+    if (!data.flashcards) data.flashcards = { decks: [] };
+    if (!Array.isArray(data.flashcards.decks)) data.flashcards.decks = [];
+
+    var deck = data.flashcards.decks.find(function (d) { return d.name === 'Auto from Quiz'; });
+    if (!deck) {
+        deck = { id: quizId(), name: 'Auto from Quiz', cards: [] };
+        data.flashcards.decks.push(deck);
+    }
+    if (!Array.isArray(deck.cards)) deck.cards = [];
+
+    var today = new Date().toISOString().slice(0, 10);
+    missed.forEach(function (q) {
+        deck.cards.push({
+            id: quizId(),
+            front: String(q.question || '').slice(0, 200),
+            back: String(q.correct || '').slice(0, 1000),
+            dueDate: today,
+            level: 0
+        });
+    });
+    return missed.length;
+}
+
+function quizRender() {
+    var container = quizContainer();
+    if (!container || !quizState) return;
+    if (quizState.index >= quizState.questions.length) { quizRenderResults(container); return; }
+
+    var total = quizState.questions.length;
+    var i = quizState.index;
+    var q = quizState.questions[i];
+    var answered = quizState.answers[i] || null;
+
+    var html = '<div class="quiz-progress">' +
+        '<div class="quiz-progress-row"><span>' + (i + 1) + ' / ' + total + '</span>' +
+        (quizState.engineKey ? '<span class="quiz-engine">' + quizEsc(getTranslation(quizState.engineKey)) + '</span>' : '') +
+        '</div><div class="quiz-progress-bar"><span style="width:' + Math.round((i / total) * 100) + '%"></span></div>' +
+        '</div>';
+
+    html += '<div class="quiz-question"><h4>' +
+        (q.promptKey ? '<span class="quiz-prompt">' + quizEsc(getTranslation(q.promptKey)) + '</span> ' : '') +
+        quizEsc(q.question) + '</h4><div class="quiz-options">';
+    q.options.forEach(function (opt, idx) {
+        var cls = 'quiz-option';
+        if (answered) {
+            if (opt === q.correct) cls += ' correct';
+            else if (opt === answered.chosen) cls += ' wrong';
+        }
+        html += '<button type="button" class="' + cls + '" data-idx="' + idx + '"' + (answered ? ' disabled' : '') + '>' + quizEsc(opt) + '</button>';
+    });
+    html += '</div>';
+
+    if (answered) {
+        html += '<div class="quiz-feedback ' + (answered.correct ? 'is-correct' : 'is-wrong') + '">' +
+            '<p class="quiz-verdict">' + quizEsc(answered.correct ? q.correct : answered.chosen + ' \u2192 ' + q.correct) + '</p>' +
+            (q.why ? '<p class="quiz-why">' + quizEsc(q.why) + '</p>' : '') +
+            (q.sourceText ? '<p class="quiz-source">' + quizEsc(getTranslation('quiz_source')) + ': ' + quizEsc(q.sourceText) + '</p>' : '') +
+            '</div>' +
+            '<div class="del-history-buttons"><button type="button" id="quizNextBtn" class="btn-primary-sm">' +
+            quizEsc(getTranslation(i + 1 === total ? 'quiz_results' : 'quiz_next')) +
+            ' <i class="ph ph-arrow-right" aria-hidden="true"></i></button></div>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.quiz-option').forEach(function (btn) {
+        btn.addEventListener('click', function () { quizAnswer(parseInt(this.dataset.idx, 10)); });
+    });
+    var nextBtn = document.getElementById('quizNextBtn');
+    if (nextBtn) nextBtn.addEventListener('click', quizAdvance);
+}
+
+function quizAnswer(optionIndex) {
+    if (!quizState || quizState.answers[quizState.index]) return;
+    var q = quizState.questions[quizState.index];
+    var chosen = q.options[optionIndex];
+    if (chosen == null) return;
+    quizState.answers[quizState.index] = { chosen: chosen, correct: chosen === q.correct };
+    quizRender();
+}
+
+function quizAdvance() {
+    if (!quizState) return;
+    quizState.index++;
+    if (quizState.index >= quizState.questions.length) quizFinish();
+    quizRender();
+}
+
+/* Score once per attempt: stats, flashcards and the activity entry. */
+function quizFinish() {
+    if (!quizState || quizState.persisted) return;
+    quizState.persisted = true;
+
     var data = loadData();
-    var notes = data.notes || [];
-    if (notes.length < 3) {
-        container.innerHTML = '<p class="empty-state">' + escapeUserHtml(getTranslation('ai_quiz_empty')) + '</p>';
+    var correct = 0, missed = [];
+    quizState.questions.forEach(function (q, i) {
+        var a = quizState.answers[i];
+        var ok = !!(a && a.correct);
+        if (ok) correct++; else missed.push(q);
+        if (q.sourceId) quizRecordAnswer(data, q.sourceId, ok);
+    });
+
+    quizState.score = { correct: correct, total: quizState.questions.length };
+    quizState.missed = missed;
+    quizState.cardsAdded = quizSaveMissed(data, missed);
+
+    // addActivity() persists the document, so the stats and cards land with it.
+    addActivity(data, 'quiz', 'Scored ' + correct + '/' + quizState.questions.length + ' on a quiz');
+}
+
+function quizRenderResults(container) {
+    var s = quizState.score || { correct: 0, total: quizState.questions.length };
+    var pct = s.total ? Math.round((s.correct / s.total) * 100) : 0;
+    var missed = quizState.missed || [];
+
+    var html = '<div class="quiz-question quiz-results"><h4>' + quizEsc(getTranslation('quiz_results')) + '</h4>' +
+        '<div class="quiz-score"><span class="quiz-score-value">' + s.correct + '/' + s.total + '</span>' +
+        '<span class="quiz-score-label">' + quizEsc(getTranslation('quiz_score')) + ' \u00b7 ' + pct + '%</span></div>';
+
+    if (quizState.cardsAdded) {
+        html += '<p class="quiz-hint">' + quizEsc(getTranslation('quiz_cards_saved')) + '</p>';
+    }
+
+    if (missed.length) {
+        html += '<div class="quiz-review"><h5>' + quizEsc(getTranslation('quiz_review')) + ' \u00b7 ' + missed.length + '</h5>';
+        missed.forEach(function (q) {
+            html += '<div class="quiz-review-item"><p class="quiz-review-q">' + quizEsc(q.question) + '</p>' +
+                '<p class="quiz-review-a">' + quizEsc(q.correct) + '</p>' +
+                (q.why && q.why !== q.correct ? '<p class="quiz-why">' + quizEsc(q.why) + '</p>' : '') +
+                '</div>';
+        });
+        html += '</div>';
+        html += '<div class="del-history-buttons"><button type="button" id="quizRetryMissed" class="btn-primary-sm">' +
+            '<i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> ' + quizEsc(getTranslation('quiz_retry_missed')) +
+            '</button></div>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    var retry = document.getElementById('quizRetryMissed');
+    if (retry) retry.addEventListener('click', quizRetryMissed);
+}
+
+function quizRetryMissed() {
+    if (!quizState || !quizState.missed || !quizState.missed.length) return;
+    quizState = { questions: quizState.missed.slice(), index: 0, answers: [], engineKey: null, persisted: false };
+    quizRender();
+}
+
+function generateQuizFromNotes() {
+    var container = quizContainer();
+    if (!container) return;
+
+    var data = loadData();
+    var notes = (data.notes || []).filter(function (n) {
+        return n && String(n.text == null ? '' : n.text).trim().length >= 30;
+    });
+    if (!notes.length) {
+        quizState = null;
+        container.innerHTML = '<p class="empty-state">' + quizEsc(getTranslation('ai_quiz_empty')) + '</p>';
         return;
     }
+
     var countSel = document.getElementById('quizCountSelect');
-    var count = countSel ? parseInt(countSel.value) : 10;
-    count = Math.min(count, notes.length);
+    var count = countSel ? parseInt(countSel.value, 10) : 10;
+    if (!count || count < 1) count = 10;
 
-    function esc(s) { return escapeUserHtml(String(s)); }
+    var picked = quizPickNotes(notes, count);
+    var cloze = quizBuildCloze(picked, count, quizTermPool(notes));
 
-    function renderQuiz(questions, engineNote) {
-        var html = engineNote ? '<p class="empty-state">' + esc(engineNote) + '</p>' : '';
-        html += questions.map(function(q, i) {
-            return '<div class="quiz-question" data-idx="' + i + '"><h4>Q' + (i+1) + '. ' + esc(q.question) + '</h4><div class="quiz-options">' +
-                q.options.map(function(opt) {
-                    return '<button class="quiz-option" data-correct="' + (opt === q.correct) + '">' + esc(opt) + '</button>';
-                }).join('') +
-                '</div></div>';
-        }).join('');
-        container.innerHTML = html;
-
-        container.querySelectorAll('.quiz-option').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var isCorrect = this.dataset.correct === 'true';
-                var parent = this.parentElement;
-                if (parent.dataset.answered) return;
-                parent.dataset.answered = 'true';
-                if (isCorrect) {
-                    this.classList.add('correct');
-                } else {
-                    this.classList.add('wrong');
-                    parent.querySelectorAll('.quiz-option').forEach(function(b) {
-                        if (b.dataset.correct === 'true') b.classList.add('correct');
-                    });
-                }
-            });
+    function start(questions, engineKey) {
+        var seen = {}, unique = [];
+        questions.forEach(function (q) {
+            var key = String(q.question).toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            unique.push(q);
         });
+        if (!unique.length) {
+            quizState = null;
+            container.innerHTML = '<p class="empty-state">' + quizEsc(getTranslation('ai_quiz_empty')) + '</p>';
+            return;
+        }
+        quizState = { questions: unique.slice(0, count), index: 0, answers: [], engineKey: engineKey, persisted: false };
+        quizRender();
     }
 
-    function localQuiz() {
-        var shuffled = notes.slice().sort(function() { return Math.random() - 0.5; }).slice(0, count);
-        var questions = [];
-        shuffled.forEach(function(correctNote) {
-            var wrongs = notes.filter(function(n) { return n.id !== correctNote.id; })
-                              .sort(function() { return Math.random() - 0.5; })
-                              .slice(0, 3)
-                              .map(function(n) { return n.text; });
-            while (wrongs.length < 3) wrongs.push('None of the above (' + wrongs.length + ')');
-            var options = [correctNote.text].concat(wrongs).sort(function() { return Math.random() - 0.5; });
-            questions.push({
-                question: 'Which of the following is one of YOUR notes?',
-                correct: correctNote.text,
-                options: options
-            });
-        });
-        renderQuiz(questions, getTranslation('ai_quiz_offline'));
-    }
-
-    // AI path: real questions authored from the note contents.
-    StudyHubAI.status().then(function (st) {
-        if (!st.configured) { localQuiz(); return undefined; }
-        var corpus = notes.slice(0, 20).map(function (n, i) { return (i + 1) + '. ' + String(n.text).slice(0, 300); }).join('\n');
-        return StudyHubAI.chat([
-            { role: 'system', content: 'You create multiple-choice quizzes from study notes. Reply with ONLY a JSON object: {"questions": [{"question": string, "correct": string, "wrong": [three wrong answer strings]}]} with at most ' + count + ' questions. Distractors must be plausible but clearly wrong. No markdown, no prose.' },
-            { role: 'user', content: corpus.slice(0, 8000) }
-        ], { jsonMode: true, maxTokens: 1200, temperature: 0.5, timeoutMs: 40000 }).then(function (res) {
-            var j = StudyHubAI.parseJsonReply(res.text);
-            var qs = j && Array.isArray(j.questions) ? j.questions : [];
-            var clean = qs.filter(function (q) {
-                return q && typeof q.question === 'string' && typeof q.correct === 'string' &&
-                    Array.isArray(q.wrong) && q.wrong.length >= 2 &&
-                    q.wrong.every(function (w) { return typeof w === 'string'; });
-            }).slice(0, count).map(function (q) {
-                var options = [q.correct].concat(q.wrong.slice(0, 3)).sort(function () { return Math.random() - 0.5; });
-                return { question: q.question, correct: q.correct, options: options };
-            });
-            if (clean.length < 2) { localQuiz(); return undefined; }
-            renderQuiz(clean, null);
-        }).catch(function () { localQuiz(); });
-    }).catch(function () { localQuiz(); });
+    quizAiQuestions(picked, count).then(function (aiQuestions) {
+        if (aiQuestions && aiQuestions.length) {
+            // Provider questions first, topped up with cloze so the requested
+            // count is met instead of falling back wholesale. The badge is for
+            // the heuristic path only - saying "connect a provider key" while a
+            // key is answering would be a lie, and each cloze question carries
+            // its own "fill in the blank" label anyway.
+            start(aiQuestions.concat(cloze), null);
+            return;
+        }
+        start(cloze, 'ai_quiz_offline');
+    }).catch(function () { start(cloze, 'ai_quiz_offline'); });
 }
 
 // ================================================================
@@ -6443,8 +7021,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (genQuizBtn) genQuizBtn.addEventListener('click', generateQuizFromNotes);
     var clearQuizBtn = document.getElementById('clearQuizBtn');
     if (clearQuizBtn) clearQuizBtn.addEventListener('click', function() {
+        quizState = null;   // no half-finished attempt left in memory
         var c = document.getElementById('quizContainer');
         if (c) c.innerHTML = '';
+    });
+
+    // The quiz is built from JS, so the app's own [data-i18n] pass cannot
+    // translate it: an attempt in progress redraws itself on a language change.
+    // The delay matches refreshNewElements(): let applyTranslations() run first.
+    var quizLangSel = document.getElementById('langSelector');
+    if (quizLangSel) quizLangSel.addEventListener('change', function() {
+        setTimeout(function () { if (quizState) quizRender(); }, 30);
     });
 
     // Auto Flashcards

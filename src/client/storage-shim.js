@@ -157,7 +157,7 @@
     /* Expose the storage layer for debugging / manual logout wiring. */
     window.studyhubApi = api;
     window.studyhubLogout = function () {
-        api('/auth/logout', { method: 'POST' }).then(function () {
+        return api('/auth/logout', { method: 'POST' }).then(function () {
             try {
                 localStorage.removeItem(CACHE_KEY);
                 localStorage.removeItem(USER_KEY);
@@ -165,6 +165,60 @@
             location.href = '/login.html';
         });
     };
+
+    /*
+     * Sign-out control for the student header.
+     *
+     * The 11 student pages share one nav -- a curated `.nav-links` list plus a
+     * `.nav-right` cluster holding the language selector, Trash and the Focus
+     * toggle -- and every one of them loads this shim, so the control is mounted
+     * here instead of being duplicated into 11 HTML files. It reuses the
+     * existing `.focus-toggle` button styling, so the header gains a control
+     * without gaining a new visual language. Pages with no nav (login.html)
+     * simply get nothing.
+     */
+    function mountLogout() {
+        var right = document.querySelector('.nav-right');
+        if (!right || document.getElementById('logoutBtn')) return;
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'logoutBtn';
+        btn.className = 'focus-toggle';
+        btn.title = 'Sign out of StudyHub';
+
+        var icon = document.createElement('i');
+        icon.className = 'ph ph-sign-out';
+        icon.setAttribute('aria-hidden', 'true');
+        btn.appendChild(icon);
+
+        // The label is a separate span so the shared i18n pass (which
+        // overwrites [data-i18n] textContent) never wipes the icon.
+        var label = document.createElement('span');
+        label.setAttribute('data-i18n', 'sign_out');
+        label.textContent = 'Sign out';
+        btn.appendChild(label);
+
+        btn.addEventListener('click', function () {
+            btn.disabled = true;
+            window.studyhubLogout().catch(function () {
+                // Only the server clears the session cookie, so a failed request
+                // must not pretend the user is signed out.
+                btn.disabled = false;
+                alert('Could not sign out. Check your connection and try again.');
+            });
+        });
+
+        right.appendChild(btn);
+
+        // This button is added after the page's own i18n pass has run, so apply
+        // the saved language to it once (the language switcher handles the rest).
+        if (typeof applyTranslations === 'function') {
+            var saved = null;
+            try { saved = localStorage.getItem('studyHubLang'); } catch (e) { /* ignore */ }
+            applyTranslations(saved || 'en');
+        }
+    }
 
     /* ---------- auth gate + authoritative load ---------- */
     function gate() {
@@ -248,8 +302,9 @@
     });
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', gate);
+        document.addEventListener('DOMContentLoaded', function () { gate(); mountLogout(); });
     } else {
         gate();
+        mountLogout();
     }
 })();

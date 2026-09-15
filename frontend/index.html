@@ -87,6 +87,22 @@
             </div>
         </div>
 
+        <!-- History modal: same overlay pattern as the calendar -->
+        <div class="history-modal" id="historyModal" style="display:none;">
+            <div class="history-modal-content">
+                <div class="history-modal-header">
+                    <span data-i18n="all_history">All History</span>
+                    <button type="button" id="historyCloseBtn" class="modal-close-btn" title="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+                </div>
+                <div class="activity-list" id="historyActivity">
+                    <p class="empty-state" data-i18n="no_history">No history recorded yet.</p>
+                </div>
+                <div class="del-history-buttons">
+                    <button id="deleteAllBtn" class="btn-danger-sm"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_all">Delete All History</span></button>
+                </div>
+            </div>
+        </div>
+
       <header class="dash-header">
             <div>
                 <h1><span class="hl-purple"><i class="ph ph-squares-four" aria-hidden="true"></i></span> <span class="neon-text" data-i18n="dash_title">Dashboard</span></h1>
@@ -239,37 +255,20 @@
             <!-- RIGHT: RECORDS SIDEBAR (aligned vertically) -->
             <aside class="dash-sidebar">
 
-                <!-- Today's Activity -->
-                <section class="glass-card activity-section today-section">
-                    <div class="section-header">
-                        <h2 class="card-title"><span class="hl-cyan"><i class="ph ph-push-pin" aria-hidden="true"></i></span> <span data-i18n="today_activity">Today's Activity</span></h2>
-                        <span class="section-badge" id="todayCount">0 <span data-i18n="entries">entries</span></span>
-                    </div>
-                    <div class="activity-list" id="todayActivity">
-                        <p class="empty-state" data-i18n="no_activity">No activity recorded today yet.</p>
-                    </div>
-                    <div class="del-history-buttons">
-                        <button id="deleteTodayBtn" class="btn-danger-sm"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_today">Delete Today's Activity</span></button>
-                    </div>
-                </section>
-
                 <!-- Upcoming Assignments -->
                 <section class="glass-card assignments-section">
                     <h2 class="card-title"><span class="hl-red"><i class="ph ph-push-pin" aria-hidden="true"></i></span> <span data-i18n="upcoming_assignments">Upcoming Assignments</span></h2>
                     <div id="upcomingAssignments"><p class="empty-state" data-i18n="no_assignments">No pending assignments.</p></div>
                 </section>
 
-                <!-- All History -->
+                <!-- History: the list itself opens as an overlay, like the calendar -->
                 <section class="glass-card history-section all-history-section">
                     <div class="section-header">
                         <h2 class="card-title"><span class="hl-purple"><i class="ph ph-scroll" aria-hidden="true"></i></span> <span data-i18n="all_history">All History</span></h2>
                         <span class="section-badge" id="historyCount">0 <span data-i18n="entries">entries</span></span>
                     </div>
-                    <div class="activity-list" id="historyActivity">
-                        <p class="empty-state" data-i18n="no_history">No history recorded yet.</p>
-                    </div>
                     <div class="del-history-buttons">
-                        <button id="deleteAllBtn" class="btn-danger-sm"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_all">Delete All History</span></button>
+                        <button id="historyOpenBtn" class="btn-primary-sm"><i class="ph ph-archive" aria-hidden="true"></i> <span data-i18n="open_history">Open history</span></button>
                     </div>
                 </section>
 

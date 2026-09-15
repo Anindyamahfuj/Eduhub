@@ -157,19 +157,27 @@ function createSqliteShim() {
 
   const db = openDb();
 
+  // NOTE: all()/first()/run() are declared async on purpose. D1's interface is
+  // promise-based, and app code relies on that beyond plain `await` -- e.g.
+  // routes/admin.ts uses `.first().catch(() => fallback)` for best-effort
+  // queries (table counts, audit aggregates). Returning a bare value here made
+  // those calls throw "(...).catch is not a function" and turned
+  // /api/admin/logs and /api/admin/data/tables into hard 500s. None of the
+  // three bodies awaits anything, so execution still happens synchronously on
+  // call: only the return type changes.
   class Stmt {
     constructor(sql, values) {
       this.sql = sql;
       this.values = values;
     }
-    all() {
+    async all() {
       const rows = db.prepare(this.sql).all(...this.values);
       return { results: Array.isArray(rows) ? rows : [] };
     }
-    first() {
+    async first() {
       return db.prepare(this.sql).get(...this.values) ?? null;
     }
-    run() {
+    async run() {
       const info = db.prepare(this.sql).run(...this.values);
       return {
         success: true,
@@ -186,7 +194,7 @@ function createSqliteShim() {
     },
     async batch(stmts) {
       const out = [];
-      for (const s of stmts) { s.run(); out.push({ success: true }); }
+      for (const s of stmts) { const r = await s.run(); out.push(r ?? { success: true }); }
       return out;
     },
     migrated: false,
