@@ -168,8 +168,8 @@ console.log('Build passed.');
 //    The app uses `.js` import specifiers for `.ts` files (standard TS
 //    convention), which Node ESM cannot resolve. esbuild bundles
 //    src/index.ts -> dist/server.mjs, self-contained and platform=node so
-//    `node:sqlite` stays an external runtime import. Both Vercel API
-//    functions import from this bundle.
+//    `node:sqlite` stays an external runtime import. The Next.js API
+//    catch-all (pages/api/[...route].js) imports from this bundle.
 try {
   const esbuild = await import('esbuild');
   const path = await import('node:path');

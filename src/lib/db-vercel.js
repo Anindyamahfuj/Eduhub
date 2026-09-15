@@ -22,8 +22,19 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+function defaultDir() {
+  // Vercel serverless functions have a read-only filesystem except /tmp.
+  // Opening the DB under the project dir works locally but crashes on Vercel
+  // (every /api/* call 500s), so use /tmp there.
+  // NOTE: /tmp is per-instance and ephemeral -- sessions/data do not survive
+  // Eviction or scale-out. A persistent DB (e.g. Vercel Postgres) is the
+  // follow-up if accounts must survive reliably.
+  if (process.env.VERCEL === '1') return '/tmp/studyhub-data';
+  return join(root, '.data');
+}
+
 function openDb() {
-  const path = process.env.DATABASE_URL || process.env.DB_PATH || join(root, '.data', 'studyhub.db');
+  const path = process.env.DATABASE_URL || process.env.DB_PATH || join(defaultDir(), 'studyhub.db');
   const dir = dirname(path);
   if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
   return new DatabaseSync(path, { open: true });
