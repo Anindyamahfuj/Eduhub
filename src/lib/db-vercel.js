@@ -22,6 +22,30 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+/**
+ * Locate the migrations/ directory.
+ *
+ * db-vercel.js is bundled by Next.js webpack for pages/api, which rewrites
+ * import.meta.url to the build output -- so the module-relative `root` above
+ * no longer points at the project. The server's working directory IS the
+ * project root both for local `next start` and on Vercel, so prefer that and
+ * only fall back to the module-relative path. (When neither resolves, the
+ * previous code silently skipped migrations, leaving an empty DB where every
+ * table access threw -- all /api/* writes 500ed while reads like /api/health
+ * kept working, which made the failure look like an auth bug.)
+ */
+function findMigrationsDir() {
+  const candidates = [join(process.cwd(), 'migrations'), join(root, 'migrations')];
+  for (const dir of candidates) {
+    try {
+      if (existsSync(dir)) return dir;
+    } catch {
+      /* ignore and try the next candidate */
+    }
+  }
+  return null;
+}
+
 function defaultDir() {
   // Vercel serverless functions have a read-only filesystem except /tmp.
   // Opening the DB under the project dir works locally but crashes on Vercel
@@ -93,23 +117,36 @@ export class D1Shim {
   /** Apply migrations/*.sql once, idempotently. */
   ensureMigrated() {
     if (this.migrated) return;
-    this.migrated = true;
-    const migDir = join(root, 'migrations');
-    if (!existsSync(migDir)) return;
+    const migDir = findMigrationsDir();
+    if (!migDir) {
+      console.error('[db-vercel] FATAL: migrations/ directory not found; API DB calls will fail.');
+      return;
+    }
     const files = readdirSync(migDir)
       .filter((f) => f.endsWith('.sql'))
       .sort();
-    // node:sqlite's DatabaseSync has no transaction() API, and migrations use
-    // CREATE TABLE IF NOT EXISTS so they are idempotent and safe to run
-    // sequentially without one.
+    // node:sqlite's DatabaseSync has no transaction() API. Most statements are
+    // CREATE TABLE IF NOT EXISTS, but some migrations use ALTER TABLE ...
+    // ADD COLUMN (no IF NOT EXISTS form) or seed INSERTs with fixed ids --
+    // both fail on re-run. The migrations themselves must stay untouched, so
+    // idempotency is enforced here: re-run artefacts ("already exists",
+    // "duplicate column", UNIQUE seed conflicts) are skipped, anything else
+    // is rethrown.
     for (const f of files) {
       const sql = readFileSync(join(migDir, f), 'utf8');
       for (const stmt of splitSql(sql)) {
         const trimmed = stmt.trim();
         if (!trimmed) continue;
-        this.db.prepare(trimmed).run();
+        try {
+          this.db.prepare(trimmed).run();
+        } catch (err) {
+          const msg = err && err.message ? String(err.message) : '';
+          if (/already exists|duplicate column|UNIQUE constraint failed/i.test(msg)) continue;
+          throw err;
+        }
       }
     }
+    this.migrated = true;
   }
 }
 
