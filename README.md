@@ -1,197 +1,192 @@
-# StudyHub
+<p align="center">
+  <img src="frontend/logoedu.png" alt="StudyHub Logo" width="100">
+</p>
 
-StudyHub is an all-in-one digital academic workspace for students: notes, assignments, planner, flashcards, files, habits, notices, reading list, calculator, AI tools and a progress dashboard — all in one place.
+<h1 align="center">StudyHub</h1>
 
-This repository is the **full-stack** version. The original project was a purely static site whose data lived only in `localStorage`. The frontend is preserved **byte-for-byte**; a minimal backend (Hono + Cloudflare Pages Functions + D1) now acts as the authoritative data store, with `localStorage` retained as an offline cache.
+<p align="center">
+  All-in-one digital academic workspace for students.<br>
+  Notes · Assignments · Planner · Flashcards · Files · Habits · Reading · Calculator · AI Tools
+</p>
+
+<p align="center">
+  <a href="https://eduhub-lac.vercel.app"><img src="https://img.shields.io/badge/-Vercel-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Deploy"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3fd2b0?style=for-the-badge" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Node-22.x-3fd2b0?style=for-the-badge&logo=node.js&logoColor=white" alt="Node">
+  <img src="https://img.shields.io/badge/Backend-Hono-3fd2b0?style=for-the-badge" alt="Hono">
+  <img src="https://img.shields.io/badge/DB-Turso-3fd2b0?style=for-the-badge&logo=sqlite&logoColor=white" alt="Turso">
+</p>
+
+---
+
+## What is StudyHub?
+
+A full-featured student dashboard that runs in the browser. Originally a static `localStorage`-only app, it now has a real backend with persistent storage, email/password auth, and a developer admin panel — while keeping the original frontend intact.
+
+| Module | What it does |
+|--------|-------------|
+| **Dashboard** | Progress overview, focus mode, quick stats |
+| **Notes** | Rich notes with scored quizzes generated from content |
+| **Assignments** | Track, filter, and complete assignments |
+| **Planner** | Weekly study schedule with drag-and-drop |
+| **Habits** | Daily habit tracker with streaks |
+| **Flashcards** | Spaced-repetition flashcard review |
+| **Files** | Upload and manage study files |
+| **Reading** | Reading list with progress tracking |
+| **Calculator** | Scientific calculator |
+| **AI Tools** | OpenAI-compatible scaffold (bring your own key) |
+
+---
 
 ## Stack
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | Original StudyHub HTML/CSS/JS — unchanged |
-| API | Hono on Cloudflare Pages Functions / Vercel Serverless Functions |
-| Database | Cloudflare D1 (SQLite) / Vercel (node:sqlite) |
-| Auth | Email + password, PBKDF2-HMAC-SHA256, D1-backed sessions |
-| File storage | Local (D1-backed blobs) during development; R2-ready abstraction |
-| AI | OpenAI-compatible scaffold — no LLM call enabled yet |
+| Layer | Tech |
+|-------|------|
+| Frontend | Vanilla HTML/CSS/JS — original code preserved byte-for-byte |
+| Framework | Next.js (Pages Router) for Vercel deployment |
+| API | Hono — lightweight, fast, edge-ready |
+| Database | Turso (libSQL) on Vercel, D1 on Cloudflare |
+| Auth | Email + password, PBKDF2-HMAC-SHA256, HttpOnly cookies |
+| Design | Space Grotesk + DM Sans, single mint accent `#3fd2b0` |
 
-## URLs
+---
 
-- **Local**: http://localhost:3000
-- **Vercel**: https://studyhub-ruddy.vercel.app
-- **Cloudflare**: https://studyhub-b3t.pages.dev
-- **Original upstream**: https://github.com/Anindyamahfuj/Eduhub
+## Quick Start
 
-## How the frontend stays unchanged
+```bash
+# Clone
+git clone https://github.com/Anindyamahfuj/Eduhub.git
+cd Eduhub
 
-`frontend/` holds the original StudyHub files **byte-for-byte**. At build time
-`scripts/build.mjs` copies them to `public/` and appends `src/client/storage-shim.js`
-to `script.js`. The build hard-fails unless the original 430,574 bytes remain an
-exact prefix of the shipped file, so drift is impossible.
+# Install
+npm install
 
-The shim overrides **only** `window.loadData` / `window.saveData`
-(`script.js` is a classic script, so its top-level declarations are global
-properties; reassigning them redirects all ~112 existing call sites). No HTML,
-CSS, DOM id/class, markup or interaction is altered.
+# Build frontend + bundle backend
+npm run build
 
-`public/_redirects` preserves the original `.html` URLs (Pages would otherwise
-308-redirect `/notes.html` → `/notes`, breaking the frontend's own
-`location.pathname` checks).
+# Start dev server
+npm run dev
+```
 
-## Data architecture
+Open **http://localhost:3000** — you're in.
 
-- **Users** — email + password hash (PBKDF2-HMAC-SHA256, 100k iterations), one row per account.
-- **Sessions** — random 256-bit token; only its SHA-256 hash is stored. Delivered as an HttpOnly, SameSite=Lax cookie.
-- **Workspaces** — one row per user containing the entire `studyHubData` document as JSON, mirroring the frontend's existing state shape.
-- **Files** — one row per file. `data` holds the base64 payload for the local driver; `storage_key` holds the R2 object key once `STORAGE_DRIVER=r2`. The API re-hydrates `files[].data` as a data URL on read, so `openFile()` is untouched.
+---
 
-Every data route is authenticated and strictly scoped to the requesting user, so accounts are isolated from one another.
+## Project Structure
+
+```
+├── frontend/          Student UI (HTML/CSS/JS) — the core app
+├── src/               Hono backend (routes, libs, DB shim)
+├── pages/             Next.js pages — bridge between Vercel and frontend
+├── admin/             Admin panel (CSS + JS)
+├── migrations/        SQL schema (D1/Turso)
+├── scripts/           Build, test, and utility scripts
+├── public/            Built output (auto-generated)
+└── vercel.json        Vercel routing config
+```
+
+---
 
 ## API
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/api/auth/register` | Create an account |
+<details>
+<summary><strong>Auth</strong></summary>
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Create account |
 | POST | `/api/auth/login` | Sign in |
 | POST | `/api/auth/logout` | Sign out |
 | GET | `/api/auth/me` | Current user |
-| GET | `/api/workspace` | Fetch the workspace document |
-| PUT | `/api/workspace` | Persist the workspace document |
-| POST | `/api/workspace/reset` | Reset the workspace to defaults |
-| GET | `/api/files` | List uploaded files |
-| POST | `/api/files` | Store uploaded files |
-| DELETE | `/api/files/:id` | Delete one file |
+
+</details>
+
+<details>
+<summary><strong>Workspace</strong></summary>
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/workspace` | Fetch workspace data |
+| PUT | `/api/workspace` | Save workspace data |
+| POST | `/api/workspace/reset` | Reset to defaults |
+
+</details>
+
+<details>
+<summary><strong>Files</strong></summary>
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/files` | List files |
+| POST | `/api/files` | Upload file |
+| DELETE | `/api/files/:id` | Delete file |
 | DELETE | `/api/files` | Delete all files |
-| GET | `/api/ai/config` | AI provider status |
-| GET | `/api/ai/models` | OpenAI-compatible model list |
-| POST | `/api/ai/chat/completions` | OpenAI-compatible chat (returns 501 until configured) |
 
-### Developer admin API (`/api/admin/*`)
+</details>
 
-All of these are behind `requireDeveloper` — **401** unauthenticated, **403** for a
-non-developer, **200** for a developer. Authorization is decided on the server
-from `users.role`; nothing is decided in the browser.
+<details>
+<summary><strong>Admin (developer only)</strong></summary>
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/admin/whoami` | Confirm developer identity |
-| GET | `/api/admin/overview` | Counts, module totals, recent activity |
-| GET | `/api/admin/users` | Accounts (no hashes/tokens ever selected) |
-| POST | `/api/admin/users/:id/role` | Grant/revoke `developer` |
-| GET | `/api/admin/data` | Read-only workspace inspection |
-| GET | `/api/admin/data/tables` | Real table inventory |
-| GET | `/api/admin/files` | File metadata only |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/whoami` | Confirm identity |
+| GET | `/api/admin/overview` | Dashboard stats |
+| GET | `/api/admin/users` | List accounts |
+| GET | `/api/admin/data` | Workspace inspection |
 | GET | `/api/admin/logs` | Audit events |
-| GET | `/api/admin/system` | Live service checks |
-| GET | `/api/admin/ai` | AI configuration (no call made) |
+| GET | `/api/admin/system` | Health checks |
 
-## Developer admin panel
+</details>
 
-A basic developer-only panel lives at **`/admin`** with exactly seven sections:
-**Overview · Users · Data · Files · Logs · System · AI**.
+---
 
-- **Pages & UI** — `admin/` (own source dir, served from `/admin/*`). The student
-  frontend is untouched.
-- **Page guard** — `functions/admin/[[route]].ts` runs server-side for every
-  `/admin` request: unauthenticated → 302 `/login.html`; student → 403; developer
-  → panel. The shell is served from `src/client/admin-shell.js`, never a static
-  file, so the guard cannot be bypassed by requesting the HTML directly.
-- **API guard** — `requireDeveloper` (`src/lib/helpers.ts`) on `/api/admin/*`.
-- **Role** — `users.role` (`'student'` | `'developer'`), added by
-  `migrations/0002_admin.sql`. This is the only permission level.
-- **Bootstrap** — `node scripts/promote-admin.mjs grant <email> [--remote]`
-  (also `revoke`, `list`). Required because no developer exists on a fresh DB.
-- **Audit log** — `audit_logs` table via `src/lib/audit.ts`; records auth
-  register/login/login-failed/logout, authorization denials, admin views, role
-  changes, API errors and file-upload failures.
+## Admin Panel
 
-### Admin test suites
+A developer-only panel at `/admin` with seven sections: **Overview · Users · Data · Files · Logs · System · AI**.
+
+Bootstrap your first admin:
 
 ```bash
-# Authorization + sections + secrets + AI + logs
-bash scripts/admin-test.sh http://localhost:3000
-bash scripts/admin-test.sh https://studyhub-b3t.pages.dev   # targets prod D1
-
-# Rendering (jsdom) — every section must actually paint content
-node scripts/admin-render-test.mjs
-ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=... \
-  node scripts/admin-render-test.mjs https://studyhub-b3t.pages.dev
+node scripts/promote-admin.mjs grant you@example.com
 ```
 
-`admin-test.sh` covers the full authorization matrix, all seven sections, the
-no-secrets rule, the AI no-call rule and real log events.
-
-`admin-render-test.mjs` loads the real `admin.js` in jsdom and asserts each
-section renders cards/tables without throwing. It exists because a numeric-cell
-bug once made **Overview, Users and Data** show "Request failed." while the API
-was perfectly healthy — no API-level test could catch that. Run it after any
-change to `admin/admin.js`.
-
-## User guide
-
-1. Run the local server (see below) and open http://localhost:3000.
-2. Sign in, or create an account.
-3. Use any module — notes, assignments, planner, habits, flashcards, files, reading, calculator.
-4. Your data is saved to D1 and cached locally so the app keeps working offline.
-
-## Getting started
-
-```bash
-npm install
-npm run build
-npm run db:migrate:local
-npm start
-```
-
-Then open http://localhost:3000.
+---
 
 ## Deployment
 
-- **Platform**: Cloudflare Pages (own account, Free tier)
-- **Status**: ✅ Deployed (Free tier)
-- **D1**: studyhub-production (bd3d6fb7-7749-43ca-bcb0-48e614b4a14c)
-- **Verified**: health, register/login, workspace round-trip, byte-identical
-  script.js prefix, 48/48 API + 12/12 browser regression, 36/36 admin
-  authorization — all passing both locally and in production.
+### Vercel (primary)
 
-## AI integration
+```bash
+npm run build
+vercel --prod
+```
 
-The backend is OpenAI-compatible but the LLM call is intentionally **not** enabled yet. To connect a provider later, set:
+Set environment variables in the Vercel dashboard:
+- `TURSO_DATABASE_URL` — your Turso DB URL
+- `TURSO_AUTH_TOKEN` — your Turso auth token
+- `DEVELOPER_EMAILS` — comma-separated emails for admin access
 
-- `OPENAI_API_KEY`
-- `OPENAI_BASE_URL` (defaults to `https://api.openai.com/v1`)
-- `OPENAI_MODEL`
+### Cloudflare Pages
 
-No key or model is assumed. Set them as Cloudflare secrets at deploy time.
+The repo also deploys to Cloudflare Pages with D1. See `wrangler.jsonc` for config.
 
-## Notes
-
-- `enhance.js` from the original repository was **not** referenced by any page and is therefore excluded.
-- `login.html` is the only new page; it is required by the email/password auth decision and reuses the existing design tokens.
+---
 
 ## Roadmap
 
-- [ ] Connect a real OpenAI-compatible provider
-- [ ] Move file storage to R2 for production
-- [ ] Add a logout control to the existing navigation (behavioural change — pending approval)
+- [ ] Connect a real AI provider
+- [ ] File storage via R2
 - [ ] Custom domain
+- [ ] Mobile app (PWA)
 
+---
 
-## Deploying on Vercel
+## License
 
-This repo is authored for Cloudflare Pages, but it also deploys cleanly on
-Vercel. The differences:
+[MIT](LICENSE) — use it however you want.
 
-- `public/` is the served output (built by `scripts/build.mjs`). On Vercel it
-  must be committed; on Cloudflare Pages it is served directly from the build
-  output directory.
-- The admin shell is a static file (`public/admin/index.html`) on Vercel, and
-  is served only by `functions/admin/[[route]].ts` on Cloudflare Pages. The
-  generator (`scripts/generate-admin-page.mjs`) extracts the shell verbatim from
-  `src/client/admin-shell.js`, so both platforms ship identical markup.
-- The API runs on `node:sqlite` (a D1-compatible shim in `src/lib/db-vercel.ts`)
-  instead of a real D1 binding. Migrations apply automatically on first boot.
-- AI is opt-in: set `OPENAI_API_KEY` + `OPENAI_MODEL` (and optionally
-  `OPENAI_BASE_URL`) in the Vercel project environment.
- 
- 
+---
+
+<p align="center">
+  Built with care by <a href="https://github.com/Anindyamahfuj">Anindya Mahfuja</a>
+</p>
