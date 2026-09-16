@@ -284,6 +284,53 @@ adminRoutes.post('/users/:id/role', async (c) => {
   return ok({ id: targetId, role });
 });
 
+/**
+ * Kick a user out: delete every session row for the account, so the cookie they
+ * hold stops resolving on their next request. Revokes ACCESS, not data — files,
+ * the workspace document and the role are untouched.
+ *
+ * The acting developer cannot kick themselves: it would sign them out of the
+ * request they are making, and signing out is what the panel header is for.
+ */
+adminRoutes.post('/users/:id/sessions/revoke', async (c) => {
+  const actor = currentUser(c);
+  const targetId = c.req.param('id');
+
+  if (targetId === actor.id) {
+    return fail('You cannot kick out your own session. Use Sign out in the header instead.', 409);
+  }
+
+  const target = await c.env.DB.prepare('SELECT id, email FROM users WHERE id = ?')
+    .bind(targetId)
+    .first<{ id: string; email: string }>();
+  if (!target) return fail('User not found.', 404);
+
+  // Counted before the delete so the response can distinguish "signed out" from
+  // "this account had no live session to begin with".
+  const unexpired = await c.env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ?'
+  )
+    .bind(targetId, new Date().toISOString())
+    .first<{ n: number }>();
+
+  const deleted = await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?')
+    .bind(targetId)
+    .run();
+  const revoked = Number(deleted.meta?.changes ?? 0);
+  const signedOut = Number(unexpired?.n ?? 0);
+
+  await writeAudit(c.env, {
+    action: 'admin.sessions_revoke',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: target.email,
+    result: 'ok',
+    detail: `${revoked} session row(s) deleted, ${signedOut} was/were live`
+  });
+
+  return ok({ id: targetId, revoked, signedOut });
+});
+
 /* -------------------------------------------------------------------- Data */
 
 /** Read-only inspection of real workspaces. Contents are not bulk-exported. */

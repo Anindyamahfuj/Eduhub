@@ -240,7 +240,7 @@
 
         bodyEl.appendChild(section(
             'Accounts',
-            'Role changes take effect immediately and are recorded in the audit log. Passwords, hashes, tokens and session secrets are never selected.',
+            'Role changes and session revocations take effect immediately and are both recorded in the audit log. Passwords, hashes, tokens and session secrets are never selected.',
             table([
                 { label: 'Email', key: 'email', wrap: true },
                 { label: 'Role', render: function (r) {
@@ -252,19 +252,32 @@
                 { label: 'Workspace bytes', render: function (r) { return r.workspaceBytes ? bytes(r.workspaceBytes) : '-'; }, num: true },
                 { label: 'Sessions', key: 'sessionCount', num: true },
                 { label: 'Latest session expiry', render: function (r) { return fmtDate(r.latestSessionExpiry); } },
+                { label: 'Session control', render: function (r) {
+                    var b = el('button', { class: 'admin-btn-ghost', type: 'button' });
+                    b.appendChild(ph('sign-out'));
+                    b.appendChild(document.createTextNode(' Kick out'));
+                    if (!r.sessionCount) {
+                        b.disabled = true;
+                        b.title = 'No session rows for this account — nothing to revoke.';
+                    } else {
+                        b.title = 'Delete every session row for this account: they are signed out on their next request.';
+                        b.addEventListener('click', function () { kickOut(r, b, data.query); });
+                    }
+                    return b;
+                } },
                 { label: 'Authorization', render: function (r) {
                     var next = r.developer ? 'student' : 'developer';
                     var b = el('button', { class: 'admin-btn-ghost', type: 'button' });
                     b.appendChild(ph(r.developer ? 'prohibit' : 'shield-check'));
                     b.appendChild(document.createTextNode(' ' + (r.developer ? 'Revoke developer' : 'Grant developer')));
-                    b.addEventListener('click', function () { changeRole(r, next, b); });
+                    b.addEventListener('click', function () { changeRole(r, next, b, data.query); });
                     return b;
                 } }
             ], data.users || [])
         ));
     }
 
-    function changeRole(user, role, btn) {
+    function changeRole(user, role, btn, query) {
         btn.disabled = true;
         fetch('/api/admin/users/' + encodeURIComponent(user.id) + '/role', {
             method: 'POST',
@@ -279,8 +292,40 @@
                     btn.disabled = false;
                     return;
                 }
-                loadUsers('');
+                loadUsers(query || '');
             });
+        }).catch(function () { alert('Could not reach the server.'); btn.disabled = false; });
+    }
+
+    /**
+     * KICK OUT a user: DELETE every session row for the account, so the cookie
+     * they hold stops resolving and their next API request answers 401 — the
+     * student app then sends them to the login page.
+     *
+     * Access only, never data: files, the workspace document and the role are
+     * left exactly as they are, which is what the confirm text promises.
+     */
+    function kickOut(user, btn, query) {
+        var devNote = user.developer
+            ? ' This account is a developer, so it loses access to this panel until it signs in again.'
+            : '';
+        if (!window.confirm(
+            'Kick out ' + user.email + '?\n\n' +
+            'Every session row for this account is deleted, signing out every browser ' +
+            'and device it is logged in on.' + devNote +
+            '\n\nNo files, notes, settings or account data are deleted.'
+        )) return;
+
+        btn.disabled = true;
+        apiSend('POST', '/users/' + encodeURIComponent(user.id) + '/sessions/revoke', {}).then(function (res) {
+            if (!res.ok) {
+                alert((res.data && res.data.error) || 'Could not kick out this session.');
+                btn.disabled = false;
+                return;
+            }
+            // Nothing else to say: the reloaded row shows Sessions 0 and the
+            // button disables itself, which is the visible proof it took effect.
+            loadUsers(query || '');
         }).catch(function () { alert('Could not reach the server.'); btn.disabled = false; });
     }
 

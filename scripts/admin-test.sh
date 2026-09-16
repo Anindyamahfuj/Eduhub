@@ -195,6 +195,50 @@ if [ -n "$TOOL_ID" ]; then
 fi
 
 echo ""
+echo "Kick out: session revocation"
+
+# A dedicated account, so revoking its sessions cannot disturb $SJAR above.
+KICK_EMAIL="kick_${SUFFIX}@example.com"
+KJAR="$JAR_ROOT/kick.jar"
+reg "$KICK_EMAIL" "$KJAR"
+
+code=$(curl -s -b "$KJAR" -o /dev/null -w '%{http_code}' "$BASE/api/auth/me")
+check "victim authenticated before kick (200)" "$code" "200"
+
+KICK_ID=$(curl -s -b "$DJAR" "$BASE/api/admin/users?q=$KICK_EMAIL" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/admin/users/$KICK_ID/sessions/revoke")
+check "unauth -> kick out denied (401)" "$code" "401"
+
+code=$(curl -s -b "$SJAR" -o /dev/null -w '%{http_code}' -X POST "$BASE/api/admin/users/$KICK_ID/sessions/revoke")
+check "student -> kick out denied (403)" "$code" "403"
+
+REVOKED=$(curl -s -b "$DJAR" -X POST "$BASE/api/admin/users/$KICK_ID/sessions/revoke")
+echo "$REVOKED" | grep -q '"ok":true' && ok "developer -> kick out allowed" || bad "kick out failed: $REVOKED"
+echo "$REVOKED" | grep -q '"signedOut":1' && ok "kick out reports the live session it revoked" || bad "kick out should report 1 signed-out session"
+
+# The kick must actually end the old cookie, not just report success.
+code=$(curl -s -b "$KJAR" -o /dev/null -w '%{http_code}' "$BASE/api/auth/me")
+check "kicked account can no longer authenticate (401)" "$code" "401"
+
+code=$(curl -s -b "$KJAR" -o /dev/null -w '%{http_code}' "$BASE/api/workspace")
+check "kicked account cannot read its workspace (401)" "$code" "401"
+
+# Revocation is access, never data: the account and its rows survive.
+USERS=$(curl -s -b "$DJAR" "$BASE/api/admin/users?q=$KICK_EMAIL")
+echo "$USERS" | grep -q "$KICK_EMAIL" && ok "kicked account still exists" || bad "kicked account should still exist"
+echo "$USERS" | grep -q '"sessionCount":0' && ok "kicked account reports 0 sessions" || bad "kicked account should report 0 sessions"
+echo "$USERS" | grep -q '"workspaceBytes":[1-9]' && ok "kicked account keeps its workspace" || bad "kicked account should keep its workspace"
+
+# A developer locking themselves out is refused, like self-demotion.
+DEV_ID=$(curl -s -b "$DJAR" "$BASE/api/admin/users?q=$DEV_EMAIL" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+code=$(curl -s -b "$DJAR" -o /dev/null -w '%{http_code}' -X POST "$BASE/api/admin/users/$DEV_ID/sessions/revoke")
+check "developer -> own session revoke refused (409)" "$code" "409"
+
+code=$(curl -s -b "$DJAR" -o /dev/null -w '%{http_code}' -X POST "$BASE/api/admin/users/does-not-exist/sessions/revoke")
+check "unknown user -> kick out 404" "$code" "404"
+
+echo ""
 echo "AI page makes no LLM call"
 
 BODY=$(curl -s -b "$DJAR" "$BASE/api/admin/ai")
@@ -212,6 +256,7 @@ echo "$BODY" | grep -q 'admin.view' && ok "admin views logged" || bad "admin vie
 echo "$BODY" | grep -q 'admin.tool_create' && ok "tool create logged" || bad "tool create should be logged"
 echo "$BODY" | grep -q 'admin.tool_update' && ok "tool update logged" || bad "tool update should be logged"
 echo "$BODY" | grep -q 'admin.tool_delete' && ok "tool delete logged" || bad "tool delete should be logged"
+echo "$BODY" | grep -q 'admin.sessions_revoke' && ok "kick out logged" || bad "kick out should be logged"
 
 echo ""
 echo "---------------------------------"

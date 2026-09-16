@@ -18,6 +18,7 @@ export type AuditAction =
   | 'authz.denied'
   | 'admin.view'
   | 'admin.role_change'
+  | 'admin.sessions_revoke'
   | 'file.upload_failed'
   | 'api.error';
 

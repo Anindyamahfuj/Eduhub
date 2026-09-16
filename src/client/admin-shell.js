@@ -51,6 +51,7 @@ export const ADMIN_SHELL = `<!DOCTYPE html>
             </nav>
             <div class="admin-identity" id="admin-identity">
                 <span class="admin-who" id="admin-who">&hellip;</span>
+                <a class="admin-site-link" href="/" title="Open the student site"><i class="ph ph-arrow-left" aria-hidden="true"></i> Student site</a>
                 <button type="button" class="admin-logout" id="admin-logout"><i class="ph ph-sign-out" aria-hidden="true"></i> Sign out</button>
             </div>
         </aside>

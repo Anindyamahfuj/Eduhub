@@ -218,7 +218,8 @@ a { color: inherit; text-decoration: none; }
     color: var(--admin-muted);
 }
 
-.admin-logout {
+.admin-logout,
+.admin-site-link {
     width: 100%;
     padding: 10px 14px;
     background: transparent;
@@ -233,6 +234,19 @@ a { color: inherit; text-decoration: none; }
     justify-content: center;
     gap: 8px;
     transition: all 0.2s ease;
+}
+
+/* Leaves the panel for the student app, so it keeps the panel's own accent
+   rather than the sign-out red. Same box as .admin-logout. */
+.admin-site-link {
+    margin-bottom: 10px;
+    text-decoration: none;
+}
+
+.admin-site-link:hover {
+    color: var(--admin-brand-300);
+    border-color: var(--admin-brand-300);
+    background: var(--admin-brand-100);
 }
 
 .admin-logout:hover {
@@ -674,6 +688,7 @@ table.admin-table {
 .admin-btn:focus-visible,
 .admin-btn-ghost:focus-visible,
 .admin-icon-btn:focus-visible,
+.admin-site-link:focus-visible,
 .admin-logout:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--admin-brand-100);
@@ -783,8 +798,10 @@ table.admin-table {
         margin: 0;
     }
 
-    .admin-logout {
+    .admin-logout,
+    .admin-site-link {
         width: auto;
+        margin-bottom: 0;
     }
 
     .admin-body, .admin-header {
