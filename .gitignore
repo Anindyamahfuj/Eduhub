@@ -7,6 +7,8 @@ node_modules/
 # Local development state
 .wrangler/
 .dev.vars
+# Per-machine env (DEVELOPER_EMAILS bootstrap). Copied per worktree, never committed.
+.env.local
 
 # Logs / process state
 logs/
