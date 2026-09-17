@@ -565,9 +565,11 @@
                 flex-direction: column;
             }
         }
+    .skip-link{position:absolute;top:-100%;left:0;background:var(--accent,#3fd2b0);color:#000;padding:.5rem 1rem;z-index:10000;font-weight:600;text-decoration:none;border-radius:0 0 var(--r-sm,6px) 0}.skip-link:focus{top:0}
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <!-- Background Decorations -->
     <div class="bg-decoration bg-circle-1"></div>
     <div class="bg-decoration bg-circle-2"></div>
@@ -576,7 +578,7 @@
     <div class="bg-dots"></div>
 
     <!-- Main Container -->
-    <div class="auth-container">
+    <div class="auth-container" id="main-content">
         <!-- Forms Panel -->
         <div class="forms-panel">
             <!-- Sign In Form -->

@@ -13,8 +13,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
       <link rel="icon" type="image/x-icon" href="logoedu.png">
+    <style>.skip-link{position:absolute;top:-100%;left:0;background:var(--accent,#3fd2b0);color:#000;padding:.5rem 1rem;z-index:10000;font-weight:600;text-decoration:none;border-radius:0 0 var(--r-sm,6px) 0}.skip-link:focus{top:0}</style>
 </head>
 <body>
+        <a href="#main-content" class="skip-link">Skip to content</a>
         <nav class="navbar">
         <div class="nav-container">
             <a href="index.html" class="nav-brand"><i class="ph ph-graduation-cap" aria-hidden="true"></i> <span class="brand-highlight">Study</span>Hub</a>
@@ -57,7 +59,7 @@
             </div>
         </div>
     </nav>
-    <main class="container">
+    <main class="container" id="main-content">
         <section class="clock-section mini-clock">
             <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle"><i class="ph ph-alarm" aria-hidden="true"></i> <span data-i18n="switch_analog">Switch to Analog</span></button></div>
             <div class="clock-container">
