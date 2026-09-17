@@ -1,9 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Ensure API routes can use Node.js features
-  experimental: {
-    serverComponentsExternalPackages: ['hono'],
-  },
+  serverExternalPackages: ['hono'],
 };
 
 module.exports = nextConfig;

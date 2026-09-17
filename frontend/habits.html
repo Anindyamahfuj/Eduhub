@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Habits</title>
+    <meta name="description" content="Build and track daily study habits with streaks.">
+    <meta property="og:title" content="Habits — StudyHub">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +33,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -94,7 +97,7 @@
 
         <section class="habit-add-section glass-card">
             <div class="habit-add-form">
-                <input type="text" id="habitInput" data-i18n-placeholder="habit_placeholder" placeholder="✍️ New habit (e.g., Read 30 min)" />
+                <input type="text" id="habitInput" data-i18n-placeholder="habit_placeholder" placeholder="✍️ New habit (e.g., Read 30 min)" aria-label="New habit" name="habit" />
                 <button id="addHabitBtn" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add_habit">Add Habit</span></button>
             </div>
             <button id="deleteAllHabitsBtn" class="btn-danger"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_all">Delete All</span></button>
@@ -102,20 +105,20 @@
 
         <section class="habit-list-section glass-card">
             <h2><span class="hl-orange"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span> <span data-i18n="your_habits">Your Habits</span></h2>
-            <div id="habitList" class="habit-list">
+            <div id="habitList" class="habit-list" aria-live="polite">
                 <p class="empty-state" data-i18n="no_habits">No habits yet. Add one above!</p>
             </div>
         </section>
 
       <section class="streak-display glass-card">
     <div class="streak-inner">
-        <span class="streak-icon">🔥</span>
+        <span class="streak-icon" aria-hidden="true">🔥</span>
         <div>
             <span class="streak-label"><span data-i18n="current_streak">Current Streak</span></span>
             <span class="streak-number" id="streakDisplay">0</span>
             <span class="streak-days" data-i18n="days">days</span>
         </div>
-        <div style="margin-left:auto;text-align:right;">
+        <div class="ml-auto text-right">
             <span class="streak-label"><i class="ph ph-trophy" aria-hidden="true"></i> <span data-i18n="longest_streak">Longest Streak</span></span>
             <span class="streak-number" id="longestStreakDisplay">0</span>
             <span class="streak-days" data-i18n="days">days</span>

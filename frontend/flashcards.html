@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Flashcards</title>
+    <meta name="description" content="Create and review flashcards with spaced repetition.">
+    <meta property="og:title" content="Flashcards — StudyHub">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +33,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -95,16 +98,16 @@
 
         <section class="glass-card">
             <button id="addDeckBtn" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="new_deck">New Deck</span></button>
-            <button id="autoGenFlashcardsBtn" class="btn-primary" style="margin-left:0.5rem;"><i class="ph ph-lightning" aria-hidden="true"></i> Auto‑Generate from Notes</button>
+            <button id="autoGenFlashcardsBtn" class="btn-primary ml-sm"><i class="ph ph-lightning" aria-hidden="true"></i> Auto‑Generate from Notes</button>
         </section>
 
         <section class="glass-card" id="flashcardList"></section>
 
-        <section class="glass-card" id="flashcardReview" style="display:none;">
+        <section class="glass-card" id="flashcardReview" class="hidden">
             <div class="flashcard-review">
                 <div class="card-front" id="reviewFront"></div>
                 <div class="card-back" id="reviewBack"></div>
-                <p style="color:#94a3b8;margin-top:1rem;"><span data-i18n="click_to_flip">Click card to flip.</span> <span data-i18n="rate_difficulty">Rate difficulty:</span></p>
+                <p class="text-muted-sm mt-md"><span data-i18n="click_to_flip">Click card to flip.</span> <span data-i18n="rate_difficulty">Rate difficulty:</span></p>
                 <div class="flashcard-difficulty">
                     <button data-diff="1"><span data-i18n="hard">Hard</span></button>
                     <button data-diff="2"><span data-i18n="medium">Medium</span></button>

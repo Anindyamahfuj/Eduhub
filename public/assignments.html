@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Assignments</title>
+    <meta name="description" content="Track and manage your academic assignments.">
+    <meta property="og:title" content="Assignments — StudyHub">
+    <meta property="og:description" content="Track and manage your academic assignments.">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +34,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -97,22 +101,22 @@
 
         <section class="glass-card">
             <form id="assignmentForm" class="flex-wrap">
-                <input id="assignTitle" class="input-dark" data-i18n-placeholder="assign_title" placeholder="Title" required style="flex:2;"/>
-                <input id="assignSubject" class="input-dark" data-i18n-placeholder="assign_subject" placeholder="Subject" style="flex:1;"/>
-                <input id="assignDue" type="date" class="input-dark" style="flex:1;"/>
-                <select id="assignPriority" class="input-dark" style="flex:1;">
+                <input id="assignTitle" class="input-dark" data-i18n-placeholder="assign_title" placeholder="Title" required class="flex-2" aria-label="Assignment title" name="title" />
+                <input id="assignSubject" class="input-dark" data-i18n-placeholder="assign_subject" placeholder="Subject" class="flex-1" aria-label="Subject" name="subject" />
+                <input id="assignDue" type="date" class="input-dark" class="flex-1" aria-label="Due date" name="due" />
+                <select id="assignPriority" class="input-dark" class="flex-1" aria-label="Priority" name="priority">
                     <option value="high" data-i18n="priority_high">High</option>
                     <option value="medium" selected data-i18n="priority_medium">Medium</option>
                     <option value="low" data-i18n="priority_low">Low</option>
                 </select>
-                <input id="assignTags" class="input-dark" data-i18n-placeholder="assign_tags" placeholder="Tags (comma)" style="flex:1;"/>
+                <input id="assignTags" class="input-dark" data-i18n-placeholder="assign_tags" placeholder="Tags (comma)" class="flex-1" aria-label="Tags" name="tags" />
                 <button type="submit" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add">Add</span></button>
             </form>
         </section>
 
         <section class="glass-card">
             <h2><span data-i18n="all_assignments">All Assignments</span></h2>
-            <div id="assignmentList"></div>
+            <div id="assignmentList" aria-live="polite"></div>
         </section>
     </main>
 
