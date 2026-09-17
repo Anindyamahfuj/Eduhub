@@ -1,0 +1,16 @@
+-- ============================================================
+-- StudyHub — per-task AI model routing.
+--
+-- Allows different AI features (quiz, flashcards, planner, recommend)
+-- to use different models. Stored as a JSON object in app_settings
+-- under the key 'ai_task_models'. Example value:
+-- {"quiz":"google/gemma-4-31b-it:free","flashcards":"openrouter/free",
+--  "planner":"openrouter/free","recommend":"openrouter/free"}
+--
+-- When a task has no mapping, the default ai_model is used.
+-- Nothing existing is altered or dropped.
+-- ============================================================
+
+-- No schema change needed: app_settings already supports arbitrary key/value.
+-- The application code (ai-config.ts) will read/write the 'ai_task_models' key.
+-- This file documents the convention only.

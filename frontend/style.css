@@ -5704,3 +5704,106 @@ html body .stat-number span {
 .text-muted { color: var(--muted); }
 .border-danger { border: 1px solid var(--danger); }
 .tag-danger { background: rgba(240, 147, 140, 0.12); color: var(--danger); border: 1px solid rgba(240, 147, 140, 0.30); padding: 0.08rem 0.6rem; border-radius: var(--r-sm); font-size: var(--fs-xs); }
+
+/* ============================================================
+   NOTES — FILE UPLOAD ZONE
+   ============================================================ */
+.note-file-upload-zone {
+    margin-top: 1rem;
+    border: 2px dashed var(--line);
+    border-radius: var(--r);
+    padding: 1.5rem;
+    text-align: center;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+    cursor: pointer;
+}
+.note-file-upload-zone:hover,
+.note-file-upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(63, 210, 176, 0.04);
+}
+.note-file-upload-zone.drag-over {
+    border-style: solid;
+    background: rgba(63, 210, 176, 0.08);
+}
+.upload-zone-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+}
+.upload-zone-inner i {
+    font-size: 2rem;
+    color: var(--accent);
+    opacity: 0.7;
+}
+.upload-zone-inner p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+.upload-hint {
+    font-size: 0.8rem;
+    opacity: 0.6;
+}
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+    font: inherit;
+}
+.link-btn:hover {
+    color: var(--accent-2);
+}
+.note-file-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+.note-file-chips:empty {
+    display: none;
+}
+.file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    padding: 0.3rem 0.6rem 0.3rem 0.75rem;
+    font-size: 0.82rem;
+    color: var(--ink);
+    max-width: 220px;
+}
+.file-chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-chip-size {
+    color: var(--muted);
+    font-size: 0.75rem;
+}
+.file-chip-remove {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0 0 0 0.2rem;
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+.file-chip-remove:hover {
+    color: var(--danger);
+}
+.note-file-chips .extracting {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.82rem;
+}

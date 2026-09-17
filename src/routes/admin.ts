@@ -23,9 +23,12 @@ import {
   checkUrlShape,
   clearAiConfig,
   getAiConfig,
+  getTaskModels,
   identifyProvider,
   probeProvider,
-  saveAiConfig
+  saveAiConfig,
+  saveTaskModels,
+  type AiTask
 } from '../lib/ai-config.js';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
@@ -809,6 +812,58 @@ adminRoutes.post('/ai/test', async (c) => {
 
   if (!probe.ok) return fail(probe.error ?? 'Test failed.', 502);
   return ok({ modelCount: probe.modelCount ?? null, modelVerified: probe.modelVerified ?? false });
+});
+
+/**
+ * GET /api/admin/ai/task-models — list per-task model overrides.
+ */
+adminRoutes.get('/ai/task-models', async (c) => {
+  const taskModels = await getTaskModels(c.env);
+  return ok({ taskModels });
+});
+
+/**
+ * PUT /api/admin/ai/task-models — save per-task model overrides.
+ * Body: { taskModels: { quiz?: string, flashcards?: string, planner?: string, recommend?: string } }
+ */
+adminRoutes.put('/ai/task-models', async (c) => {
+  const actor = currentUser(c);
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    return fail('Invalid JSON body');
+  }
+
+  const input = body.taskModels;
+  if (!input || typeof input !== 'object') {
+    return fail('taskModels must be an object.');
+  }
+
+  // Validate: only allowed task keys, values must be strings or empty
+  const allowed: AiTask[] = ['quiz', 'flashcards', 'planner', 'recommend'];
+  const cleaned: Record<string, string> = {};
+  for (const key of Object.keys(input)) {
+    if (!allowed.includes(key as AiTask)) continue;
+    const val = typeof (input as Record<string, unknown>)[key] === 'string'
+      ? ((input as Record<string, unknown>)[key] as string).trim()
+      : '';
+    if (val) cleaned[key] = val;
+  }
+
+  await saveTaskModels(c.env, cleaned);
+
+  await writeAudit(c.env, {
+    action: 'ai.task_models.set',
+    actorId: actor.id,
+    actorEmail: actor.email,
+    target: 'app_settings',
+    result: 'ok',
+    detail: JSON.stringify(cleaned)
+  });
+
+  return ok({ taskModels: cleaned });
 });
 
 /* Developer-only view of the existing AI config route (already authenticated). */

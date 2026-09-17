@@ -163,6 +163,52 @@ export async function clearAiConfig(env: Env): Promise<void> {
     .run();
 }
 
+/* ---------------------------------------------------------------- task models */
+
+/** Task types that can have their own model override. */
+export type AiTask = 'quiz' | 'flashcards' | 'planner' | 'recommend';
+
+/** Mapping of task → model ID. Empty object means "use default for all". */
+export type TaskModelMap = Partial<Record<AiTask, string>>;
+
+const TASK_MODELS_KEY = 'ai_task_models';
+
+/** Read the per-task model map from app_settings. Returns {} if not set. */
+export async function getTaskModels(env: Env): Promise<TaskModelMap> {
+  try {
+    const row = await env.DB.prepare(`SELECT value FROM app_settings WHERE key = ?`)
+      .bind(TASK_MODELS_KEY)
+      .first<{ value: string }>();
+    if (!row?.value) return {};
+    const parsed = JSON.parse(row.value);
+    if (parsed && typeof parsed === 'object') return parsed as TaskModelMap;
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+/** Resolve the model for a specific task. Falls back to default model. */
+export async function resolveTaskModel(env: Env, task: AiTask | undefined): Promise<string | null> {
+  if (!task) {
+    const cfg = await getAiConfig(env);
+    return cfg.model || null;
+  }
+  const taskModels = await getTaskModels(env);
+  if (taskModels[task]) return taskModels[task]!;
+  const cfg = await getAiConfig(env);
+  return cfg.model || null;
+}
+
+/** Save the per-task model map. */
+export async function saveTaskModels(env: Env, models: TaskModelMap): Promise<void> {
+  const stmt = env.DB.prepare(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`
+  );
+  await stmt.bind(TASK_MODELS_KEY, JSON.stringify(models)).run();
+}
+
 /* ------------------------------------------------------------------- probe */
 
 export interface ProbeResult {

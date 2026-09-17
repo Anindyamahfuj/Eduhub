@@ -70,6 +70,7 @@ const StudyHubAI = (function () {
                 max_tokens: opts.maxTokens || 600
             };
             if (opts.model) body.model = opts.model;
+            if (opts.task) body.task = opts.task;
             if (opts.jsonMode) body.response_format = { type: 'json_object' };
             return fetchJson('/api/ai/chat/completions', { method: 'POST', body: body, timeoutMs: opts.timeoutMs || 45000 })
                 .then(function (d) {
@@ -4398,16 +4399,39 @@ function setupNotes() {
         addBtn.dataset.notesHooked = '1';
         addBtn.addEventListener('click', function() {
             var text = input.value.trim();
-            if (!text) return;
+            var hasFiles = pendingFiles && pendingFiles.length > 0;
+            if (!text && !hasFiles) return;
             var data = loadData();
-            data.notes.push({
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                text: text,
-                date: new Date().toISOString()
-            });
-            if (typeof addActivity === 'function') addActivity(data, 'note_add', 'Added note: "' + text + '"');
+
+            // Add inline text as a note
+            if (text) {
+                data.notes.push({
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                    text: text,
+                    date: new Date().toISOString()
+                });
+            }
+
+            // Add each extracted file as a separate note
+            if (hasFiles) {
+                pendingFiles.forEach(function(f) {
+                    data.notes.push({
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        text: f.text,
+                        date: new Date().toISOString(),
+                        source: f.name
+                    });
+                });
+                var logText = 'Imported ' + pendingFiles.length + ' file(s) as notes';
+                if (typeof addActivity === 'function') addActivity(data, 'note_add', logText);
+                pendingFiles = [];
+                if (chipsContainer) chipsContainer.innerHTML = '';
+            } else {
+                if (typeof addActivity === 'function') addActivity(data, 'note_add', 'Added note: "' + text + '"');
+            }
+
             saveData(data);
-            input.value = '';
+            if (input) input.value = '';
             renderNotes();
             if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
                 renderDashboard();
@@ -4442,6 +4466,145 @@ function setupNotes() {
             if (document.getElementById('statTasks') && typeof renderDashboard === 'function') {
                 renderDashboard();
             }
+        });
+    }
+
+    // ---- File upload zone ----
+    var uploadZone = document.getElementById('noteUploadArea');
+    var fileInput = document.getElementById('noteFileInput');
+    var browseBtn = document.getElementById('noteFileBrowse');
+    var chipsContainer = document.getElementById('noteFileChips');
+    var pendingFiles = []; // { name, text, size }
+
+    if (uploadZone && fileInput) {
+        // Click to browse
+        if (browseBtn) browseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            fileInput.click();
+        });
+        uploadZone.addEventListener('click', function(e) {
+            if (e.target === browseBtn || browseBtn && browseBtn.contains(e.target)) return;
+            fileInput.click();
+        });
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        uploadZone.addEventListener('dragleave', function() {
+            uploadZone.classList.remove('drag-over');
+        });
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', function() {
+            handleFiles(fileInput.files);
+            fileInput.value = '';
+        });
+    }
+
+    function handleFiles(fileList) {
+        if (!fileList || !fileList.length) return;
+        Array.from(fileList).forEach(function(file) {
+            var ext = file.name.split('.').pop().toLowerCase();
+            if (!['txt', 'md', 'pdf'].includes(ext)) {
+                alert('Unsupported file type: .' + ext + '. Only TXT, MD, PDF are supported.');
+                return;
+            }
+            // Show chip with extracting state
+            var chipId = 'chip-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+            addFileChip(chipId, file.name, file.size, true);
+
+            if (ext === 'pdf') {
+                extractPdfText(file, function(text) {
+                    onFileExtracted(chipId, file.name, file.size, text);
+                });
+            } else {
+                extractPlainText(file, function(text) {
+                    onFileExtracted(chipId, file.name, file.size, text);
+                });
+            }
+        });
+    }
+
+    function addFileChip(chipId, name, size, extracting) {
+        if (!chipsContainer) return;
+        var chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.id = chipId;
+        var sizeStr = size < 1024 ? size + ' B' : size < 1048576 ? (size / 1024).toFixed(1) + ' KB' : (size / 1048576).toFixed(1) + ' MB';
+        chip.innerHTML = '<i class="ph ph-file-text" aria-hidden="true"></i>' +
+            '<span class="file-chip-name">' + escapeHtml(name) + '</span>' +
+            '<span class="file-chip-size">' + sizeStr + '</span>' +
+            (extracting ? '<span class="extracting">extracting...</span>' : '') +
+            '<button class="file-chip-remove" data-chip="' + chipId + '" title="Remove">&times;</button>';
+        chipsContainer.appendChild(chip);
+
+        chip.querySelector('.file-chip-remove').addEventListener('click', function() {
+            pendingFiles = pendingFiles.filter(function(f) { return f.chipId !== chipId; });
+            chip.remove();
+        });
+    }
+
+    function onFileExtracted(chipId, name, size, text) {
+        if (!text || !text.trim()) {
+            var chip = document.getElementById(chipId);
+            if (chip) {
+                var extractingEl = chip.querySelector('.extracting');
+                if (extractingEl) extractingEl.textContent = 'no text found';
+            }
+            return;
+        }
+        pendingFiles.push({ chipId: chipId, name: name, size: size, text: text.trim() });
+        var chip = document.getElementById(chipId);
+        if (chip) {
+            var extractingEl = chip.querySelector('.extracting');
+            if (extractingEl) extractingEl.remove();
+        }
+    }
+
+    function extractPlainText(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) { callback(e.target.result || ''); };
+        reader.onerror = function() { callback(''); };
+        reader.readAsText(file);
+    }
+
+    function extractPdfText(file, callback) {
+        // Use pdf.js if available, otherwise fall back to reading as text
+        if (typeof pdfjsLib !== 'undefined') {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var typedarray = new Uint8Array(e.target.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    var texts = [];
+                    var pending = pdf.numPages;
+                    for (var i = 1; i <= pdf.numPages; i++) {
+                        pdf.getPage(i).then(function(page) {
+                            page.getTextContent().then(function(content) {
+                                texts.push(content.items.map(function(item) { return item.str; }).join(' '));
+                                pending--;
+                                if (pending === 0) callback(texts.join('\n\n'));
+                            });
+                        });
+                    }
+                }).catch(function() { callback(''); });
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            // Fallback: read as text (won't work for binary PDFs but won't crash)
+            extractPlainText(file, callback);
+        }
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
         });
     }
 
@@ -5870,7 +6033,7 @@ function quizAiBatch(batch, remaining) {
                 'Write at most ' + remaining + ' questions. No markdown, no prose.'
         },
         { role: 'user', content: corpus }
-    ], { jsonMode: true, maxTokens: 1200, temperature: 0.5, timeoutMs: 40000 }).then(function (res) {
+    ], { jsonMode: true, maxTokens: 1200, temperature: 0.5, timeoutMs: 40000, task: 'quiz' }).then(function (res) {
         var j = StudyHubAI.parseJsonReply(res.text);
         return quizCleanAi(j && j.questions, batch, remaining);
     }).catch(function () { return []; });
@@ -6180,7 +6343,7 @@ function autoGenerateFlashcards() {
         return StudyHubAI.chat([
             { role: 'system', content: 'You create flashcards from study notes. Reply with ONLY a JSON object: {"cards": [{"front": a short question or term, "back": the answer}]}. One card per distinct idea, at most 20 cards. No markdown, no prose.' },
             { role: 'user', content: corpus.slice(0, 8000) }
-        ], { jsonMode: true, maxTokens: 1400, temperature: 0.4, timeoutMs: 40000 }).then(function (res) {
+        ], { jsonMode: true, maxTokens: 1400, temperature: 0.4, timeoutMs: 40000, task: 'flashcards' }).then(function (res) {
             var j = StudyHubAI.parseJsonReply(res.text);
             var raw = j && Array.isArray(j.cards) ? j.cards : [];
             var cards = raw.filter(function (c) {
@@ -6188,6 +6351,74 @@ function autoGenerateFlashcards() {
             }).slice(0, 20).map(function (c) { return makeCard(c.front, c.back); });
             if (cards.length < 2) { localCards(); return undefined; }
             commit(cards, 'AI-generated ' + cards.length + ' flashcards from notes');
+        }).catch(function () { localCards(); });
+    }).catch(function () { localCards(); });
+}
+
+// ================================================================
+// FLASHCARDS FROM UPLOADED FILES (uses file-sourced notes)
+// ================================================================
+function generateFlashcardsFromFiles() {
+    var data = loadData();
+    var fileNotes = (data.notes || []).filter(function(n) { return n.source; });
+    if (fileNotes.length === 0) {
+        alert('No file-based notes found. Upload files on the Notes page first.');
+        return;
+    }
+
+    function makeCard(front, back) {
+        return {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            front: String(front || '').trim().slice(0, 200) || 'Note',
+            back: String(back || '').trim().slice(0, 1000),
+            dueDate: new Date().toISOString().slice(0,10),
+            level: 0
+        };
+    }
+
+    function commit(cards, logText) {
+        var data2 = loadData();
+        var deck = data2.flashcards.decks.find(function(d) { return d.name === 'Auto from Files'; });
+        if (!deck) {
+            deck = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                name: 'Auto from Files',
+                cards: []
+            };
+            data2.flashcards.decks.push(deck);
+        }
+        deck.cards = deck.cards.concat(cards);
+        addActivity(data2, 'flashcard_auto', logText);
+        saveData(data2);
+        if (typeof setupFlashcards === 'function') setupFlashcards();
+        alert('Added ' + cards.length + ' flashcards to "Auto from Files" deck!');
+    }
+
+    function localCards() {
+        var newCards = fileNotes.map(function(n) {
+            var words = n.text.split(/\s+/);
+            var front = words.slice(0, Math.min(8, words.length)).join(' ');
+            return makeCard(front + (words.length > 8 ? '…' : ''), n.text.slice(0, 1000));
+        });
+        commit(newCards, 'Auto-generated ' + newCards.length + ' flashcards from files');
+    }
+
+    StudyHubAI.status().then(function (st) {
+        if (!st.configured) { localCards(); return undefined; }
+        var corpus = fileNotes.slice(0, 10).map(function (n, i) {
+            return (i + 1) + '. [Source: ' + (n.source || 'note') + '] ' + String(n.text).slice(0, 3000);
+        }).join('\n');
+        return StudyHubAI.chat([
+            { role: 'system', content: 'You create flashcards from study material extracted from files. Reply with ONLY a JSON object: {"cards": [{"front": a short question or term, "back": the answer}]}. One card per distinct idea, at most 25 cards. Focus on key concepts, definitions, and important facts. No markdown, no prose.' },
+            { role: 'user', content: corpus.slice(0, 12000) }
+        ], { jsonMode: true, maxTokens: 2000, temperature: 0.4, timeoutMs: 50000, task: 'flashcards' }).then(function (res) {
+            var j = StudyHubAI.parseJsonReply(res.text);
+            var raw = j && Array.isArray(j.cards) ? j.cards : [];
+            var cards = raw.filter(function (c) {
+                return c && typeof c.front === 'string' && typeof c.back === 'string' && c.front.trim() && c.back.trim();
+            }).slice(0, 25).map(function (c) { return makeCard(c.front, c.back); });
+            if (cards.length < 2) { localCards(); return undefined; }
+            commit(cards, 'AI-generated ' + cards.length + ' flashcards from files');
         }).catch(function () { localCards(); });
     }).catch(function () { localCards(); });
 }
@@ -7037,6 +7268,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto Flashcards
     var autoFcBtn = document.getElementById('autoGenFlashcardsBtn');
     if (autoFcBtn) autoFcBtn.addEventListener('click', autoGenerateFlashcards);
+
+    // ---- Flashcards from files button ----
+    var genFilesBtn = document.getElementById('genFlashcardsFromFilesBtn');
+    if (genFilesBtn && !genFilesBtn.dataset.hooked) {
+        genFilesBtn.dataset.hooked = '1';
+        genFilesBtn.addEventListener('click', function() {
+            generateFlashcardsFromFiles();
+        });
+    }
 
  
 

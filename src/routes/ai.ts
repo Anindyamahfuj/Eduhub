@@ -14,7 +14,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../lib/helpers.js';
 import { currentUser, fail, json, ok, requireUser } from '../lib/helpers.js';
-import { getAiConfig } from '../lib/ai-config.js';
+import { getAiConfig, resolveTaskModel, getTaskModels, type AiTask } from '../lib/ai-config.js';
 
 export const aiRoutes = new Hono<{ Bindings: Env }>();
 
@@ -23,13 +23,14 @@ aiRoutes.use('*', requireUser);
 /** Current provider configuration state (never exposes the key itself). */
 async function providerStatus(env: Env) {
   const cfg = await getAiConfig(env);
+  const taskModels = await getTaskModels(env);
   return {
     configured: Boolean(cfg.apiKey && cfg.baseUrl),
     baseUrl: cfg.baseUrl,
     model: cfg.model,
     source: cfg.source,
-    // The key value is intentionally never returned.
-    hasKey: Boolean(cfg.apiKey)
+    hasKey: Boolean(cfg.apiKey),
+    taskModels
   };
 }
 
@@ -96,9 +97,12 @@ aiRoutes.post('/chat/completions', async (c) => {
     );
   }
 
-  // The validated admin model wins when both are set: the developer chose it
-  // deliberately, and a client-supplied model must not silently bypass that.
-  const model = cfg.model || (typeof body.model === 'string' && body.model.trim()) || null;
+  // Per-task model routing: client sends optional 'task' field
+  const task = typeof body.task === 'string' && body.task.trim()
+    ? (body.task.trim() as AiTask)
+    : undefined;
+  const taskModel = await resolveTaskModel(c.env, task);
+  const model = taskModel || cfg.model || (typeof body.model === 'string' && body.model.trim()) || null;
 
   try {
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {

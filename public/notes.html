@@ -106,6 +106,15 @@
                 <input type="text" id="noteInput" data-i18n-placeholder="note_placeholder" placeholder="✍️ Write a note..." aria-label="Write a note" name="note" />
                 <button id="addNoteBtn" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add_note">Add Note</span></button>
             </div>
+            <div class="note-file-upload-zone" id="noteUploadZone">
+                <input type="file" id="noteFileInput" accept=".txt,.md,.pdf" multiple hidden />
+                <div class="upload-zone-inner" id="noteUploadArea">
+                    <i class="ph ph-file-arrow-down" aria-hidden="true"></i>
+                    <p>Drop files here or <button type="button" class="link-btn" id="noteFileBrowse">browse</button></p>
+                    <span class="upload-hint">TXT, MD, PDF — text will be extracted as notes</span>
+                </div>
+                <div class="note-file-chips" id="noteFileChips"></div>
+            </div>
             <button id="deleteAllNotesBtn" class="btn-danger"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_all">Delete All</span></button>
         </section>
 
@@ -120,10 +129,11 @@
         <section class="glass-card quiz-generator-section">
             <h2><span class="hl-green"><i class="ph ph-note-pencil" aria-hidden="true"></i></span> Quiz Generator</h2>
             <p class="text-muted-sm">
-                Generate a multiple‑choice quiz from your notes for active recall.
+                Generate a multiple-choice quiz from your notes for active recall.
             </p>
             <div class="flex-wrap-gap">
                 <button id="generateQuizBtn" class="btn-primary"><i class="ph ph-lightning" aria-hidden="true"></i> Generate Quiz from Notes</button>
+                <button id="genFlashcardsFromFilesBtn" class="btn-primary"><i class="ph ph-cards" aria-hidden="true"></i> Flashcards from Files</button>
                 <select id="quizCountSelect" class="input-dark" style="max-width:160px;" aria-label="Number of questions">
                     <option value="5">5 questions</option>
                     <option value="10" selected>10 questions</option>
