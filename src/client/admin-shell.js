@@ -44,7 +44,6 @@ export const ADMIN_SHELL = `<!DOCTYPE html>
                 <a href="/admin/users" data-section="users"><i class="ph ph-users" aria-hidden="true"></i><span>Users</span></a>
                 <a href="/admin/data" data-section="data"><i class="ph ph-database" aria-hidden="true"></i><span>Data</span></a>
                 <a href="/admin/files" data-section="files"><i class="ph ph-folder-open" aria-hidden="true"></i><span>Files</span></a>
-                <a href="/admin/tools" data-section="tools"><i class="ph ph-puzzle-piece" aria-hidden="true"></i><span>Tools</span></a>
                 <a href="/admin/logs" data-section="logs"><i class="ph ph-scroll" aria-hidden="true"></i><span>Logs</span></a>
                 <a href="/admin/system" data-section="system"><i class="ph ph-pulse" aria-hidden="true"></i><span>System</span></a>
                 <a href="/admin/ai" data-section="ai"><i class="ph ph-sparkle" aria-hidden="true"></i><span>AI</span></a>

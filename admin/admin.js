@@ -20,7 +20,6 @@
         users: { title: 'Users', subtitle: 'Registered accounts. No passwords, hashes or tokens are read.' },
         data: { title: 'Data', subtitle: 'Read-only inspection of the real stored data. No destructive tools.' },
         files: { title: 'Files', subtitle: 'File metadata only. Contents are never exposed here.' },
-        tools: { title: 'Tools', subtitle: 'Curate the student navigation: show, hide, rename, reorder, add.' },
         logs: { title: 'Logs', subtitle: 'Audit events recorded by the backend.' },
         system: { title: 'System', subtitle: 'Live checks. No hard-coded status values.' },
         ai: { title: 'AI', subtitle: 'Provider setup: paste, validate against the live provider, then activate.' }
@@ -997,7 +996,6 @@
         users: loadUsers,
         data: loadData,
         files: loadFiles,
-        tools: loadTools,
         logs: loadLogs,
         system: loadSystem,
         ai: loadAi
