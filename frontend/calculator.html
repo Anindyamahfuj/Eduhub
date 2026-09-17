@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>StudyHub · Scientific Calculator</title>
+<meta name="description" content="Scientific calculator with advanced math functions.">
+<meta property="og:title" content="Calculator — StudyHub">
+<meta property="og:type" content="website">
 <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -212,7 +215,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -372,7 +375,7 @@
         <button data-act="mplus">M+</button>
         <button data-act="mminus">M−</button>
         <button data-act="mc">MC</button>
-        <span style="margin-left:.5rem">Variables:</span>
+        <span class="ml-sm">Variables:</span>
         <button data-var="A">A</button>
         <button data-var="B">B</button>
         <button data-var="C">C</button>
@@ -408,7 +411,7 @@
         <label>Data:</label>
         <textarea id="stats-input" placeholder="1, 2, 3, 4.5, 10, 22 ..."></textarea>
       </div>
-      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+      <div class="row" class="flex-wrap-gap">
         <button class="btn-primary-sm" data-stat="all">All Stats</button>
         <button class="btn-primary-sm" data-stat="mean">Mean</button>
         <button class="btn-primary-sm" data-stat="median">Median</button>
@@ -461,7 +464,7 @@
         <label>B:</label>
         <input type="text" class="wide" id="prog-b" value="10">
       </div>
-      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+      <div class="row" class="flex-wrap-gap">
         <button class="btn-primary-sm" data-op="and">A AND B</button>
         <button class="btn-primary-sm" data-op="or">A OR B</button>
         <button class="btn-primary-sm" data-op="xor">A XOR B</button>
@@ -501,7 +504,7 @@
           </div>
         </div>
       </div>
-      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+      <div class="row" class="flex-wrap-gap">
         <button class="btn-primary-sm" data-matop="add">A + B</button>
         <button class="btn-primary-sm" data-matop="sub">A − B</button>
         <button class="btn-primary-sm" data-matop="mul">A × B</button>
@@ -514,36 +517,36 @@
     </div>
 
     <div class="calc-panel tool-panel" id="panel-convert">
-      <h3 style="font-size:.95rem;color:var(--accent);margin-bottom:.8rem"><i class="ph ph-diamond" aria-hidden="true"></i> DMS ↔ Decimal Degrees</h3>
+      <h3 class="text-muted"><i class="ph ph-diamond" aria-hidden="true"></i> DMS ↔ Decimal Degrees</h3>
       <div class="row">
         <input type="number" class="num" id="dms-deg" placeholder="deg" value="45">
         <input type="number" class="num" id="dms-min" placeholder="min" value="30">
         <input type="number" class="num" id="dms-sec" placeholder="sec" value="15">
         <button class="btn-primary-sm" id="dms-convert">→ Decimal</button>
-        <span style="color:var(--muted)">or</span>
+        <span class="text-muted">or</span>
         <input type="number" class="wide" id="dec-deg" placeholder="Decimal degrees" value="45.504167">
         <button class="btn-primary-sm" id="dec-convert">→ DMS</button>
       </div>
       <div class="tool-result" id="dms-result"></div>
 
-      <h3 style="font-size:.95rem;color:var(--accent);margin:1.2rem 0 .8rem"><i class="ph ph-diamond" aria-hidden="true"></i> Fraction ↔ Decimal</h3>
+      <h3 class="text-muted"><i class="ph ph-diamond" aria-hidden="true"></i> Fraction ↔ Decimal</h3>
       <div class="row">
         <input type="number" class="num" id="frac-num" placeholder="num" value="3">
-        <span style="color:var(--muted)">/</span>
+        <span class="text-muted">/</span>
         <input type="number" class="num" id="frac-den" placeholder="den" value="4">
         <button class="btn-primary-sm" id="frac-convert">→ Decimal</button>
-        <span style="color:var(--muted)">or</span>
+        <span class="text-muted">or</span>
         <input type="number" class="wide" id="dec-frac" placeholder="Decimal (e.g. 0.75)">
         <button class="btn-primary-sm" id="decfrac-convert">→ Fraction</button>
       </div>
       <div class="tool-result" id="frac-result"></div>
 
-      <h3 style="font-size:.95rem;color:var(--accent);margin:1.2rem 0 .8rem"><i class="ph ph-diamond" aria-hidden="true"></i> Rectangular ↔ Polar</h3>
+      <h3 class="text-muted"><i class="ph ph-diamond" aria-hidden="true"></i> Rectangular ↔ Polar</h3>
       <div class="row">
         <input type="number" class="num" id="rect-x" placeholder="x" value="3">
         <input type="number" class="num" id="rect-y" placeholder="y" value="4">
         <button class="btn-primary-sm" id="rect-polar">→ Polar (r, θ)</button>
-        <span style="color:var(--muted)">or</span>
+        <span class="text-muted">or</span>
         <input type="number" class="num" id="polar-r" placeholder="r">
         <input type="number" class="num" id="polar-th" placeholder="θ°">
         <button class="btn-primary-sm" id="polar-rect">→ Rectangular (x, y)</button>
@@ -556,7 +559,7 @@
         <label>Number:</label>
         <input type="number" class="wide" id="nt-input" value="360">
       </div>
-      <div class="row" style="flex-wrap:wrap;gap:.5rem">
+      <div class="row" class="flex-wrap-gap">
         <button class="btn-primary-sm" data-nt="prime">Is Prime?</button>
         <button class="btn-primary-sm" data-nt="factors">Prime Factors</button>
         <button class="btn-primary-sm" data-nt="divisors">Divisors</button>

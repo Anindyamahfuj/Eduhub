@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Sign In</title>
+    <meta name="description" content="Sign in to your StudyHub account.">
+    <meta property="og:title" content="Sign In — StudyHub">
+    <meta property="og:type" content="website">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -187,7 +190,7 @@
             display: block;
             font-size: 12px;
             font-weight: 600;
-            color: #94A3B8;
+            color: #B0BEC5;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
@@ -208,11 +211,11 @@
         .form-input:focus {
             outline: none;
             border-color: #8B5CF6;
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(63, 210, 176, 0.4);
         }
 
         .form-input::placeholder {
-            color: #64748B;
+            color: #7E8FA6;
         }
 
         .form-options {
@@ -239,6 +242,10 @@
             color: #8B5CF6;
             text-decoration: none;
             transition: color 0.2s;
+            padding: 4px 0;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
         }
 
         .forgot-password:hover {
@@ -271,11 +278,16 @@
             transform: translateY(0);
         }
 
+        .btn-primary:focus-visible {
+            outline: 2px solid var(--accent, #3fd2b0);
+            outline-offset: 2px;
+        }
+
         .divider {
             display: flex;
             align-items: center;
             margin: 24px 0;
-            color: #64748B;
+            color: #94A3B8;
             font-size: 13px;
         }
 
@@ -302,7 +314,7 @@
             background: transparent;
             border: 1px solid rgba(139, 92, 246, 0.2);
             border-radius: 8px;
-            color: #94A3B8;
+            color: #CBD5E1;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
@@ -317,6 +329,15 @@
             background: rgba(139, 92, 246, 0.1);
             border-color: rgba(139, 92, 246, 0.4);
             color: #E2E8F0;
+        }
+
+        .btn-social:focus-visible {
+            outline: 2px solid var(--accent, #3fd2b0);
+            outline-offset: 2px;
+        }
+
+        .btn-social:active {
+            transform: scale(0.97);
         }
 
         /* Right Panel - Image & Toggle */
@@ -396,6 +417,15 @@
             transform: scale(1.05);
         }
 
+        .toggle-btn:focus-visible {
+            outline: 2px solid var(--accent, #3fd2b0);
+            outline-offset: 2px;
+        }
+
+        .toggle-btn:active {
+            transform: scale(0.97);
+        }
+
         /* Floating Elements */
         .floating-shapes {
             position: absolute;
@@ -441,6 +471,14 @@
         @keyframes float {
             0%, 100% { transform: translateY(0) rotate(0deg); }
             50% { transform: translateY(-20px) rotate(10deg); }
+        }
+
+        .field-error {
+            display: block;
+            color: #f87171;
+            font-size: 0.8rem;
+            margin-top: 4px;
+            min-height: 1.2em;
         }
 
         /* Status Messages */
@@ -549,24 +587,26 @@
                 <form id="loginForm" onsubmit="return handleLogin(event)">
                     <div class="form-group">
                         <label class="form-label" for="loginEmail">Email</label>
-                        <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" required />
+                        <input type="email" id="loginEmail" name="email" autocomplete="email" class="form-input" placeholder="you@example.com" required />
+                        <span class="field-error" role="alert" aria-live="assertive"></span>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="loginPassword">Password</label>
-                        <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required />
+                        <input type="password" id="loginPassword" name="password" autocomplete="current-password" class="form-input" placeholder="Enter your password" required />
+                        <span class="field-error" role="alert" aria-live="assertive"></span>
                     </div>
                     
                     <div class="form-options">
                         <label class="remember-me">
-                            <input type="checkbox" id="rememberMe" />
+                            <input type="checkbox" id="rememberMe" name="remember" />
                             <span>Remember me</span>
                         </label>
                         <a href="#" class="forgot-password">Forgot password?</a>
                     </div>
                     
                     <button type="submit" class="btn-primary" id="loginBtn">
-                        <i class="ph ph-sign-in"></i>
+                        <i class="ph ph-sign-in" aria-hidden="true"></i>
                         Sign In
                     </button>
                 </form>
@@ -575,7 +615,7 @@
                 
                 <div class="social-login">
                     <button type="button" class="btn-social" onclick="handleGoogleLogin()">
-                        <i class="ph ph-google-logo"></i>
+                        <i class="ph ph-google-logo" aria-hidden="true"></i>
                         Google
                     </button>
                 </div>
@@ -589,21 +629,24 @@
                 <form id="registerForm" onsubmit="return handleRegister(event)">
                     <div class="form-group">
                         <label class="form-label" for="regName">Full Name</label>
-                        <input type="text" id="regName" class="form-input" placeholder="Your full name" required />
+                        <input type="text" id="regName" name="name" autocomplete="name" class="form-input" placeholder="Your full name" required />
+                        <span class="field-error" role="alert" aria-live="assertive"></span>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="regEmail">Email</label>
-                        <input type="email" id="regEmail" class="form-input" placeholder="you@example.com" required />
+                        <input type="email" id="regEmail" name="email" autocomplete="email" class="form-input" placeholder="you@example.com" required />
+                        <span class="field-error" role="alert" aria-live="assertive"></span>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="regPassword">Password</label>
-                        <input type="password" id="regPassword" class="form-input" placeholder="Create a strong password" required minlength="8" />
+                        <input type="password" id="regPassword" name="password" autocomplete="new-password" class="form-input" placeholder="Create a strong password" required minlength="8" />
+                        <span class="field-error" role="alert" aria-live="assertive"></span>
                     </div>
                     
-                    <button type="submit" class="btn-primary" id="registerBtn" style="margin-top: 8px;">
-                        <i class="ph ph-user-plus"></i>
+                    <button type="submit" class="btn-primary" id="registerBtn" class="mt-sm">
+                        <i class="ph ph-user-plus" aria-hidden="true"></i>
                         Create Account
                     </button>
                 </form>
@@ -612,7 +655,7 @@
                 
                 <div class="social-login">
                     <button type="button" class="btn-social" onclick="handleGoogleLogin()">
-                        <i class="ph ph-google-logo"></i>
+                        <i class="ph ph-google-logo" aria-hidden="true"></i>
                         Google
                     </button>
                 </div>
@@ -629,7 +672,7 @@
             
             <div class="image-content" id="signinPrompt">
                 <div class="brand-logo">
-                    <i class="ph ph-graduation-cap"></i>
+                    <i class="ph ph-graduation-cap" aria-hidden="true"></i>
                     <span><span class="highlight">Study</span>Hub</span>
                 </div>
                 <p class="image-text">Don't have an account yet? Join thousands of students already learning with StudyHub.</p>
@@ -638,7 +681,7 @@
             
             <div class="image-content" id="signupPrompt" style="display: none;">
                 <div class="brand-logo">
-                    <i class="ph ph-graduation-cap"></i>
+                    <i class="ph ph-graduation-cap" aria-hidden="true"></i>
                     <span><span class="highlight">Study</span>Hub</span>
                 </div>
                 <p class="image-text">Already have an account? Sign in to access your courses and continue learning.</p>
@@ -648,8 +691,8 @@
     </div>
 
     <!-- Status Messages -->
-    <div class="status-message status-success" id="successMessage"></div>
-    <div class="status-message status-error" id="errorMessage"></div>
+    <div class="status-message status-success" id="successMessage" role="status" aria-live="polite"></div>
+    <div class="status-message status-error" id="errorMessage" role="alert" aria-live="assertive"></div>
 
     <script>
         // Form Toggle
@@ -705,7 +748,7 @@
                     // no token in the response, and nothing client-side may pretend
                     // otherwise. Only the display name is cached for the UI.
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    showStatus('Login successful! Redirecting...', 'success');
+                    showStatus('Login successful. Redirecting...', 'success');
                     setTimeout(() => window.location.href = '/index.html', 1000);
                 } else {
                     showStatus(data.error || 'Login failed', 'error');
@@ -737,7 +780,7 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    showStatus('Account created! Please sign in.', 'success');
+                    showStatus('Account created. Please sign in.', 'success');
                     setTimeout(() => toggleForms('signin'), 1500);
                 } else {
                     showStatus(data.error || 'Registration failed', 'error');

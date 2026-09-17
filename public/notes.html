@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Notes</title>
+    <meta name="description" content="Take and organize your study notes with AI-powered quizzes.">
+    <meta property="og:title" content="Notes — StudyHub">
+    <meta property="og:description" content="Take and organize your study notes with AI-powered quizzes.">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +34,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -97,7 +101,7 @@
 
         <section class="note-add-section glass-card">
             <div class="note-add-form">
-                <input type="text" id="noteInput" data-i18n-placeholder="note_placeholder" placeholder="✍️ Write a note..." />
+                <input type="text" id="noteInput" data-i18n-placeholder="note_placeholder" placeholder="✍️ Write a note..." aria-label="Write a note" name="note" />
                 <button id="addNoteBtn" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add_note">Add Note</span></button>
             </div>
             <button id="deleteAllNotesBtn" class="btn-danger"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_all">Delete All</span></button>
@@ -105,7 +109,7 @@
 
         <section class="note-list-section glass-card">
             <h2><span class="hl-pink"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span> <span data-i18n="your_notes">Your Notes</span></h2>
-            <div id="noteList" class="note-list">
+            <div id="noteList" class="note-list" aria-live="polite">
                 <p class="empty-state" data-i18n="no_notes">No notes yet.</p>
             </div>
         </section>
@@ -113,12 +117,12 @@
         <!-- ===== NEW: QUIZ GENERATOR ===== -->
         <section class="glass-card quiz-generator-section">
             <h2><span class="hl-green"><i class="ph ph-note-pencil" aria-hidden="true"></i></span> Quiz Generator</h2>
-            <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:0.8rem;">
+            <p class="text-muted-sm">
                 Generate a multiple‑choice quiz from your notes for active recall.
             </p>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.8rem;">
+            <div class="flex-wrap-gap">
                 <button id="generateQuizBtn" class="btn-primary"><i class="ph ph-lightning" aria-hidden="true"></i> Generate Quiz from Notes</button>
-                <select id="quizCountSelect" class="input-dark" style="max-width:160px;">
+                <select id="quizCountSelect" class="input-dark" style="max-width:160px;" aria-label="Number of questions">
                     <option value="5">5 questions</option>
                     <option value="10" selected>10 questions</option>
                     <option value="15">15 questions</option>

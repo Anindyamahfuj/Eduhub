@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Dashboard</title>
+    <meta name="description" content="StudyHub — your all-in-one digital academic workspace. Track notes, assignments, habits, and more.">
+    <meta property="og:title" content="StudyHub">
+    <meta property="og:description" content="All-in-one digital academic workspace for students.">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +34,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -158,10 +162,10 @@
                 <!-- Quick Search -->
                 <section class="search-section glass-card">
                     <div class="search-container">
-                        <h3 class="card-title"><span class="hl-blue"><i class="ph ph-magnifying-glass" aria-hidden="true"></i></span> <span data-i18n="quick_search">Quick Search</span></h3>
+                        <h2 class="card-title"><span class="hl-blue"><i class="ph ph-magnifying-glass" aria-hidden="true"></i></span> <span data-i18n="quick_search">Quick Search</span></h2>
                         <div class="search-box">
                             <div class="suggestions-container">
-                                <input type="text" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="What are you looking for?" autocomplete="off" />
+                                <input type="text" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="What are you looking for?" autocomplete="off" aria-label="Search" name="search" />
                                 <div id="suggestionsList" class="suggestions-list"></div>
                             </div>
                             <button id="searchBtn"><span data-i18n="search_button">Search</span></button>
@@ -185,14 +189,14 @@
                         <div class="pomodoro-widget">
                             <div class="pomodoro-timer" id="pomoDisplay">25:00</div>
                             <div class="pomodoro-controls">
-                                <select id="pomoTaskSelect" class="pomodoro-task-select"></select>
-                                <select id="pomoSound" class="pomodoro-sound-select" title="Focus sound">
+                                <select id="pomoTaskSelect" class="pomodoro-task-select" aria-label="Select task"></select>
+                                <select id="pomoSound" class="pomodoro-sound-select" title="Focus sound" aria-label="Focus sound">
                                     <option value="none">No Sound</option>
                                     <option value="rain">Rain</option>
                                     <option value="white">White Noise</option>
                                     <option value="lofi">Lo-Fi</option>
                                 </select>
-                                <input type="number" id="pomoDuration" value="25" min="1" max="120" class="pomo-duration-input">
+                                <input type="number" id="pomoDuration" value="25" min="1" max="120" class="pomo-duration-input" aria-label="Duration in minutes" name="pomoDuration" />
                                 <span class="pomo-unit">min</span>
                                 <button id="pomoStart"><span data-i18n="start">Start</span></button>
                                 <button id="pomoStop"><span data-i18n="stop">Stop</span></button>
@@ -224,8 +228,8 @@
                 <section class="glass-card priority-matrix-section">
                     <h2 class="card-title"><span class="hl-red"><i class="ph ph-target" aria-hidden="true"></i></span> Priority Matrix (Eisenhower)</h2>
                     <div class="priority-input-row">
-                        <input type="text" id="priorityInput" placeholder="Add a task..." />
-                        <select id="priorityQuadrant">
+                        <input type="text" id="priorityInput" placeholder="Add a task..." aria-label="Priority task" name="priorityTask" />
+                        <select id="priorityQuadrant" aria-label="Quadrant">
                             <option value="urgent-important">Urgent & Important</option>
                             <option value="not-urgent-important">Not Urgent & Important</option>
                             <option value="urgent-not-important">Urgent & Not Important</option>
@@ -245,7 +249,7 @@
                 <section class="glass-card journal-section">
                     <h2 class="card-title"><span class="hl-orange"><i class="ph ph-notebook" aria-hidden="true"></i></span> <span data-i18n="daily_reflection">Daily Reflection</span></h2>
                     <div class="journal-area">
-                        <textarea id="journalText" data-i18n-placeholder="journal_placeholder" placeholder="How did your study session go? What did you learn?"></textarea>
+                        <textarea id="journalText" data-i18n-placeholder="journal_placeholder" placeholder="How did your study session go? What did you learn?" aria-label="Daily reflection"></textarea>
                         <div id="journalPast" class="journal-past"></div>
                     </div>
                 </section>

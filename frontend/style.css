@@ -20,8 +20,8 @@
     --ink:    #edf2f7;
     --ink-2:  #cfd9e3;
     --muted:  #8d9aa9;
-    --faint:  #5d6b7d;
-    --ghost:  #39434f;
+    --faint:  #7a8a9e;
+    --ghost:  #5a6b7d;
 
     /* Lines — neutral hairlines; accent reserved for focus/active */
     --line:        rgba(148, 163, 184, 0.12);
@@ -106,7 +106,7 @@
    2. RESET & BASE
    ============================================================ */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; color-scheme: dark; touch-action: manipulation; }
 
 body {
     font-family: var(--font);
@@ -188,6 +188,7 @@ h1, h2, h3, h4 {
     font-weight: 600;
     color: var(--ink);
     line-height: 1.2;
+    text-wrap: balance;
 }
 
 /* Keyboard focus: one visible, on-brand ring for every focusable element.
@@ -313,7 +314,7 @@ input:disabled, select:disabled, textarea:disabled {
     padding: 0.15rem 0.6rem;
     line-height: 1;
     border-radius: var(--r-sm);
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .burger-menu:hover {
     background: var(--surface-3);
@@ -384,7 +385,7 @@ input:disabled, select:disabled, textarea:disabled {
     transition: border-color var(--dur), box-shadow var(--dur);
 }
 #langSelector:hover { border-color: var(--line-2) !important; }
-#langSelector:focus {
+#langSelector:focus-visible {
     border-color: var(--accent) !important;
     box-shadow: var(--focus-ring);
 }
@@ -399,7 +400,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-size: var(--fs-xs);
     font-family: inherit;
     font-weight: 600;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .focus-toggle:hover {
     border-color: var(--accent);
@@ -439,7 +440,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     font-size: var(--fs-sm);
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     white-space: nowrap;
 }
 .clock-toggle:hover {
@@ -541,7 +542,7 @@ input:disabled, select:disabled, textarea:disabled {
     height: 38px;
     font-size: var(--fs-lg);
     cursor: pointer;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -679,7 +680,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     font-size: var(--fs-sm);
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .pomodoro-controls button:hover {
     background: rgba(63, 210, 176, 0.24);
@@ -703,7 +704,7 @@ input:disabled, select:disabled, textarea:disabled {
     cursor: pointer;
     font-weight: 600;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s);
 }
 .pomodoro-sound-select:hover { background: rgba(63, 210, 176, 0.16); }
 
@@ -724,7 +725,7 @@ input:disabled, select:disabled, textarea:disabled {
     resize: vertical;
     line-height: 1.55;
 }
-.journal-area textarea:focus {
+.journal-area textarea:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -813,7 +814,7 @@ input:disabled, select:disabled, textarea:disabled {
    ============================================================ */
 .btn-danger-sm, .btn-danger, .btn-primary, .btn-primary-sm {
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     cursor: pointer;
     font-weight: 600;
 }
@@ -870,12 +871,14 @@ input:disabled, select:disabled, textarea:disabled {
     color: var(--danger);
     border: 1px solid rgba(240, 147, 140, 0.32);
     border-radius: 50%;
+    min-width: 44px;
+    min-height: 44px;
     width: 22px;
     height: 22px;
     font-size: var(--fs-xs);
     cursor: pointer;
     margin-left: 0.5rem;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -916,7 +919,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-size: var(--fs-md);
     transition: border var(--dur), box-shadow var(--dur);
 }
-.ai-recommend-input input:focus {
+.ai-recommend-input input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -929,7 +932,7 @@ input:disabled, select:disabled, textarea:disabled {
     border-radius: var(--r-sm);
     font-weight: 700;
     cursor: pointer;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .ai-recommend-input button:hover {
     background: rgba(63, 210, 176, 0.30);
@@ -1011,7 +1014,7 @@ input:disabled, select:disabled, textarea:disabled {
     padding: 3rem 2rem;
     text-align: center;
     cursor: pointer;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s);
     background: rgba(63, 210, 176, 0.03);
     position: relative;
     overflow: hidden;
@@ -1067,7 +1070,7 @@ input:disabled, select:disabled, textarea:disabled {
     min-width: 100px;
     transition: border var(--dur);
 }
-.file-note-input:focus { outline: none; border-color: var(--accent); }
+.file-note-input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 
 /* ============================================================
    17. HABITS / NOTICES / NOTES
@@ -1129,7 +1132,7 @@ input:disabled, select:disabled, textarea:disabled {
     cursor: pointer;
     font-size: var(--fs-sm);
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .habit-item .complete-btn:hover {
     background: rgba(95, 214, 164, 0.22);
@@ -1229,7 +1232,7 @@ input:disabled, select:disabled, textarea:disabled {
     color: var(--ink);
     transition: border var(--dur), box-shadow var(--dur);
 }
-.search-box input:focus {
+.search-box input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 4px rgba(63, 210, 176, 0.12);
@@ -1242,7 +1245,7 @@ input:disabled, select:disabled, textarea:disabled {
     border-radius: var(--r-pill);
     font-weight: 700;
     cursor: pointer;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .search-box button:hover {
     background: rgba(63, 210, 176, 0.30);
@@ -1300,7 +1303,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .keyboard-toggle:hover {
     background: rgba(63, 210, 176, 0.22);
@@ -1338,7 +1341,7 @@ input:disabled, select:disabled, textarea:disabled {
     min-width: 2.5rem;
     text-align: center;
     font-family: inherit;
-    transition: all var(--dur-fast) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .key-btn:hover {
     background: rgba(63, 210, 176, 0.16);
@@ -1410,7 +1413,7 @@ input:disabled, select:disabled, textarea:disabled {
     cursor: pointer;
     padding: 0.25rem;
     color: var(--ink);
-    transition: all var(--dur-fast) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1444,7 +1447,7 @@ input:disabled, select:disabled, textarea:disabled {
     border: 1px solid var(--line);
     border-radius: var(--r);
     padding: 1.15rem;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s);
 }
 .flashcard-review .card-back { display: none; }
 .flashcard-review.show-back .card-back { display: flex; }
@@ -1459,7 +1462,7 @@ input:disabled, select:disabled, textarea:disabled {
     cursor: pointer;
     margin: 0 0.35rem;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .flashcard-difficulty button:hover {
     background: rgba(63, 210, 176, 0.18);
@@ -1483,7 +1486,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-family: inherit;
     transition: border var(--dur), box-shadow var(--dur);
 }
-.input-dark:focus {
+.input-dark:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -1542,7 +1545,7 @@ input:disabled, select:disabled, textarea:disabled {
     color: var(--ink);
     transition: border var(--dur), box-shadow var(--dur);
 }
-.search-section .search-box input:focus {
+.search-section .search-box input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 4px rgba(63, 210, 176, 0.12);
@@ -1556,7 +1559,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .search-section .search-box button:hover {
     background: rgba(63, 210, 176, 0.30);
@@ -1573,7 +1576,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .search-section .keyboard-toggle:hover {
     background: rgba(63, 210, 176, 0.22);
@@ -1602,7 +1605,7 @@ input:disabled, select:disabled, textarea:disabled {
     cursor: pointer;
     min-width: 2.5rem;
     text-align: center;
-    transition: all var(--dur-fast) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .search-section .key-btn:hover {
     background: rgba(63, 210, 176, 0.16);
@@ -1631,6 +1634,7 @@ input:disabled, select:disabled, textarea:disabled {
     justify-content: center;
     padding: 1rem;
     animation: modalFade 0.2s var(--ease);
+    overscroll-behavior: contain;
 }
 @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
 
@@ -1666,11 +1670,13 @@ input:disabled, select:disabled, textarea:disabled {
     border: 1px solid var(--line-strong);
     color: var(--accent);
     border-radius: var(--r-xs);
+    min-width: 44px;
+    min-height: 44px;
     width: 34px;
     height: 34px;
     cursor: pointer;
     font-size: 1rem;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .calendar-modal-header button:hover,
 .history-modal-header button:hover {
@@ -1719,7 +1725,7 @@ input:disabled, select:disabled, textarea:disabled {
     border-radius: var(--r-sm);
     color: var(--ink);
     cursor: default;
-    transition: all var(--dur-fast);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     font-size: var(--fs-sm);
     font-variant-numeric: tabular-nums;
 }
@@ -1773,7 +1779,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-size: var(--fs-sm);
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     font-family: inherit;
 }
 .calc-btn:hover {
@@ -1811,7 +1817,7 @@ input:disabled, select:disabled, textarea:disabled {
     transition: border var(--dur);
 }
 .priority-input-row input { flex: 1; min-width: 150px; }
-.priority-input-row input:focus, .priority-input-row select:focus {
+.priority-input-row input:focus-visible, .priority-input-row select:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(63, 210, 176, 0.12);
@@ -1878,7 +1884,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     font-size: var(--fs-sm);
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .deepwork-controls button:hover {
     background: rgba(63, 210, 176, 0.28);
@@ -1908,7 +1914,7 @@ input:disabled, select:disabled, textarea:disabled {
     border-radius: var(--r-xs);
     cursor: pointer;
     font-size: var(--fs-sm);
-    transition: all var(--dur-fast) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     text-align: left;
     color: var(--ink);
     font-family: inherit;
@@ -2050,7 +2056,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .blocker-banner-btn:hover {
     border-color: var(--accent);
@@ -2112,7 +2118,7 @@ input:disabled, select:disabled, textarea:disabled {
     transition: border var(--dur), box-shadow var(--dur);
     line-height: 1.55;
 }
-.planner-ai-input textarea:focus {
+.planner-ai-input textarea:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -2128,7 +2134,7 @@ input:disabled, select:disabled, textarea:disabled {
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .planner-chip:hover {
     background: rgba(63, 210, 176, 0.24);
@@ -2317,6 +2323,7 @@ body.focus-mode::before {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s var(--ease);
+    overscroll-behavior: contain;
 }
 .focus-summary-modal.open { opacity: 1; pointer-events: auto; }
 .focus-summary-panel {
@@ -2409,7 +2416,7 @@ body.focus-mode::before {
     font-size: var(--fs-sm);
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .fs-close:hover {
     background: rgba(63, 210, 176, 0.34);
@@ -2436,7 +2443,7 @@ body.focus-mode::before {
     z-index: 10100;
     opacity: 0;
     pointer-events: none;
-    transition: all 0.3s var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s);
 }
 .fbt-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .fbt-toast.ok { border-color: var(--ok); }
@@ -2458,6 +2465,7 @@ body.focus-mode::before {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s var(--ease);
+    overscroll-behavior: contain;
 }
 .blocker-modal.open { opacity: 1; pointer-events: auto; }
 .blocker-modal-panel {
@@ -2517,7 +2525,7 @@ body.focus-mode::before {
     cursor: pointer;
     font-family: inherit;
     border: 1px solid transparent;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .btn-allow-once {
     background: rgba(255, 255, 255, 0.045);
@@ -2556,6 +2564,7 @@ body.focus-mode::before {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s var(--ease);
+    overscroll-behavior: contain;
 }
 .blocker-settings-modal.open { opacity: 1; pointer-events: auto; }
 .blocker-settings-panel {
@@ -2589,6 +2598,8 @@ body.focus-mode::before {
     background: rgba(240, 147, 140, 0.16);
     border: 1px solid rgba(240, 147, 140, 0.32);
     color: var(--danger);
+    min-width: 44px;
+    min-height: 44px;
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -2597,7 +2608,7 @@ body.focus-mode::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .bs-close:hover { background: rgba(240, 147, 140, 0.32); transform: scale(1.08); }
 .bs-desc { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 1.05rem; line-height: 1.55; }
@@ -2620,7 +2631,7 @@ body.focus-mode::before {
     border-radius: var(--r-sm);
     padding: 0.65rem 0.9rem;
     cursor: pointer;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     font-size: var(--fs-sm);
 }
 .bs-cat:hover {
@@ -2638,7 +2649,7 @@ body.focus-mode::before {
     cursor: pointer;
     position: relative;
     flex-shrink: 0;
-    transition: all var(--dur);
+    transition: border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s);
 }
 .bs-cat input:checked { background: var(--accent); border-color: var(--accent); }
 .bs-cat input:checked::after {
@@ -2671,7 +2682,7 @@ body.focus-mode::before {
     font-size: var(--fs-sm);
     transition: border var(--dur);
 }
-.bs-add-row input:focus {
+.bs-add-row input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -2686,7 +2697,7 @@ body.focus-mode::before {
     cursor: pointer;
     font-family: inherit;
     font-size: var(--fs-sm);
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .bs-add-btn:hover { background: rgba(63, 210, 176, 0.28); }
 .bs-custom-list { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -2804,7 +2815,7 @@ body.focus-mode::before {
     font-size: var(--fs-xs);
     font-family: inherit;
     font-weight: 700;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     white-space: nowrap;
     box-shadow: var(--shadow-sm);
 }
@@ -2866,6 +2877,7 @@ body.focus-mode::before {
     visibility: hidden;
     transition: opacity var(--dur) var(--ease), visibility 0s linear var(--dur);
     transition: opacity var(--dur) ease;
+    overscroll-behavior: contain;
 }
 .theme-picker-overlay.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity var(--dur) var(--ease); }
 .theme-picker-panel {
@@ -2903,6 +2915,8 @@ body.focus-mode::before {
     background: rgba(240, 147, 140, 0.16);
     border: 1px solid rgba(240, 147, 140, 0.32);
     color: var(--danger);
+    min-width: 44px;
+    min-height: 44px;
     width: 34px;
     height: 34px;
     border-radius: 50%;
@@ -2911,7 +2925,7 @@ body.focus-mode::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .theme-picker-close:hover { background: rgba(240, 147, 140, 0.32); transform: scale(1.06); }
 
@@ -2927,7 +2941,7 @@ body.focus-mode::before {
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .theme-picker-tab:hover { color: var(--accent); border-color: var(--accent); }
 .theme-picker-tab.active {
@@ -2961,7 +2975,7 @@ body.focus-mode::before {
     border-radius: var(--r);
     padding: 0.65rem;
     cursor: pointer;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     text-align: center;
     font-family: inherit;
     color: var(--ink);
@@ -3015,7 +3029,7 @@ body.focus-mode::before {
     border-radius: var(--r-sm);
     border: 2px solid rgba(255, 255, 255, 0.09);
     cursor: pointer;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     position: relative;
     overflow: hidden;
     background-size: cover;
@@ -3077,7 +3091,7 @@ body.focus-mode::before {
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .theme-picker-actions button:hover {
     border-color: var(--accent);
@@ -3140,7 +3154,7 @@ body.focus-mode::before {
     text-decoration: none;
     color: var(--ink);
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -3196,6 +3210,8 @@ body.focus-mode::before {
 .shortcut-tile .sc-edit {
     position: absolute;
     top: 6px;
+    min-width: 44px;
+    min-height: 44px;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -3208,7 +3224,7 @@ body.focus-mode::before {
     line-height: 1;
     font-family: inherit;
     z-index: 2;
-    transition: all var(--dur-fast);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .shortcut-tile .sc-edit {
     left: 6px;
@@ -3241,7 +3257,7 @@ body.focus-mode::before {
     justify-content: center;
     gap: 0.55rem;
     aspect-ratio: 1 / 1;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .shortcut-add-tile:hover {
     background: rgba(63, 210, 176, 0.16);
@@ -3273,6 +3289,7 @@ body.focus-mode::before {
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--dur);
+    overscroll-behavior: contain;
 }
 .shortcut-modal.open { opacity: 1; pointer-events: auto; }
 .shortcut-modal-panel {
@@ -3317,7 +3334,7 @@ body.focus-mode::before {
     font-size: var(--fs-md);
     transition: border var(--dur), box-shadow var(--dur);
 }
-.shortcut-modal-panel input:focus {
+.shortcut-modal-panel input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -3343,7 +3360,7 @@ body.focus-mode::before {
     font-size: var(--fs-sm);
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     border: 1px solid transparent;
 }
 .shortcut-modal-panel .btn-cancel {
@@ -3379,7 +3396,7 @@ body.focus-mode::before {
     z-index: 970;
     opacity: 0;
     pointer-events: none;
-    transition: all 0.3s var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s);
     display: flex;
     align-items: center;
     gap: 0.65rem;
@@ -3395,6 +3412,8 @@ body.focus-mode::before {
     background: rgba(255, 255, 255, 0.22);
     border: none;
     color: #fff;
+    min-width: 44px;
+    min-height: 44px;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -3857,6 +3876,7 @@ body.theme-light .fbt-toast.ok { border-color: #059669; }
     justify-content: center;
     padding: 12vh 1rem 1rem;
     animation: cpFadeIn 0.16s ease-out;
+    overscroll-behavior: contain;
 }
 @keyframes cpFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -3910,7 +3930,7 @@ body.theme-light .fbt-toast.ok { border-color: #059669; }
     border-radius: 0;
 }
 .cp-input-wrap input::placeholder { color: var(--faint); }
-.cp-input-wrap input:focus { border: none; outline: none; box-shadow: none; }
+.cp-input-wrap input:focus-visible { border: none; outline: none; box-shadow: none; }
 
 .cp-kbd-hint { flex-shrink: 0; }
 
@@ -4353,7 +4373,7 @@ html body .overview-strip .ov-item,
     font-size: var(--fs-sm);
     transition: border var(--dur), box-shadow var(--dur);
 }
-.pomo-duration-input:focus {
+.pomo-duration-input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -5169,7 +5189,7 @@ table { display: block; overflow-x: auto; max-width: 100%; }
     transition: border var(--dur), box-shadow var(--dur);
     line-height: 1.55;
 }
-.planner-ai-input textarea:focus {
+.planner-ai-input textarea:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--focus-ring);
@@ -5183,7 +5203,7 @@ table { display: block; overflow-x: auto; max-width: 100%; }
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     white-space: nowrap;
     align-self: flex-start;
 }
@@ -5209,7 +5229,7 @@ table { display: block; overflow-x: auto; max-width: 100%; }
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .planner-chip:hover {
     background: rgba(63, 210, 176, 0.24);
@@ -5318,7 +5338,7 @@ table { display: block; overflow-x: auto; max-width: 100%; }
 .planner-ai-actions button {
     font-family: inherit;
     cursor: pointer;
-    transition: all var(--dur) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     font-weight: 700;
 }
 .planner-ai-actions .btn-primary { padding: 0.55rem 1.3rem; }
@@ -5364,7 +5384,7 @@ table { display: block; overflow-x: auto; max-width: 100%; }
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all var(--dur);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
 }
 .planner-variants .pv-btn:hover {
     background: rgba(63, 210, 176, 0.20);
@@ -5446,7 +5466,7 @@ table { display: block; overflow-x: auto; max-width: 100%; }
     cursor: pointer;
     padding: 0.25rem;
     color: var(--ink);
-    transition: all var(--dur-fast) var(--ease);
+    transition: background var(--dur, 0.2s), color var(--dur, 0.2s), border-color var(--dur, 0.2s), box-shadow var(--dur, 0.2s), transform var(--dur, 0.2s), opacity var(--dur, 0.2s);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5644,3 +5664,24 @@ html body .stat-number span {
    THE END — anchor point for future overrides
    (Add any new global rules below this line.)
    ============================================================ */
+
+/* ============================================================
+   UTILITY CLASSES — replace inline styles across all pages
+   ============================================================ */
+.hidden { display: none; }
+.text-muted-sm { color: var(--muted); font-size: var(--fs-sm); }
+.flex-gap-sm { display: flex; gap: 0.5rem; align-items: center; }
+.max-w-160 { max-width: 160px; }
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.flex-3 { flex: 3; }
+.flex-end { display: flex; justify-content: flex-end; }
+.ml-auto { margin-left: auto; }
+.text-right { text-align: right; }
+.ml-sm { margin-left: 0.5rem; }
+.mt-sm { margin-top: 0.5rem; }
+.mt-md { margin-top: 1rem; }
+.flex-wrap-gap { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.text-muted { color: var(--muted); }
+.border-danger { border: 1px solid var(--danger); }
+.tag-danger { background: rgba(240, 147, 140, 0.12); color: var(--danger); border: 1px solid rgba(240, 147, 140, 0.30); padding: 0.08rem 0.6rem; border-radius: var(--r-sm); font-size: var(--fs-xs); }

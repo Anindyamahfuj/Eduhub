@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · AI Tools</title>
+    <meta name="description" content="AI-powered study tools and resources.">
+    <meta property="og:title" content="AI Tools — StudyHub">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +33,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -98,7 +101,7 @@
                 </div>
                 <p id="aiRecommendText" data-i18n="recommend_text">Tell me what you're working on.</p>
                 <div class="ai-recommend-input">
-                    <input type="text" id="aiQueryInput" data-i18n-placeholder="recommend_placeholder" placeholder="e.g. solve calculus, write code..." />
+                    <input type="text" id="aiQueryInput" data-i18n-placeholder="recommend_placeholder" placeholder="e.g. solve calculus, write code..." aria-label="Describe what you need" name="query" />
                     <button id="aiRecommendBtn"><i class="ph ph-sparkle" aria-hidden="true"></i> <span data-i18n="recommend_button">Recommend</span></button>
                 </div>
                 <div id="aiRecommendResult" class="ai-recommend-result"></div>
@@ -109,10 +112,10 @@
         <section class="glass-card">
             <h2 class="card-title"><span class="hl-green"><i class="ph ph-file-text" aria-hidden="true"></i></span> <span data-i18n="summarizer_title">AI Summarizer</span></h2>
             <p data-i18n="summarizer_desc">Paste any text and get a concise summary.</p>
-            <div style="margin-top:0.8rem;">
+            <div class="mt-md">
                 <textarea id="summarizeInput" class="input-dark" rows="6" data-i18n-placeholder="summarize_placeholder" placeholder="Paste your text here..."></textarea>
-                <button id="summarizeBtn" class="btn-primary" style="margin-top:0.5rem;"><i class="ph ph-sparkle" aria-hidden="true"></i> <span data-i18n="summarize_button">Summarize</span></button>
-                <div id="summarizeOutput" class="ai-recommend-result" style="margin-top:0.8rem;"></div>
+                <button id="summarizeBtn" class="btn-primary mt-sm"><i class="ph ph-sparkle" aria-hidden="true"></i> <span data-i18n="summarize_button">Summarize</span></button>
+                <div id="summarizeOutput" class="ai-recommend-result mt-md"></div>
             </div>
         </section>
 

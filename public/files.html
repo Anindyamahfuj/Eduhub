@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyHub · Files</title>
+    <meta name="description" content="Upload and manage your study files.">
+    <meta property="og:title" content="Files — StudyHub">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +33,7 @@
                 <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
             </ul>
             <div class="nav-right">
-                <select id="langSelector" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                <select id="langSelector" name="lang" style="background:rgba(0,0,0,0.3);border:1px solid rgba(192,132,252,0.2);color:#e2e8f0;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.8rem;cursor:pointer;">
                     <option value="en">🇬🇧 English</option>
                     <option value="es">🇪🇸 Español</option>
                     <option value="zh">🇨🇳 中文</option>
@@ -94,9 +97,9 @@
 
         <section class="upload-section glass-card">
             <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📤</div>
+                <div class="upload-icon" aria-hidden="true">📤</div>
                 <p data-i18n="upload_drop">Drag & drop files here, or click to browse</p>
-                <input type="file" id="fileInput" multiple style="display:none" />
+                <input type="file" id="fileInput" multiple class="hidden" aria-label="Upload files" />
             </div>
             <div class="upload-actions">
                 <button id="deleteAllFilesBtn" class="btn-danger"><i class="ph ph-trash" aria-hidden="true"></i> <span data-i18n="delete_all_files">Delete All Files</span></button>
@@ -105,7 +108,7 @@
 
         <section class="file-list-section glass-card">
             <h2><span class="hl-green"><i class="ph ph-folder-open" aria-hidden="true"></i></span> <span data-i18n="uploaded_files">Uploaded Files</span></h2>
-            <div id="fileList" class="file-list">
+            <div id="fileList" class="file-list" aria-live="polite">
                 <p class="empty-state" data-i18n="no_files">No files uploaded yet.</p>
             </div>
         </section>
