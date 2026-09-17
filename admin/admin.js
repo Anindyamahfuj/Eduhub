@@ -116,7 +116,76 @@
 
     function clear() { bodyEl.innerHTML = ''; }
 
-    function loading() { clear(); bodyEl.appendChild(el('div', { class: 'admin-loading', text: 'Loading…' })); }
+    function loading() {
+        clear();
+        var rows = [4, 3, 5, 3];
+        var skeleton = el('div', { class: 'admin-skeleton' }, rows.map(function (w) {
+            var row = el('div', { class: 'skeleton-row' });
+            for (var i = 0; i < w; i++) row.appendChild(el('div', { class: 'skeleton' }));
+            return row;
+        }));
+        bodyEl.appendChild(skeleton);
+    }
+
+    /* ---- toast notification system ---- */
+    var toastContainer = null;
+    function ensureToastContainer() {
+        if (!toastContainer) {
+            toastContainer = el('div', { class: 'admin-toast-container' });
+            document.body.appendChild(toastContainer);
+        }
+        return toastContainer;
+    }
+
+    function showToast(message, kind) {
+        var container = ensureToastContainer();
+        var cls = 'admin-toast';
+        if (kind === 'error') cls += ' is-error';
+        else if (kind === 'warn') cls += ' is-warn';
+        else cls += ' is-ok';
+        var toast = el('div', { class: cls });
+        var iconName = kind === 'error' ? 'x-circle' : kind === 'warn' ? 'warning-circle' : 'check-circle';
+        toast.appendChild(ph(iconName));
+        toast.appendChild(document.createTextNode(' ' + message));
+        var closeBtn = el('button', { class: 'admin-toast-close', 'aria-label': 'Dismiss' });
+        closeBtn.appendChild(ph('x'));
+        toast.appendChild(closeBtn);
+        closeBtn.addEventListener('click', function () { dismissToast(toast); });
+        container.appendChild(toast);
+        requestAnimationFrame(function () { toast.classList.add('is-visible'); });
+        window.setTimeout(function () { dismissToast(toast); }, 3500);
+    }
+
+    function dismissToast(toast) {
+        if (!toast || !toast.parentNode) return;
+        toast.classList.remove('is-visible');
+        toast.classList.add('is-dismissing');
+        window.setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+    }
+
+    function confirmAction(message, onConfirm) {
+        var overlay = el('div', { class: 'admin-confirm-overlay' });
+        var modal = el('div', { class: 'admin-confirm-modal' });
+        modal.appendChild(el('div', { class: 'admin-confirm-icon' }, [ph('warning-circle')]));
+        modal.appendChild(el('p', { class: 'admin-confirm-message', text: message }));
+        var actions = el('div', { class: 'admin-confirm-actions' });
+        var cancelBtn = el('button', { class: 'admin-confirm-btn admin-confirm-cancel', type: 'button', text: 'Cancel' });
+        var confirmBtn = el('button', { class: 'admin-confirm-btn admin-confirm-ok', type: 'button', text: 'Confirm' });
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+        modal.appendChild(actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('is-visible'); });
+
+        function close() {
+            overlay.classList.remove('is-visible');
+            window.setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 250);
+        }
+        cancelBtn.addEventListener('click', close);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        confirmBtn.addEventListener('click', function () { close(); onConfirm(); });
+    }
 
     function showError(res, section) {
         clear();
@@ -287,13 +356,13 @@
             return res.text().then(function (t) {
                 var data = null; try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
                 if (!res.ok) {
-                    alert((data && data.error) || 'Could not change role.');
+                    showToast((data && data.error) || 'Could not change role.', 'error');
                     btn.disabled = false;
                     return;
                 }
                 loadUsers(query || '');
             });
-        }).catch(function () { alert('Could not reach the server.'); btn.disabled = false; });
+        }).catch(function () { showToast('Could not reach the server.', 'error'); btn.disabled = false; });
     }
 
     /**
@@ -308,24 +377,21 @@
         var devNote = user.developer
             ? ' This account is a developer, so it loses access to this panel until it signs in again.'
             : '';
-        if (!window.confirm(
-            'Kick out ' + user.email + '?\n\n' +
+        var message = 'Kick out ' + user.email + '?\n\n' +
             'Every session row for this account is deleted, signing out every browser ' +
             'and device it is logged in on.' + devNote +
-            '\n\nNo files, notes, settings or account data are deleted.'
-        )) return;
-
-        btn.disabled = true;
-        apiSend('POST', '/users/' + encodeURIComponent(user.id) + '/sessions/revoke', {}).then(function (res) {
-            if (!res.ok) {
-                alert((res.data && res.data.error) || 'Could not kick out this session.');
-                btn.disabled = false;
-                return;
-            }
-            // Nothing else to say: the reloaded row shows Sessions 0 and the
-            // button disables itself, which is the visible proof it took effect.
-            loadUsers(query || '');
-        }).catch(function () { alert('Could not reach the server.'); btn.disabled = false; });
+            '\n\nNo files, notes, settings or account data are deleted.';
+        confirmAction(message, function () {
+            btn.disabled = true;
+            apiSend('POST', '/users/' + encodeURIComponent(user.id) + '/sessions/revoke', {}).then(function (res) {
+                if (!res.ok) {
+                    showToast((res.data && res.data.error) || 'Could not kick out this session.', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+                loadUsers(query || '');
+            }).catch(function () { showToast('Could not reach the server.', 'error'); btn.disabled = false; });
+        });
     }
 
     function loadUsers(q) {
@@ -606,9 +672,10 @@
             if (data.source === 'database') {
                 var removeBtn = btnPrimary('Remove key', 'trash');
                 removeBtn.addEventListener('click', function () {
-                    if (!window.confirm('Remove the stored AI key? The student AI features fall back to environment configuration (usually none).')) return;
-                    api('/ai/config', { method: 'DELETE' }).then(function (res) {
-                        if (res.ok) { loadAi(); } else { alert((res.data && res.data.error) || 'Remove failed.'); }
+                    confirmAction('Remove the stored AI key? The student AI features fall back to environment configuration (usually none).', function () {
+                        api('/ai/config', { method: 'DELETE' }).then(function (res) {
+                            if (res.ok) { loadAi(); } else { showToast((res.data && res.data.error) || 'Remove failed.', 'error'); }
+                        });
                     });
                 });
                 actionRow.appendChild(removeBtn);
@@ -824,9 +891,9 @@
             if (isCustom) {
                 var delBtn = el('button', { class: 'admin-icon-btn is-danger', type: 'button', title: 'Delete tool', 'aria-label': 'Delete ' + tool.label }, [ph('trash')]);
                 delBtn.addEventListener('click', function () {
-                    if (window.confirm('Delete the custom tool "' + tool.label + '"? It disappears from the student nav immediately.')) {
+                    confirmAction('Delete the custom tool "' + tool.label + '"? It disappears from the student nav immediately.', function () {
                         deleteTool(tool, delBtn);
-                    }
+                    });
                 });
                 actions.appendChild(delBtn);
             }

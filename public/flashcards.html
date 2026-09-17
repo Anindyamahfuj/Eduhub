@@ -103,9 +103,13 @@
             <button id="autoGenFlashcardsBtn" class="btn-primary ml-sm"><i class="ph ph-lightning" aria-hidden="true"></i> Auto‑Generate from Notes</button>
         </section>
 
-        <section class="glass-card" id="flashcardList"></section>
+        <section class="glass-card" id="flashcardList">
+            <div class="empty-state" id="flashcardEmpty">
+              <p>No flashcards yet. Create a deck or auto-generate from your notes.</p>
+            </div>
+        </section>
 
-        <section class="glass-card" id="flashcardReview" class="hidden">
+        <section class="glass-card hidden" id="flashcardReview">
             <div class="flashcard-review">
                 <div class="card-front" id="reviewFront"></div>
                 <div class="card-back" id="reviewBack"></div>

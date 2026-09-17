@@ -9529,3 +9529,57 @@ document.addEventListener('DOMContentLoaded', function() {
     // Expose for manual triggering from the console
     window.studyHubRefreshStreaks = refreshStreaks;
 })();
+
+/* ── Scroll Reveal + Stagger Animations ── */
+(function() {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) return;
+
+  // Add reveal class to major content sections
+  const revealTargets = document.querySelectorAll('.glass-card, .stat-card, .tool-card, .overview-strip, .dash-header, .page-header');
+  revealTargets.forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+  });
+
+  // Stagger children in grids
+  const staggerTargets = document.querySelectorAll('.stats-grid, .tools-grid, .overview-strip, .priority-grid');
+  staggerTargets.forEach(grid => {
+    const children = grid.children;
+    Array.from(children).forEach((child, i) => {
+      child.style.opacity = '0';
+      child.style.transform = 'translateY(16px)';
+      child.style.transition = `opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.06}s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.06}s`;
+    });
+  });
+
+  // IntersectionObserver for reveals
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  revealTargets.forEach(el => observer.observe(el));
+
+  // Stagger observer
+  const staggerObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const children = entry.target.children;
+        Array.from(children).forEach(child => {
+          child.style.opacity = '1';
+          child.style.transform = 'translateY(0)';
+        });
+        staggerObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  staggerTargets.forEach(el => staggerObserver.observe(el));
+})();

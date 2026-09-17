@@ -9,7 +9,7 @@
     <meta property="og:type" content="website">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
     <link rel="icon" type="image/x-icon" href="logoedu.png" />
     <style>
@@ -114,7 +114,8 @@
         .auth-container {
             position: relative;
             z-index: 1;
-            width: 900px;
+            max-width: 900px;
+            width: 100%;
             height: 550px;
             background: #1A1D2E;
             border-radius: 20px;
@@ -123,6 +124,15 @@
                 0 0 0 1px rgba(139, 92, 246, 0.1);
             overflow: hidden;
             display: flex;
+        }
+
+        .auth-container::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
         }
 
         /* Left Panel - Forms */
@@ -210,7 +220,7 @@
 
         .form-input:focus {
             outline: none;
-            border-color: #8B5CF6;
+            border-color: var(--accent, #3fd2b0);
             box-shadow: 0 0 0 3px rgba(63, 210, 176, 0.4);
         }
 
@@ -365,6 +375,12 @@
             position: relative;
             z-index: 1;
             text-align: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .image-content.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .brand-logo {
@@ -681,7 +697,7 @@
                 <button class="toggle-btn" onclick="toggleForms('signup')">Sign Up</button>
             </div>
             
-            <div class="image-content" id="signupPrompt" style="display: none;">
+            <div class="image-content hidden" id="signupPrompt">
                 <div class="brand-logo">
                     <i class="ph ph-graduation-cap" aria-hidden="true"></i>
                     <span><span class="highlight">Study</span>Hub</span>
@@ -708,14 +724,14 @@
                 signinForm.classList.remove('active');
                 signinForm.classList.add('hidden');
                 signupForm.classList.add('active');
-                signinPrompt.style.display = 'none';
-                signupPrompt.style.display = 'block';
+                signinPrompt.classList.add('hidden');
+                signupPrompt.classList.remove('hidden');
             } else {
                 signupForm.classList.remove('active');
                 signinForm.classList.remove('hidden');
                 signinForm.classList.add('active');
-                signupPrompt.style.display = 'none';
-                signinPrompt.style.display = 'block';
+                signupPrompt.classList.add('hidden');
+                signinPrompt.classList.remove('hidden');
             }
         }
 

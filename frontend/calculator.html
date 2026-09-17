@@ -27,32 +27,35 @@
   .calc-panel{display:none;animation:calcFade .3s ease}
   .calc-panel.active{display:block}
   @keyframes calcFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes resultPop{0%{opacity:.5;transform:scale(.98)}100%{opacity:1;transform:scale(1)}}
   .sci-display{background:rgba(0,0,0,.32);border:1px solid var(--line);border-radius:18px;padding:1rem 1.2rem;margin-bottom:1rem;box-shadow:inset 0 2px 12px rgba(0,0,0,.35)}
   .sci-display-top{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);letter-spacing:.05em;margin-bottom:.5rem;font-family:'JetBrains Mono',monospace}
   .sci-display-top .ind{display:flex;gap:.5rem;align-items:center}
   .sci-display-top .ind span{padding:.1rem .5rem;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
   .sci-display-top .ind span.on{background:rgba(63, 210, 176,.16);color:var(--accent-2);border-color:rgba(63, 210, 176,.4)}
-  .sci-expr{font-family:'JetBrains Mono',monospace;font-size:1.15rem;color:var(--muted);min-height:1.6rem;text-align:right;word-break:break-all;letter-spacing:.03em}
-  .sci-result{font-family:'JetBrains Mono',monospace;font-size:2.1rem;font-weight:700;color:var(--accent-2);text-align:right;word-break:break-all;min-height:2.6rem;margin-top:.3rem}
+  .sci-expr{font-family:'JetBrains Mono',monospace;font-size:1.15rem;color:var(--muted);min-height:1.6rem;text-align:right;word-break:break-all;letter-spacing:.03em;font-variant-numeric:tabular-nums}
+  .sci-result{font-family:'JetBrains Mono',monospace;font-size:2.1rem;font-weight:700;color:var(--accent-2);text-align:right;word-break:break-all;min-height:2.6rem;margin-top:.3rem;font-variant-numeric:tabular-nums;animation:resultPop .2s ease}
   .sci-result.err{color:var(--danger);font-size:1.4rem}
   .sci-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.4rem;margin-bottom:1rem}
-  .sci-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--ink);padding:.75rem .2rem;border-radius:12px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;text-align:center;min-height:46px;display:flex;align-items:center;justify-content:center}
+  .sci-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--ink);padding:.75rem .2rem;border-radius:12px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.18s cubic-bezier(0.32,0.72,0,1);text-align:center;min-height:46px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.25)}
   .sci-btn:hover{background:rgba(63, 210, 176,.14);border-color:var(--accent);transform:translateY(-1px)}
-  .sci-btn:active{transform:translateY(0) scale(.97)}
+  .sci-btn:active{transform:translateY(0) scale(.97);box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
   .sci-btn.fn{background:rgba(63, 210, 176,.08);color:var(--brand);border-color:rgba(63, 210, 176,.2)}
   .sci-btn.fn:hover{background:rgba(63, 210, 176,.2);border-color:var(--brand)}
   .sci-btn.op{background:rgba(240, 180, 106,.08);color:var(--warn);border-color:rgba(240, 180, 106,.22);font-size:1.05rem}
   .sci-btn.op:hover{background:rgba(240, 180, 106,.2);border-color:var(--warn)}
   .sci-btn.eq{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-size:1.15rem}
   .sci-btn.eq:hover{background:var(--accent-2);box-shadow:var(--shadow-sm)}
+  .sci-btn.eq:active{transform:scale(.95);box-shadow:inset 0 2px 4px rgba(0,0,0,.3)}
   .sci-btn.danger{background:rgba(240, 147, 140,.1);color:var(--danger);border-color:rgba(240, 147, 140,.25)}
   .sci-btn.danger:hover{background:rgba(240, 147, 140,.22)}
-  .sci-btn.mode{background:rgba(95, 214, 164,.08);color:var(--ok);border-color:rgba(95, 214, 164,.2);font-size:.72rem}
-  .sci-btn.mode:hover{background:rgba(95, 214, 164,.2)}
+  .sci-btn.mode{background:rgba(96,165,250,.08);color:#60a5fa;border-color:rgba(96,165,250,.2);font-size:.72rem}
+  .sci-btn.mode:hover{background:rgba(96,165,250,.2)}
   .sci-btn.mode.on{background:rgba(63, 210, 176,.18);color:var(--accent-2);border-color:var(--accent)}
   .mem-row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:.6rem;padding-top:.8rem;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}
   .mem-row button{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--ink);padding:.35rem .7rem;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit}
   .mem-row button:hover{background:rgba(63, 210, 176,.15);border-color:var(--accent)}
+  .mem-row button:active{transform:scale(.95)}
   .hist-box{margin-top:1rem;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:.6rem}
   .hist-box h4{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem}
   .hist-item{padding:.4rem .6rem;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.82rem;cursor:pointer;color:var(--muted);transition:background .15s}
@@ -390,6 +393,9 @@
       <div class="hist-box">
         <h4>History</h4>
         <div id="sci-history"></div>
+        <div class="empty-state" id="calcHistoryEmpty">
+          <p>No calculations yet. Start computing!</p>
+        </div>
       </div>
     </div>
 
@@ -875,6 +881,9 @@
   function setResult(text, isErr) {
     resEl.textContent = text;
     resEl.classList.toggle('err', !!isErr);
+    resEl.style.animation = 'none';
+    resEl.offsetHeight;
+    resEl.style.animation = '';
   }
 
   function beginNewInput() {

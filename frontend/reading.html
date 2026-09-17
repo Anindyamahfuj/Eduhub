@@ -99,17 +99,21 @@
 
         <section class="glass-card">
             <form id="readingForm" class="flex-wrap">
-                <input id="readTitle" class="input-dark" data-i18n-placeholder="read_title" placeholder="Title" required class="flex-2" aria-label="Book title" name="title" />
-                <input id="readUrl" class="input-dark" data-i18n-placeholder="read_url" placeholder="URL" required class="flex-2" type="url" aria-label="URL" name="url" />
-                <input id="readSubject" class="input-dark" data-i18n-placeholder="read_subject" placeholder="Subject" class="flex-1" aria-label="Subject" name="subject" />
-                <input id="readTags" class="input-dark" data-i18n-placeholder="read_tags" placeholder="Tags (comma)" class="flex-1" aria-label="Tags" name="tags" />
+                <input id="readTitle" class="input-dark flex-2" data-i18n-placeholder="read_title" placeholder="Title" required aria-label="Book title" name="title" />
+                <input id="readUrl" class="input-dark flex-2" data-i18n-placeholder="read_url" placeholder="URL" required type="url" aria-label="URL" name="url" />
+                <input id="readSubject" class="input-dark flex-1" data-i18n-placeholder="read_subject" placeholder="Subject" aria-label="Subject" name="subject" />
+                <input id="readTags" class="input-dark flex-1" data-i18n-placeholder="read_tags" placeholder="Tags (comma)" aria-label="Tags" name="tags" />
                 <button type="submit" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add">Add</span></button>
             </form>
         </section>
 
         <section class="glass-card">
             <h2><span data-i18n="my_reading">My Reading</span></h2>
-            <div id="readingList" aria-live="polite"></div>
+            <div id="readingList" aria-live="polite">
+                <div class="empty-state" id="readingEmpty">
+                  <p>No books in your reading list yet. Add one above.</p>
+                </div>
+            </div>
         </section>
     </main>
 

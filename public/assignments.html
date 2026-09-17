@@ -103,22 +103,26 @@
 
         <section class="glass-card">
             <form id="assignmentForm" class="flex-wrap">
-                <input id="assignTitle" class="input-dark" data-i18n-placeholder="assign_title" placeholder="Title" required class="flex-2" aria-label="Assignment title" name="title" />
-                <input id="assignSubject" class="input-dark" data-i18n-placeholder="assign_subject" placeholder="Subject" class="flex-1" aria-label="Subject" name="subject" />
-                <input id="assignDue" type="date" class="input-dark" class="flex-1" aria-label="Due date" name="due" />
-                <select id="assignPriority" class="input-dark" class="flex-1" aria-label="Priority" name="priority">
+                <input id="assignTitle" class="input-dark flex-2" data-i18n-placeholder="assign_title" placeholder="Title" required aria-label="Assignment title" name="title" />
+                <input id="assignSubject" class="input-dark flex-1" data-i18n-placeholder="assign_subject" placeholder="Subject" aria-label="Subject" name="subject" />
+                <input id="assignDue" type="date" class="input-dark flex-1" aria-label="Due date" name="due" />
+                <select id="assignPriority" class="input-dark flex-1" aria-label="Priority" name="priority">
                     <option value="high" data-i18n="priority_high">High</option>
                     <option value="medium" selected data-i18n="priority_medium">Medium</option>
                     <option value="low" data-i18n="priority_low">Low</option>
                 </select>
-                <input id="assignTags" class="input-dark" data-i18n-placeholder="assign_tags" placeholder="Tags (comma)" class="flex-1" aria-label="Tags" name="tags" />
+                <input id="assignTags" class="input-dark flex-1" data-i18n-placeholder="assign_tags" placeholder="Tags (comma)" aria-label="Tags" name="tags" />
                 <button type="submit" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add">Add</span></button>
             </form>
         </section>
 
         <section class="glass-card">
             <h2><span data-i18n="all_assignments">All Assignments</span></h2>
-            <div id="assignmentList" aria-live="polite"></div>
+            <div id="assignmentList" aria-live="polite">
+                <div class="empty-state" id="assignmentEmpty">
+                  <p>No assignments yet. Add your first assignment above.</p>
+                </div>
+            </div>
         </section>
     </main>
 

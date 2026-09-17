@@ -122,6 +122,7 @@ body {
     transition: background var(--dur-slow) var(--ease);
     letter-spacing: -0.011em;
     text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
     overflow-x: hidden;
 }
 
@@ -184,11 +185,29 @@ body > * { position: relative; z-index: 1; }
 
 h1, h2, h3, h4 {
     font-family: var(--display);
-    letter-spacing: -0.03em;
-    font-weight: 600;
     color: var(--ink);
     line-height: 1.2;
     text-wrap: balance;
+}
+
+h1 {
+    font-weight: 700;
+    letter-spacing: -0.04em;
+}
+
+h2 {
+    font-weight: 650;
+    letter-spacing: -0.03em;
+}
+
+h3 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+h4 {
+    font-weight: 500;
+    letter-spacing: 0;
 }
 
 /* Keyboard focus: one visible, on-brand ring for every focusable element.
@@ -217,13 +236,13 @@ input:disabled, select:disabled, textarea:disabled {
 /* ============================================================
    4. UTILITY / HIGHLIGHTS
    ============================================================ */
-.hl-cyan    { color: var(--accent-2); }
-.hl-magenta { color: var(--accent-2); }
-.hl-green   { color: var(--accent-2); }
+.hl-cyan    { color: #3fd2b0; }
+.hl-magenta { color: #e879a8; }
+.hl-green   { color: #4ade80; }
 .hl-orange  { color: var(--warn); }
-.hl-purple  { color: var(--accent-2); }
-.hl-pink    { color: var(--accent-2); }
-.hl-blue    { color: var(--accent-2); }
+.hl-purple  { color: #a78bfa; }
+.hl-pink    { color: #f472b6; }
+.hl-blue    { color: #60a5fa; }
 .hl-red     { color: var(--danger); }
 
 .neon-text {
@@ -244,7 +263,7 @@ input:disabled, select:disabled, textarea:disabled {
     border: 1px solid var(--line);
     border-radius: var(--r);
     padding: 1.35rem 1.5rem;
-    margin-bottom: 1.4rem;
+    margin-bottom: 2.2rem;
     box-shadow: var(--shadow);
     transition:
         border-color var(--dur) var(--ease),
