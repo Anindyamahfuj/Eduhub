@@ -345,7 +345,7 @@
 .academic-spinner {
     width: 18px;
     height: 18px;
-    border: 2px solid rgba(255,255,255,0.15);
+    border: 2px solid rgba(255, 255, 255, 0.15);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: academicSpin 0.75s linear infinite;
