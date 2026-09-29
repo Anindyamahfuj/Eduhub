@@ -111,7 +111,7 @@
   }
 
   /* ---------------- 4 · subjects (names translated at render via sub_ keys) ---------------- */
-  const T = (n, t) => ({ n: n, t: t });
+  
   function R(title, url, type, source, stages, boards, desc) {
     return { title: title, url: url, type: type, source: source, stages: stages, boards: boards, desc: desc };
   }
