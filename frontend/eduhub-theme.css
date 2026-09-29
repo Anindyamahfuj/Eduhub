@@ -1,0 +1,218 @@
+/* ============================================================
+   EDUHUB · THEME BRIDGE v2
+   Wires Mark Analyzer, Study Vault and Shortcuts onto the
+   site's own design tokens (--bg-*, --ink*, --surface*,
+   --accent*, --ok/--warn/--danger, --line*, --r*, --shadow*,
+   fonts). Whatever the theme chooser does to those variables,
+   these modules follow instantly. Pure CSS, load-order safe.
+   ============================================================ */
+
+/* 1 · snapshot of the site's tokens.
+      Declared on :root AND body so it resolves whether the
+      chooser restyles <html>, <body> or swaps stylesheets. */
+:root, body {
+  --ehs-ink:         var(--ink, #edf2f7);
+  --ehs-ink-2:       var(--ink-2, #cfd9e3);
+  --ehs-muted:       var(--muted, #8d9aa9);
+  --ehs-faint:       var(--faint, #7a8a9e);
+  --ehs-bg:          var(--bg-1, #070c15);
+  --ehs-raised:      var(--surface-raised, rgba(13, 22, 37, 0.94));
+  --ehs-surface:     var(--surface, rgba(11, 19, 32, 0.78));
+  --ehs-soft:        var(--surface-2, rgba(148, 163, 184, 0.06));
+  --ehs-softer:      var(--surface-3, rgba(148, 163, 184, 0.10));
+  --ehs-line:        var(--line, rgba(148, 163, 184, 0.12));
+  --ehs-line2:       var(--line-2, rgba(148, 163, 184, 0.22));
+  --ehs-accent:      var(--accent, #3fd2b0);
+  --ehs-accent2:     var(--accent-2, #7fe3c8);
+  --ehs-accent-soft: var(--accent-soft, rgba(63, 210, 176, 0.12));
+  --ehs-accent-ink:  var(--accent-ink, #04241c);
+  --ehs-ok:          var(--ok, #5fd6a4);
+  --ehs-warn:        var(--warn, #f0b46a);
+  --ehs-warn-soft:   var(--warn-soft, rgba(240, 180, 106, 0.12));
+  --ehs-danger:      var(--danger, #f0938c);
+  --ehs-danger-soft: var(--danger-soft, rgba(240, 147, 140, 0.12));
+  --ehs-info:        var(--info, #7fb3d9);
+  --ehs-info-soft:   var(--info-soft, rgba(127, 179, 217, 0.12));
+  --ehs-focus:       var(--focus-ring, 0 0 0 3px rgba(63, 210, 176, 0.35));
+  --ehs-shadow-sm:   var(--shadow-sm, 0 4px 14px rgba(2, 5, 10, 0.45));
+  --ehs-shadow-xl:   var(--shadow-xl, 0 44px 100px rgba(2, 5, 10, 0.60));
+  --ehs-display:     var(--display, "Space Grotesk", "DM Sans", sans-serif);
+  --ehs-font:        var(--font, "DM Sans", system-ui, sans-serif);
+  --ehs-mono:        var(--mono, "JetBrains Mono", ui-monospace, monospace);
+  --ehs-r-xs:   var(--r-xs, 8px);
+  --ehs-r-sm:   var(--r-sm, 11px);
+  --ehs-r:      var(--r, 16px);
+  --ehs-r-lg:   var(--r-lg, 20px);
+  --ehs-r-pill: var(--r-pill, 999px);
+}
+
+/* 2 · retarget the modules' internal variables
+      (higher specificity than their hardcoded palettes) */
+html #eh-fabs, html #eh-modal, html #eh-toast,
+html #ehsc-fabs, html #ehsc-modal, html #ehsc-toast {
+  --eh-ink: var(--ehs-ink);            --eh-ink2: var(--ehs-muted);
+  --eh-paper: var(--ehs-bg);           --eh-card: var(--ehs-surface);
+  --eh-line: var(--ehs-line);          --eh-soft: var(--ehs-soft);
+  --eh-accent: var(--ehs-accent);      --eh-accent-soft: var(--ehs-accent-soft);
+  --eh-rust: var(--ehs-danger);        --eh-amber: var(--ehs-warn);
+  --paper: var(--ehs-bg);     --ink: var(--ehs-ink);    --ink2: var(--ehs-muted);
+  --card: var(--ehs-surface); --line: var(--ehs-line);  --soft: var(--ehs-soft);
+  --accent: var(--ehs-accent); --rust: var(--ehs-danger);
+}
+
+/* 3 · typography — modules speak your type system */
+#eh-modal, #eh-toast, #eh-fabs, #ehsc-modal, #ehsc-toast, #ehsc-fabs { font-family: var(--ehs-font); }
+#eh-modal .eh-title, #eh-modal .eh-h3, #eh-modal .eh-score .n,
+#eh-modal .eh-slash, #eh-modal .eh-grade, #eh-modal .eh-vtitle,
+#eh-modal .eh-mono,
+#ehsc-modal .ehsc-htitle, #ehsc-modal .ehsc-letter { font-family: var(--ehs-display); }
+#eh-modal .eh-eyebrow, #eh-modal .eh-hint, #eh-modal .eh-opt,
+#eh-modal .eh-flabel, #eh-modal .eh-pstrip, #eh-modal .eh-field label,
+#eh-modal .eh-vg, #eh-modal .eh-bline, #eh-modal .eh-score .sub,
+#eh-modal .eh-secure-label, #eh-modal .eh-planprog, #eh-modal .eh-aval,
+#eh-modal .eh-rdate, #eh-modal .eh-rcomp, #eh-modal .eh-rscore, #eh-modal .eh-vsrc,
+#eh-modal .eh-stag,
+#ehsc-modal .ehsc-eyebrow, #ehsc-modal .ehsc-label, #ehsc-modal .ehsc-d {
+  font-family: var(--ehs-mono);
+}
+
+/* 4 · surfaces, chrome, toasts, tooltips, FABs */
+html #eh-modal .eh-panel, html #ehsc-modal .ehsc-panel {
+  background: var(--ehs-raised); box-shadow: var(--ehs-shadow-xl);
+}
+html #eh-modal .eh-head, html #ehsc-modal .ehsc-head { background: transparent; }
+html #eh-toast, html #ehsc-toast {
+  background: var(--ehs-raised); color: var(--ehs-ink);
+  border: 1px solid var(--ehs-line); box-shadow: var(--ehs-shadow);
+}
+html #eh-fabs .eh-fab-tip, html #ehsc-fabs .ehsc-fab-tip {
+  background: var(--ehs-raised); color: var(--ehs-ink);
+  border: 1px solid var(--ehs-line);
+}
+html #eh-fabs .eh-fab, html #ehsc-fabs .ehsc-fab {
+  background: var(--ehs-raised); box-shadow: var(--ehs-shadow-sm);
+}
+html #eh-fabs .eh-fab:hover, html #ehsc-fabs .ehsc-fab:hover {
+  box-shadow: 0 16px 30px -10px color-mix(in srgb, var(--ehs-accent) 35%, transparent);
+}
+
+/* 5 · cards & strips */
+html #eh-modal .eh-verdict, html #eh-modal .eh-vcard,
+html #eh-modal .eh-bcard, html #eh-modal .eh-pstrip,
+html #ehsc-modal .ehsc-card { background: var(--ehs-surface); }
+
+/* 6 · inputs & search */
+html #eh-modal .eh-input, html #eh-modal .eh-select,
+html #ehsc-modal .ehsc-input {
+  background: color-mix(in srgb, var(--ehs-ink) 6%, transparent);
+  border-color: var(--ehs-line2); color: var(--ehs-ink);
+}
+html #eh-modal .eh-input::placeholder, html #ehsc-modal .ehsc-input::placeholder,
+html #ehsc-modal .ehsc-search input::placeholder { color: var(--ehs-faint); }
+html #ehsc-modal .ehsc-search input { color: var(--ehs-ink); }
+html #eh-modal .eh-input:focus, html #eh-modal .eh-select:focus,
+html #ehsc-modal .ehsc-input:focus {
+  border-color: var(--ehs-accent); box-shadow: var(--ehs-focus);
+}
+html #eh-modal .eh-select {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238d9aa9' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* 7 · buttons — primary uses your exact .btn-primary recipe */
+html #eh-modal .eh-btn, html #ehsc-modal .ehsc-btn { color: var(--ehs-accent-ink); }
+html #eh-modal .eh-btn:hover, html #ehsc-modal .ehsc-btn:hover {
+  background: var(--ehs-accent2);
+  box-shadow: 0 10px 20px -10px color-mix(in srgb, var(--ehs-accent) 45%, transparent);
+}
+html #eh-modal .eh-btn-ghost, html #eh-modal .eh-chip,
+html #eh-modal .eh-ychip, html #eh-modal .eh-tlink,
+html #eh-modal .eh-stlink, html #eh-modal .eh-back,
+html #eh-modal .eh-vsearch, html #eh-modal .eh-vcard,
+html #eh-modal .eh-pills span,
+html #ehsc-modal .ehsc-btn-ghost, html #ehsc-modal .ehsc-mini,
+html #ehsc-modal .ehsc-ib, html #ehsc-modal .ehsc-preview,
+html #ehsc-modal .ehsc-search, html #ehsc-modal .ehsc-thumb {
+  background: color-mix(in srgb, var(--ehs-ink) 5%, transparent);
+}
+html #eh-modal .eh-btn-ghost:hover, html #eh-modal .eh-chip:hover,
+html #eh-modal .eh-ychip:hover, html #eh-modal .eh-back:hover,
+html #eh-modal .eh-bcard:hover, html #eh-modal .eh-vcard:hover,
+html #ehsc-modal .ehsc-btn-ghost:hover, html #ehsc-modal .ehsc-mini:hover {
+  background: var(--ehs-softer); border-color: var(--ehs-line2);
+}
+html #eh-modal .eh-vcard:hover, html #ehsc-modal .ehsc-card:hover {
+  box-shadow: 0 12px 24px -14px color-mix(in srgb, var(--ehs-accent) 35%, transparent);
+}
+
+/* 8 · active chips = your .focus-toggle.active recipe */
+html #eh-modal .eh-chip.on, html #eh-modal .eh-ychip.on {
+  background: var(--ehs-accent-soft);
+  border-color: var(--ehs-accent); color: var(--ehs-accent);
+}
+html #eh-modal .eh-bcard.on {
+  border-color: var(--ehs-accent);
+  box-shadow: 0 0 0 3px var(--ehs-accent-soft);
+}
+
+/* 9 · semantic details */
+html #eh-modal .eh-para { color: var(--ehs-ink-2); }
+html #eh-modal .eh-dot.ck { background: var(--ehs-warn); }
+html #eh-modal .eh-pstep.done .eh-pdot,
+html #eh-modal .eh-step.done .eh-box { color: var(--ehs-accent-ink); }
+html #eh-modal .eh-step .eh-box { border-color: var(--ehs-line2); }
+html #eh-modal .eh-stag.t-method { background: var(--ehs-soft); color: var(--ehs-muted); }
+html #eh-modal .eh-stag.t-resource { background: var(--ehs-warn-soft); color: var(--ehs-warn); }
+html #eh-modal .eh-priority {
+  background: var(--ehs-warn-soft); color: var(--ehs-warn);
+  border-color: color-mix(in srgb, var(--ehs-warn) 30%, transparent);
+}
+html #eh-modal .eh-bline, html #eh-modal .eh-rcomp, html #ehsc-modal .ehsc-opt {
+  color: var(--ehs-faint);
+}
+html #eh-modal .eh-del:hover { background: var(--ehs-danger-soft); }
+html #eh-modal .eh-vbadge.video { background: var(--ehs-accent-soft); color: var(--ehs-accent); }
+html #eh-modal .eh-vbadge.notes { background: var(--ehs-soft); color: var(--ehs-muted); }
+html #eh-modal .eh-vbadge.papers { background: var(--ehs-warn-soft); color: var(--ehs-warn); }
+html #eh-modal .eh-vbadge.practice { background: var(--ehs-info-soft); color: var(--ehs-info); }
+html #ehsc-modal .ehsc-ib:hover { color: var(--ehs-accent); border-color: var(--ehs-accent); }
+html #ehsc-modal .ehsc-ib.danger:hover {
+  color: var(--ehs-danger); border-color: var(--ehs-danger);
+  background: var(--ehs-danger-soft);
+}
+
+/* 10 · empty states — your .empty-state accent tint */
+html #eh-modal .eh-empty, html #ehsc-modal .ehsc-empty {
+  border-color: color-mix(in srgb, var(--ehs-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--ehs-accent) 4%, transparent);
+}
+
+/* 11 · scrollbars — same treatment as your site's */
+html #eh-modal .eh-body, html #ehsc-modal .ehsc-body {
+  scrollbar-color: color-mix(in srgb, var(--ehs-accent) 30%, transparent) transparent;
+}
+html #eh-modal .eh-body::-webkit-scrollbar-thumb,
+html #ehsc-modal .ehsc-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ehs-accent) 28%, transparent);
+  background-clip: padding-box;
+}
+html #eh-modal .eh-body::-webkit-scrollbar-thumb:hover,
+html #ehsc-modal .ehsc-body::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ehs-accent) 50%, transparent);
+  background-clip: padding-box;
+}
+
+/* 12 · radii & pills — from your radius scale */
+html #eh-modal .eh-card, html #eh-modal .eh-verdict,
+html #eh-modal .eh-vcard, html #eh-modal .eh-bcard,
+html #ehsc-modal .ehsc-card { border-radius: var(--ehs-r); }
+html #eh-modal .eh-input, html #eh-modal .eh-select,
+html #eh-modal .eh-btn, html #eh-modal .eh-btn-ghost,
+html #eh-modal .eh-back, html #eh-modal .eh-grade, html #eh-modal .eh-pstrip,
+html #ehsc-modal .ehsc-input, html #ehsc-modal .ehsc-btn,
+html #ehsc-modal .ehsc-btn-ghost { border-radius: var(--ehs-r-sm); }
+html #eh-modal .eh-chip, html #eh-modal .eh-ychip, html #eh-modal .eh-pills span,
+html #eh-fabs .eh-fab, html #ehsc-fabs .ehsc-fab { border-radius: var(--ehs-r-pill); }
+html #eh-modal .eh-tlink, html #eh-modal .eh-stlink, html #eh-modal .eh-mono,
+html #eh-modal .eh-del, html #eh-modal .eh-vbadge, html #eh-modal .eh-stag,
+html #ehsc-modal .ehsc-ib, html #ehsc-modal .ehsc-mini,
+html #ehsc-modal .ehsc-preview { border-radius: var(--ehs-r-xs); }
