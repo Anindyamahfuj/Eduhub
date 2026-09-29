@@ -540,7 +540,7 @@
           boardCard('edexcel', 'Pearson Edexcel', 'International GCSE · IAS · IAL', b0 === 'edexcel') +
         '</div>' +
         '<div class="eh-flabel">2 · Year group</div>' +
-        '<div class="eh-years">' + [10, 11, 12, 13].map(v =>
+       '<div class="eh-years">' + [6, 7, 8, 9, 10, 11, 12, 13].map(v =>
           '<button class="eh-ychip' + (y0 === v ? ' on' : '') + '" data-year="' + v + '">Year ' + v + '</button>').join('') + '</div>' +
         '<div class="eh-stageline" id="eh-stageline"></div>' +
         '<div class="eh-flabel">3 · What should we call you? <span class="eh-opt">optional</span></div>' +
