@@ -216,3 +216,11 @@ html #eh-modal .eh-tlink, html #eh-modal .eh-stlink, html #eh-modal .eh-mono,
 html #eh-modal .eh-del, html #eh-modal .eh-vbadge, html #eh-modal .eh-stag,
 html #ehsc-modal .ehsc-ib, html #ehsc-modal .ehsc-mini,
 html #ehsc-modal .ehsc-preview { border-radius: var(--ehs-r-xs); }
+
+
+/* 13 · last hardcoded stragglers */
+html #eh-modal .eh-link:hover { color: var(--ehs-accent2); }
+html #eh-modal .eh-del { color: var(--ehs-faint); }
+html #eh-modal .eh-scrim, html #ehsc-modal .ehsc-scrim {
+  background: color-mix(in srgb, var(--ehs-bg) 72%, transparent);
+}
