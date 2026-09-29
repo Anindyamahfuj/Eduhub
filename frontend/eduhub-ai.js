@@ -14,6 +14,7 @@
   const cssVar = (n, f) => ((getComputedStyle(document.body).getPropertyValue(n)) || '').trim() || f;
   /* translated string: key → i18n dict; fallback = inline English */
   function T(k, en, v) {
+    if (typeof en === 'number') return { n: k, t: en }; /* topic helper: T('Name', tier) */
     var s = (window.EH_I18N && EH_I18N.t(k, v));
     if (s == null) s = en;
     return String(s).replace(/\{(\w+)\}/g, (m, kk) => (v && v[kk] != null ? v[kk] : m));
