@@ -240,3 +240,8 @@ html #eh-modal .eh-select optgroup {
   background-color: var(--ehs-bg, #0a111d);
   color: var(--ehs-ink, #edf2f7);
 }
+/* 15 · RTL — العربية / اردو */
+#eh-modal[dir="rtl"] .eh-tlink, #eh-modal[dir="rtl"] .eh-stlink,
+#eh-modal[dir="rtl"] .eh-del { margin-left: 0; margin-right: auto; }
+#eh-modal[dir="rtl"] .eh-vspark { margin-left: 0; margin-right: auto; }
+#eh-modal[dir="rtl"] .eh-formrow.end { justify-content: flex-end; }
