@@ -1,5 +1,5 @@
 /* =====================================================================
-   EDUHUB · Mark Analyzer + Study Vault · v1.0
+   EDUHUB · Mark Analyzer + Study Vault · v1.1 (theme-aware)
    ---------------------------------------------------------------------
    Drop-in module. Zero dependencies · zero servers · zero API keys.
    Everything runs on the student's device.
@@ -16,6 +16,9 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmtPct = p => String(Math.round(p * 10) / 10).replace(/\.0$/, '');
+  /* THEME EDIT 1 of 3 — reads a live CSS variable from the site theme,
+     with a fallback if the token doesn't exist */
+  const cssVar = (n, f) => ((getComputedStyle(document.body).getPropertyValue(n)) || '').trim() || f;
 
   const store = (() => {
     const mem = {}; let ok = true;
@@ -738,7 +741,8 @@
   function renderResults(r) {
     const e = r.entry, prof = r.prof;
     const bline = BOARDS[prof.board].stages[prof.stage].grades.map(g => g[0] + ' ≥' + g[1]).join(' · ');
-    const sparkColor = r.trend.dir === 'down' ? '#9c3a2a' : '#0c6a43';
+    /* THEME EDIT 2 of 3 — sparkline follows the theme's danger/accent tokens */
+    const sparkColor = r.trend.dir === 'down' ? cssVar('--danger', '#9c3a2a') : cssVar('--accent', '#0c6a43');
     const trendBits =
       r.trend.dir === 'first' ? 'First entry logged — baseline set' :
       r.trend.dir === 'up'    ? '<b class="up">+' + fmtPct(Math.abs(r.trend.delta)) + '</b> vs your last ' + esc(r.subj.name) + ' score' :
@@ -834,7 +838,8 @@
     host.innerHTML = '<div class="eh-card"><h3 class="eh-h3">Your record <span class="eh-hint">' +
       hist.length + (hist.length === 1 ? ' entry' : ' entries') + ' on this device</span></h3>' +
       '<div class="eh-agg">' + aggs.map(a => {
-        const col = a.avg >= 70 ? '#0c6a43' : a.avg >= 40 ? '#c98a1b' : '#9c3a2a';
+        /* THEME EDIT 3 of 3 — record bars follow the theme's ok/warn/danger tokens */
+        const col = a.avg >= 70 ? cssVar('--ok', '#0c6a43') : a.avg >= 40 ? cssVar('--warn', '#c98a1b') : cssVar('--danger', '#9c3a2a');
         return '<div class="eh-aggrow"><span class="eh-mono">' + esc(a.mono) + '</span>' +
           '<span class="eh-aname">' + esc(a.name) + '</span>' +
           '<div class="eh-abar"><i style="width:' + a.avg + '%;background:' + col + '"></i></div>' +
