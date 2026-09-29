@@ -62,27 +62,28 @@
   const ic = (n, s) => '<svg width="' + (s || 18) + '" height="' + (s || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + P[n] + '</svg>';
 
   /* ---------------- 3 · boards & indicative grade boundaries ---------------- */
-  const STAGE_LABEL = { igcse: 'IGCSE', as: 'AS Level', a2: 'A Level' };
+  const STAGE_LABEL = { ls: 'Lower Secondary', igcse: 'IGCSE', as: 'AS Level', a2: 'A Level' };
 
-  const BOARDS = {
+    const BOARDS = {
     caie: {
       short: 'Cambridge',
       stages: {
-        'IGCSE / O Level':         { key: 'igcse', years: [10, 11], grades: [['A*',90],['A',80],['B',70],['C',60],['D',50],['E',40],['F',30],['G',20]] },
-        'AS Level':                { key: 'as',    years: [12],     grades: [['a',80],['b',70],['c',60],['d',50],['e',40]] },
-        'A2 Level (full A Level)': { key: 'a2',    years: [13],     grades: [['A*',90],['A',80],['B',70],['C',60],['D',50],['E',40]] }
+        'Lower Secondary (Grades 6–8)': { key: 'ls', years: [6, 7, 8], grades: [['A',85],['B',72],['C',60],['D',48],['E',36]] },
+        'IGCSE / O Level':         { key: 'igcse', years: [9, 10],  grades: [['A*',90],['A',80],['B',70],['C',60],['D',50],['E',40],['F',30],['G',20]] },
+        'AS Level':                { key: 'as',    years: [11],     grades: [['a',80],['b',70],['c',60],['d',50],['e',40]] },
+        'A2 Level (full A Level)': { key: 'a2',    years: [12, 13], grades: [['A*',90],['A',80],['B',70],['C',60],['D',50],['E',40]] }
       }
     },
     edexcel: {
       short: 'Edexcel',
       stages: {
-        'International GCSE': { key: 'igcse', years: [10, 11], grades: [['9',90],['8',80],['7',70],['6',60],['5',50],['4',40],['3',30],['2',20],['1',10]] },
-        'AS Level (IAS)':     { key: 'as',    years: [12],     grades: [['a',80],['b',70],['c',60],['d',50],['e',40]] },
-        'A2 Level (IAL)':     { key: 'a2',    years: [13],     grades: [['A*',90],['A',80],['B',70],['C',60],['D',50],['E',40]] }
+        'iLowerSecondary (Grades 6–8)': { key: 'ls', years: [6, 7, 8], grades: [['A',85],['B',72],['C',60],['D',48],['E',36]] },
+        'International GCSE': { key: 'igcse', years: [9, 10],  grades: [['9',90],['8',80],['7',70],['6',60],['5',50],['4',40],['3',30],['2',20],['1',10]] },
+        'AS Level (IAS)':     { key: 'as',    years: [11],     grades: [['a',80],['b',70],['c',60],['d',50],['e',40]] },
+        'A2 Level (IAL)':     { key: 'a2',    years: [12, 13], grades: [['A*',90],['A',80],['B',70],['C',60],['D',50],['E',40]] }
       }
     }
   };
-
   function stageForYear(board, year) {
     const st = BOARDS[board].stages;
     for (const name in st) if (st[name].years.indexOf(year) > -1) return name;
