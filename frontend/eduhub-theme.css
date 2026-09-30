@@ -245,3 +245,4 @@ html #eh-modal .eh-select optgroup {
 #eh-modal[dir="rtl"] .eh-del { margin-left: 0; margin-right: auto; }
 #eh-modal[dir="rtl"] .eh-vspark { margin-left: 0; margin-right: auto; }
 #eh-modal[dir="rtl"] .eh-formrow.end { justify-content: flex-end; }
+#ehtr-fab { display: none; }
