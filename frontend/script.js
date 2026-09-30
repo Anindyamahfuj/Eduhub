@@ -9959,18 +9959,18 @@ document.addEventListener('DOMContentLoaded', function() {
     flashcards:['renderFlashcards','renderDecks','initFlashcards','loadFlashcards']
   };
   function refreshLists(types){
-    var hit = 0;
-    (types||[]).forEach(function(t){
-      (RENDER_CANDIDATES[t]||[]).forEach(function(n){
-        try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
-      });
-    });
-    ['renderAll','refreshAll'].forEach(function(n){
-      try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
-    });
-    /* nothing matched → guaranteed-correct fallback */
-    if(!hit && !window.TRASH_NO_RELOAD) setTimeout(function(){ location.reload(); }, 350);
-  }
+  var hit = 0;
+  /* site's real global entry points (guarded & idempotent) */
+  var safe = { notes:'setupNotes', notices:'setupNotice', habits:'setupHabits', files:'renderFileList' };
+  (types||[]).forEach(function(t){
+    if(safe[t]){ try{ if(typeof window[safe[t]]==='function'){ window[safe[t]](); hit++; } }catch(e){} }
+  });
+  ['refreshCurrentPage','renderDashboard'].forEach(function(n){
+    try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
+  });
+  /* flashcards/assignments/reading have no safe re-render → auto-reload is correct there */
+  if(!hit && !window.TRASH_NO_RELOAD) setTimeout(function(){ location.reload(); }, 350);
+}
     
   function restoreAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
     var it=d.trash[i], back=innerItem(it), type=it.type||guessType(back), a=type?arrFor(d,type):null;
