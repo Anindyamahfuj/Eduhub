@@ -9823,3 +9823,229 @@ document.addEventListener('DOMContentLoaded', function() {
 
   staggerTargets.forEach(el => staggerObserver.observe(el));
 })();
+
+
+/* ================================================================
+   TRASH CORE — complete trash system (end of script.js)
+   Auto-captures deletions (notes, notices, habits, files,
+   assignments, goals, reading items, flashcard decks) into
+   data.trash via a saveData() wrapper, wires the navbar
+   "Trash (N)" button to a full popup: restore · delete forever ·
+   restore all · empty trash · search. Edits are not trashed.
+   Replaces eduhub-autotrash / trash-ui / trash-unify.
+   ================================================================ */
+(function () {
+  'use strict';
+  if (window.__TRASH_CORE__) return;
+  window.__TRASH_CORE__ = true;
+
+  var WATCH = ['notes', 'notices', 'habits', 'files', 'assignments', 'goals', 'readingList'];
+  var LABELS = ['name', 'title', 'text', 'label', 'fileName', 'task', 'content', 'front', 'question', 'url'];
+  var MAX_TRASH = 80, QUOTA = 4300000;
+  var TYPES = { notes:['Note','📝'], notices:['Notice','📌'], habits:['Habit','🔁'],
+    files:['File','📎'], assignments:['Assignment','📚'], goals:['Goal','🎯'],
+    readinglist:['Reading','🔖'], flashcards:['Deck','🃏'] };
+  var RESTORE = { notes:'notes', notices:'notices', habits:'habits', files:'files',
+    assignments:'assignments', goals:'goals', readinglist:'readingList',
+    flashcards:'flashcards.decks' };
+  var prev = null, armed = -1, armedEmpty = false, armedT = null, armedEmptyT = null, q = '';
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function labelOf(it){
+    if(!it||typeof it!=='object') return String(it==null?'':it).slice(0,60);
+    for(var i=0;i<LABELS.length;i++){ var v=it[LABELS[i]]; if(v!=null&&v!=='') return String(v).slice(0,60); }
+    try{ var j=JSON.stringify(it); return j&&j.length>80? j.slice(0,57)+'…' : (j||'?'); }catch(e){ return '?'; }
+  }
+  function keyOf(it){
+    if(!it||typeof it!=='object') return 'p:'+String(it);
+    for(var i=0;i<LABELS.length;i++){ var f=LABELS[i]; if(it[f]!=null&&it[f]!=='') return f+':'+it[f]; }
+    try{ return 'j:'+JSON.stringify(it); }catch(e){ return 'u:'+Math.random(); }
+  }
+  function diff(oldA,newA){
+    var removed=[],added=[],map=new Map();
+    (oldA||[]).forEach(function(it){ var k=keyOf(it),e=map.get(k); if(e)e.c++; else map.set(k,{c:1,it:it}); });
+    (newA||[]).forEach(function(it){ var k=keyOf(it),e=map.get(k); if(e&&e.c>0)e.c--; else added.push(it); });
+    map.forEach(function(e){ if(e.c>0) removed.push(e.it); });
+    return { removed:removed, added:added };
+  }
+  function decksOf(d){ return (d.flashcards&&d.flashcards.decks)?d.flashcards.decks:[]; }
+  function snap(d){
+    var s={}; WATCH.forEach(function(k){ s[k]=(d[k]||[]).slice(); });
+    s._decks=decksOf(d).slice(); s._tl=(d.trash||[]).map(labelOf);
+    return s;
+  }
+  function count(){ try{ return (loadData().trash||[]).length; }catch(e){ return 0; } }
+  function toast(m){ var t=document.getElementById('eh-toast');
+    if(t){ t.textContent=m; t.hidden=false; t.classList.add('show');
+      setTimeout(function(){ t.classList.remove('show'); t.hidden=true; },2200); }
+    else console.log('[Trash]',m); }
+  function when(w){ try{ if(!w.ts) return '—'; var d=new Date(w.ts);
+    return d.toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+
+      d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }catch(e){ return '—'; } }
+  function updateBadge(){
+    var b=document.getElementById('trashBtn'); if(!b) return;
+    var n=count();
+    if(/\(\d+\)/.test(b.innerHTML)) b.innerHTML=b.innerHTML.replace(/\(\d+\)/,'('+n+')');
+    else b.innerHTML=b.innerHTML+' ('+n+')';
+  }
+
+  /* ---------- 1 · CAPTURE: wrap saveData ---------- */
+  var origSave = saveData;
+  function wrappedSave(d){
+    var cap=[];
+    try{
+      if(!prev) prev=snap(loadData());
+      if(d&&typeof d==='object'){
+        WATCH.forEach(function(k){
+          var r=diff(prev[k]||[],d[k]||[]);
+          if(!r.removed.length||r.added.length) return;         /* deletions only — edits skipped */
+          r.removed.forEach(function(it){ if(it&&typeof it==='object') cap.push({type:k,name:labelOf(it),item:it,ts:Date.now()}); });
+        });
+        (function(){ var r=diff(prev._decks||[],decksOf(d));
+          if(r.removed.length&&!r.added.length) r.removed.forEach(function(it){
+            if(it&&typeof it==='object') cap.push({type:'flashcards',name:labelOf(it),item:it,ts:Date.now()}); }); })();
+        if(cap.length&&d.trash&&d.trash.length){                /* skip items site code already trashed */
+          var newly=d.trash.map(labelOf),pl=prev._tl||[];
+          pl.forEach(function(l){ var i=newly.indexOf(l); if(i>-1) newly.splice(i,1); });
+          cap=cap.filter(function(c){ return newly.indexOf(c.name)===-1; });
+        }
+        if(cap.length){
+          d.trash=(d.trash&&d.trash.push)?d.trash:[];
+          cap.forEach(function(c){ d.trash.push(c); });
+          while(d.trash.length>MAX_TRASH) d.trash.shift();
+          try{ var size=JSON.stringify(d).length;
+            while(size>QUOTA&&d.trash.length){ d.trash.shift(); size=JSON.stringify(d).length; } }catch(e){}
+          toast(cap.length+' item'+(cap.length>1?'s':'')+' moved to Trash');
+        }
+      }
+    }catch(e){}
+    try{ prev=snap(d); }catch(e){}
+    var r2=origSave(d);
+    updateBadge();
+    return r2;
+  }
+  try{ prev=snap(loadData()); }catch(e){ prev={}; }
+  saveData = wrappedSave;
+
+  /* ---------- 2 · OPERATIONS ---------- */
+  function arrFor(d,type){ var c=d;
+    String(RESTORE[(type||'').toLowerCase()]||'').split('.').forEach(function(k){ c=c?c[k]:null; });
+    return (c&&c.push)?c:null; }
+  function restoreAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
+    var it=d.trash[i],a=arrFor(d,it.type);
+    if(a){ a.push(it.item!=null?it.item:it); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); }
+    else toast('Unknown item type'); }
+  function deleteAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
+    d.trash.splice(i,1); saveData(d); toast('Deleted forever'); render(); }
+  function restoreAll(){ var d=loadData(),n=(d.trash||[]).length;
+    if(!n){ toast('Trash is empty'); return; } var ok=0;
+    for(var i=d.trash.length-1;i>=0;i--){ var a=arrFor(d,d.trash[i].type);
+      if(a){ a.push(d.trash[i].item!=null?d.trash[i].item:d.trash[i]); d.trash.splice(i,1); ok++; } }
+    saveData(d); toast(ok+' of '+n+' restored'); render(); }
+  function emptyAll(){ var d=loadData(),n=(d.trash||[]).length;
+    if(!n){ toast('Trash is already empty'); return; }
+    d.trash=[]; saveData(d); toast(n+' item(s) deleted forever'); render(); }
+  function pushToTrash(type,item){ var d=loadData();
+    d.trash=(d.trash&&d.trash.push)?d.trash:[];
+    d.trash.push({type:type,name:labelOf(item),item:item,ts:Date.now()});
+    saveData(d); return true; }
+
+  /* ---------- 3 · UI ---------- */
+  var CSS='#tc-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;font-family:var(--font,system-ui,sans-serif)}'+
+    '#tc-modal[hidden]{display:none!important}'+
+    '.tc-scrim{position:absolute;inset:0;background:rgba(2,5,10,.6);opacity:0;transition:opacity .22s}'+
+    '.tc-panel{position:relative;width:min(600px,100%);max-height:min(80vh,760px);display:flex;flex-direction:column;background:var(--surface-raised,rgba(13,22,37,.96));border:1px solid var(--line,rgba(148,163,184,.2));border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);opacity:0;transform:translateY(12px) scale(.98);transition:opacity .24s cubic-bezier(.16,1,.3,1),transform .24s cubic-bezier(.16,1,.3,1);overflow:hidden}'+
+    '#tc-modal.tc-in .tc-scrim{opacity:1}#tc-modal.tc-in .tc-panel{opacity:1;transform:none}'+
+    '.tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line,rgba(148,163,184,.15))}'+
+    '.tc-eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent,#3fd2b0);font-weight:700;margin-bottom:4px}'+
+    '.tc-title{font-family:var(--display,var(--font,sans-serif));font-weight:700;font-size:20px;color:var(--ink,#edf2f7)}'+
+    '.tc-x{width:32px;height:32px;border-radius:50%;border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);cursor:pointer;font-size:14px}'+
+    '.tc-body{padding:16px 20px 22px;overflow-y:auto}'+
+    '.tc-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}'+
+    '.tc-search{flex:1;min-width:170px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);border:1px solid var(--line,#2a3648);border-radius:999px;padding:0 14px;color:var(--muted,#8d9aa9)}'+
+    '.tc-search input{flex:1;background:none;border:none;outline:none;color:var(--ink,#edf2f7);height:40px;font:inherit;font-size:14px;min-width:0}'+
+    '.tc-count{font-size:12px;font-weight:700;color:var(--muted,#8d9aa9);white-space:nowrap}'+
+    '.tc-actions{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}'+
+    '.tc-btn{border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);border-radius:8px;padding:6px 12px;font:600 12.5px var(--font,sans-serif);cursor:pointer;transition:border-color .15s,color .15s,background .15s}'+
+    '.tc-btn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}'+
+    '.tc-btn.danger:hover{border-color:var(--danger,#f0938c);color:var(--danger,#f0938c);background:var(--danger-soft,rgba(240,147,140,.12))}'+
+    '.tc-row{display:flex;align-items:center;gap:11px;padding:10px 2px;border-top:1px solid var(--line,rgba(148,163,184,.12))}'+
+    '.tc-row:first-child{border-top:none}.tc-ic{font-size:17px;flex:none;width:26px;text-align:center}'+
+    '.tc-main{min-width:0;flex:1}.tc-main b{display:block;font-size:13.5px;color:var(--ink,#edf2f7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-main i{font-style:normal;font-size:11px;color:var(--muted,#8d9aa9)}'+
+    '.tc-acts{display:flex;gap:6px;flex:none}'+
+    '.tc-empty{border:1px dashed rgba(63,210,176,.3);border-radius:12px;padding:28px 18px;text-align:center;color:var(--muted,#8d9aa9);font-size:13.5px;line-height:1.6}';
+  function inject(){
+    if(document.getElementById('tc-modal')) return;
+    var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
+    document.body.insertAdjacentHTML('beforeend',
+      '<div id="tc-modal" hidden><div class="tc-scrim" data-tc-close></div>'+
+      '<div class="tc-panel" role="dialog" aria-modal="true" aria-label="Trash">'+
+      '<div class="tc-head"><div><div class="tc-eyebrow">Recycle bin</div><div class="tc-title">Trash</div></div>'+
+      '<button class="tc-x" data-tc-close aria-label="Close">✕</button></div>'+
+      '<div class="tc-body"><div class="tc-toolbar">'+
+      '<div class="tc-search">🔍<input id="tc-q" placeholder="Search trash…"></div>'+
+      '<span class="tc-count" id="tc-count"></span></div>'+
+      '<div class="tc-actions"><button class="tc-btn" id="tc-restoreall">♻ Restore all</button>'+
+      '<button class="tc-btn danger" id="tc-emptyall">Empty trash</button></div>'+
+      '<div class="tc-list" id="tc-list"></div></div></div></div>');
+    document.getElementById('tc-q').addEventListener('input',function(e){ q=e.target.value; render(); });
+  }
+  function meta(w){ var m=TYPES[(w.type||'').toLowerCase()]; return m?m:['Item','🗑']; }
+  function lbl(w){ return w.name||(w.item&&(w.item.name||w.item.title||w.item.text||w.item.fileName||w.item.task))||'Untitled item'; }
+  function render(){
+    var list=document.getElementById('tc-list'); if(!list) return;
+    var d=loadData(),tr=d.trash||[];
+    document.getElementById('tc-count').textContent=tr.length+(tr.length===1?' item':' items');
+    var ea=document.getElementById('tc-emptyall');
+    ea.textContent=armedEmpty?'Really empty all?':'Empty trash';
+    ea.style.color=armedEmpty?'var(--danger,#f0938c)':'';
+    var f=tr.map(function(w,i){return{w:w,i:i};}).filter(function(x){
+      return !q||(lbl(x.w)+' '+(x.w.type||'')).toLowerCase().indexOf(q.toLowerCase())>-1; });
+    list.innerHTML=tr.length===0
+      ?'<div class="tc-empty">Trash is empty.<br>Deleted notes, files, habits, decks and more will appear here — recoverable until you empty it.</div>'
+      :(f.length?f.map(function(x){ var m=meta(x.w);
+        return '<div class="tc-row"><span class="tc-ic">'+m[1]+'</span>'+
+          '<span class="tc-main"><b>'+esc(lbl(x.w))+'</b><i>'+esc(m[0])+' · '+when(x.w)+'</i></span>'+
+          (armed===x.i
+            ?'<span class="tc-acts"><button class="tc-btn danger" data-tc-confirm="'+x.i+'">Sure?</button><button class="tc-btn" data-tc-cancel="1">Keep</button></span>'
+            :'<span class="tc-acts"><button class="tc-btn" data-tc-restore="'+x.i+'">Restore</button><button class="tc-btn danger" data-tc-arm="'+x.i+'">Delete</button></span>')+'</div>';
+      }).join(''):'<div class="tc-empty">Nothing matches “'+esc(q)+'”.</div>');
+  }
+  function open(){ inject(); armed=-1; armedEmpty=false; q=''; var qi=document.getElementById('tc-q'); if(qi) qi.value='';
+    var m=document.getElementById('tc-modal'); m.hidden=false; render();
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ m.classList.add('tc-in'); }); }); }
+  function close(){ var m=document.getElementById('tc-modal'); if(!m||m.hidden) return;
+    m.classList.remove('tc-in'); setTimeout(function(){ m.hidden=true; },220); }
+
+  /* ---------- 4 · EVENTS ---------- */
+  document.addEventListener('click',function(e){
+    var b=e.target;
+    if(b.closest){
+      var tb=b.closest('#trashBtn');                                 /* navbar entry */
+      if(tb){ e.preventDefault(); e.stopImmediatePropagation(); open(); return; }
+      var a=b.closest('[data-tc-restore],[data-tc-arm],[data-tc-confirm],[data-tc-cancel],#tc-restoreall,#tc-emptyall,[data-tc-close]');
+      if(a){
+        if(a.hasAttribute('data-tc-close')){ close(); return; }
+        if(a.id==='tc-restoreall'){ restoreAll(); return; }
+        if(a.id==='tc-emptyall'){
+          if(!armedEmpty){ armedEmpty=true; render(); clearTimeout(armedEmptyT);
+            armedEmptyT=setTimeout(function(){ armedEmpty=false; render(); },3000); }
+          else{ armedEmpty=false; emptyAll(); } return; }
+        if(a.dataset.tcRestore!=null){ armed=-1; restoreAt(+a.dataset.tcRestore); return; }
+        if(a.dataset.tcArm!=null){ armed=+a.dataset.tcArm; armedEmpty=false; render(); clearTimeout(armedT);
+          armedT=setTimeout(function(){ armed=-1; render(); },3000); return; }
+        if(a.dataset.tcConfirm!=null){ armed=-1; deleteAt(+a.dataset.tcConfirm); return; }
+        if(a.dataset.tcCancel!=null){ armed=-1; render(); return; }
+      }
+    }
+  },true);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
+
+  /* ---------- 5 · BOOT ---------- */
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateBadge);
+  else updateBadge();
+  setTimeout(updateBadge,800);
+  console.log('[TrashCore] active —',count(),'item(s) in trash');
+  window.TrashCore={ open:open, close:close, count:count, push:pushToTrash,
+                     restoreAll:restoreAll, empty:emptyAll };
+})();
