@@ -577,7 +577,7 @@
       '<div class="eh-card" id="eh-formcard">' +
         '<div class="eh-formrow">' +
           '<div class="eh-field grow"><label>' + T('subject', 'Subject') + '</label><select id="eh-subj" class="eh-select">' + subjectOptions() + '</select></div>' +
-          '<div class="eh-field"><label>' + T('component', 'Component') + ' <span class="eh-opt">' + T('optional', 'optional') + '</span></label><select id="eh-comp" class="eh-select">' +
+                    '<div class="eh-field"><label>' + (prof.year <= 8 ? T('exam_type', 'Exam type') : T('component', 'Component') + ' <span class="eh-opt">' + T('optional', 'optional') + '</span>') + '</label><select id="eh-comp" class="eh-select">' +
             comps.map(c => '<option>' + esc(c) + '</option>').join('') + '</select></div>' +
         '</div>' +
         '<div class="eh-formrow">' +
