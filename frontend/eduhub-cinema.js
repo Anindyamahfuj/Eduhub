@@ -207,7 +207,7 @@
 
   /* ---------- boot ---------- */
   function boot() {
-    initCanvas(); initSpotlight(); initTilt(); initCountUp(); initRipple(); initProgress();
+        initCanvas(); initCountUp(); initRipple(); initProgress();
     setTimeout(initTilt, 1200); setTimeout(initTilt, 3000);   /* late-rendered cards */
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
