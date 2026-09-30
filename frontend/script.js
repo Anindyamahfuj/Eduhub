@@ -9826,52 +9826,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 /* ================================================================
-   TRASH CORE — complete trash system (end of script.js)
-   Auto-captures deletions (notes, notices, habits, files,
-   assignments, goals, reading items, flashcard decks) into
-   data.trash via a saveData() wrapper, wires the navbar
-   "Trash (N)" button to a full popup: restore · delete forever ·
-   restore all · empty trash · search. Edits are not trashed.
-   Replaces eduhub-autotrash / trash-ui / trash-unify.
+   TRASH CORE v2 — single-writer, schema-proof, self-diagnosing
    ================================================================ */
 (function () {
   'use strict';
   if (window.__TRASH_CORE__) return;
   window.__TRASH_CORE__ = true;
 
-  var WATCH = ['notes', 'notices', 'habits', 'files', 'assignments', 'goals', 'readingList'];
-  var LABELS = ['name', 'title', 'text', 'label', 'fileName', 'task', 'content', 'front', 'question', 'url'];
+  var WATCH = ['notes','notices','habits','files','assignments','goals','readingList'];
   var MAX_TRASH = 80, QUOTA = 4300000;
-  var TYPES = { notes:['Note','📝'], notices:['Notice','📌'], habits:['Habit','🔁'],
-    files:['File','📎'], assignments:['Assignment','📚'], goals:['Goal','🎯'],
-    readinglist:['Reading','🔖'], flashcards:['Deck','🃏'] };
-  var RESTORE = { notes:'notes', notices:'notices', habits:'habits', files:'files',
-    assignments:'assignments', goals:'goals', readinglist:'readingList',
-    flashcards:'flashcards.decks' };
   var prev = null, armed = -1, armedEmpty = false, armedT = null, armedEmptyT = null, q = '';
 
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function innerItem(e){ return e && typeof e==='object' ? (e.item!=null?e.item:(e.data!=null?e.data:(e.payload!=null?e.payload:e))) : e; }
+
+  /* label = preferred key, else FIRST readable string anywhere in the object */
   function labelOf(it){
-    if(!it||typeof it!=='object') return String(it==null?'':it).slice(0,60);
-    for(var i=0;i<LABELS.length;i++){ var v=it[LABELS[i]]; if(v!=null&&v!=='') return String(v).slice(0,60); }
-    try{ var j=JSON.stringify(it); return j&&j.length>80? j.slice(0,57)+'…' : (j||'?'); }catch(e){ return '?'; }
+    if(it==null) return '';
+    if(typeof it!=='object') return String(it).slice(0,60);
+    var prefer=['name','title','text','label','fileName','task','content','front','question','body','note','desc','description','subject','url'];
+    for(var i=0;i<prefer.length;i++){ var v=it[prefer[i]]; if(typeof v==='string'&&v.trim()&&v.indexOf('data:')!==0) return v.slice(0,60); }
+    for(var k in it){ var s=it[k];
+      if(typeof s==='string'&&s.trim()&&s.length<300&&s.indexOf('data:')!==0&&s.indexOf('<')!==0) return s.slice(0,60); }
+    var nest=['item','data','payload'];
+    for(var j=0;j<nest.length;j++){ if(it[nest[j]]&&typeof it[nest[j]]==='object'){ var r=labelOf(it[nest[j]]); if(r&&r!=='?') return r; } }
+    try{ var js=JSON.stringify(it); return js&&js.length>2 ? 'Item '+(it.id!=null?'('+it.id+')':'') : '?'; }catch(e){ return '?'; }
   }
   function keyOf(it){
     if(!it||typeof it!=='object') return 'p:'+String(it);
-    for(var i=0;i<LABELS.length;i++){ var f=LABELS[i]; if(it[f]!=null&&it[f]!=='') return f+':'+it[f]; }
+    if(it.id!=null&&it.id!=='') return 'id:'+it.id;
+    var prefer=['name','title','text','label','fileName','task','content','front','question','body','url'];
+    for(var i=0;i<prefer.length;i++){ if(it[prefer[i]]!=null&&it[prefer[i]]!=='') return prefer[i]+':'+it[prefer[i]]; }
     try{ return 'j:'+JSON.stringify(it); }catch(e){ return 'u:'+Math.random(); }
+  }
+  function guessType(o){
+    if(!o||typeof o!=='object') return null;
+    var ks=Object.keys(o).join(' ');
+    if(/front|deck|card/i.test(ks)) return 'flashcards';
+    if(/streak|done/i.test(ks)) return 'habits';
+    if(/size|dataUrl/i.test(ks)) return 'files';
+    if(/due|priority/i.test(ks)) return 'assignments';
+    if(/(^| )url|author/i.test(ks)) return 'readingList';
+    if(/pinned/i.test(ks)) return 'notices';
+    if(/text|body|content/i.test(ks)) return 'notes';
+    return null;
   }
   function diff(oldA,newA){
     var removed=[],added=[],map=new Map();
     (oldA||[]).forEach(function(it){ var k=keyOf(it),e=map.get(k); if(e)e.c++; else map.set(k,{c:1,it:it}); });
     (newA||[]).forEach(function(it){ var k=keyOf(it),e=map.get(k); if(e&&e.c>0)e.c--; else added.push(it); });
     map.forEach(function(e){ if(e.c>0) removed.push(e.it); });
-    return { removed:removed, added:added };
+    return {removed:removed,added:added};
   }
   function decksOf(d){ return (d.flashcards&&d.flashcards.decks)?d.flashcards.decks:[]; }
   function snap(d){
     var s={}; WATCH.forEach(function(k){ s[k]=(d[k]||[]).slice(); });
-    s._decks=decksOf(d).slice(); s._tl=(d.trash||[]).map(labelOf);
+    s._decks=decksOf(d).slice();
+    s._tk=(d.trash||[]).map(function(e){ return keyOf(innerItem(e)); });
     return s;
   }
   function count(){ try{ return (loadData().trash||[]).length; }catch(e){ return 0; } }
@@ -9882,14 +9893,11 @@ document.addEventListener('DOMContentLoaded', function() {
   function when(w){ try{ if(!w.ts) return '—'; var d=new Date(w.ts);
     return d.toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+
       d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }catch(e){ return '—'; } }
-  function updateBadge(){
-    var b=document.getElementById('trashBtn'); if(!b) return;
-    var n=count();
+  function updateBadge(){ var b=document.getElementById('trashBtn'); if(!b) return; var n=count();
     if(/\(\d+\)/.test(b.innerHTML)) b.innerHTML=b.innerHTML.replace(/\(\d+\)/,'('+n+')');
-    else b.innerHTML=b.innerHTML+' ('+n+')';
-  }
+    else b.innerHTML=b.innerHTML+' ('+n+')'; }
 
-  /* ---------- 1 · CAPTURE: wrap saveData ---------- */
+  /* ---------- CAPTURE (single writer, identity-deduped) ---------- */
   var origSave = saveData;
   function wrappedSave(d){
     var cap=[];
@@ -9898,16 +9906,19 @@ document.addEventListener('DOMContentLoaded', function() {
       if(d&&typeof d==='object'){
         WATCH.forEach(function(k){
           var r=diff(prev[k]||[],d[k]||[]);
-          if(!r.removed.length||r.added.length) return;         /* deletions only — edits skipped */
+          if(!r.removed.length||r.added.length) return;
           r.removed.forEach(function(it){ if(it&&typeof it==='object') cap.push({type:k,name:labelOf(it),item:it,ts:Date.now()}); });
         });
-        (function(){ var r=diff(prev._decks||[],decksOf(d));
-          if(r.removed.length&&!r.added.length) r.removed.forEach(function(it){
-            if(it&&typeof it==='object') cap.push({type:'flashcards',name:labelOf(it),item:it,ts:Date.now()}); }); })();
-        if(cap.length&&d.trash&&d.trash.length){                /* skip items site code already trashed */
-          var newly=d.trash.map(labelOf),pl=prev._tl||[];
-          pl.forEach(function(l){ var i=newly.indexOf(l); if(i>-1) newly.splice(i,1); });
-          cap=cap.filter(function(c){ return newly.indexOf(c.name)===-1; });
+        var rd=diff(prev._decks||[],decksOf(d));
+        if(rd.removed.length&&!rd.added.length) rd.removed.forEach(function(it){
+          if(it&&typeof it==='object') cap.push({type:'flashcards',name:labelOf(it),item:it,ts:Date.now()}); });
+        if(cap.length&&d.trash&&d.trash.length){
+          /* identity dedup: skip if an equivalent item was added to trash during THIS save
+             (by old scripts still linked, or by the site's own delete code) */
+          var prevSet={}; (prev._tk||[]).forEach(function(k){ prevSet[k]=1; });
+          var fresh={};
+          d.trash.forEach(function(e){ var k=keyOf(innerItem(e)); if(!prevSet[k]) fresh[k]=1; });
+          cap=cap.filter(function(c){ return !fresh[keyOf(c.item)]; });
         }
         if(cap.length){
           d.trash=(d.trash&&d.trash.push)?d.trash:[];
@@ -9925,32 +9936,32 @@ document.addEventListener('DOMContentLoaded', function() {
     return r2;
   }
   try{ prev=snap(loadData()); }catch(e){ prev={}; }
-  saveData = wrappedSave;
+  if(!saveData.__tcWrapped){ saveData=wrappedSave; saveData.__tcWrapped=true; }
 
-  /* ---------- 2 · OPERATIONS ---------- */
+  /* ---------- OPERATIONS ---------- */
+  var RESTORE={ notes:'notes',note:'notes',notices:'notices',notice:'notices',habits:'habits',habit:'habits',
+    files:'files',file:'files',assignments:'assignments',assignment:'assignments',goals:'goals',goal:'goals',
+    readinglist:'readingList',reading:'readingList',flashcards:'flashcards.decks',deck:'flashcards.decks' };
   function arrFor(d,type){ var c=d;
     String(RESTORE[(type||'').toLowerCase()]||'').split('.').forEach(function(k){ c=c?c[k]:null; });
     return (c&&c.push)?c:null; }
   function restoreAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
-    var it=d.trash[i],a=arrFor(d,it.type);
-    if(a){ a.push(it.item!=null?it.item:it); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); }
-    else toast('Unknown item type'); }
+    var it=d.trash[i], back=innerItem(it), type=it.type||guessType(back), a=type?arrFor(d,type):null;
+    if(a){ a.push(back); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); }
+    else toast('Unknown item type — use TrashCore.diag()'); }
   function deleteAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
     d.trash.splice(i,1); saveData(d); toast('Deleted forever'); render(); }
   function restoreAll(){ var d=loadData(),n=(d.trash||[]).length;
     if(!n){ toast('Trash is empty'); return; } var ok=0;
-    for(var i=d.trash.length-1;i>=0;i--){ var a=arrFor(d,d.trash[i].type);
-      if(a){ a.push(d.trash[i].item!=null?d.trash[i].item:d.trash[i]); d.trash.splice(i,1); ok++; } }
-    saveData(d); toast(ok+' of '+n+' restored'); render(); }
+    for(var i=d.trash.length-1;i>=0;i--){ var back=innerItem(d.trash[i]),
+      type=d.trash[i].type||guessType(back), a=type?arrFor(d,type):null;
+      if(a){ a.push(back); d.trash.splice(i,1); ok++; } }
+    saveData(d); toast(ok+' of '+n+' restored'+(ok<n?' ('+(n-ok)+' unknown types left)':'')); render(); }
   function emptyAll(){ var d=loadData(),n=(d.trash||[]).length;
     if(!n){ toast('Trash is already empty'); return; }
     d.trash=[]; saveData(d); toast(n+' item(s) deleted forever'); render(); }
-  function pushToTrash(type,item){ var d=loadData();
-    d.trash=(d.trash&&d.trash.push)?d.trash:[];
-    d.trash.push({type:type,name:labelOf(item),item:item,ts:Date.now()});
-    saveData(d); return true; }
 
-  /* ---------- 3 · UI ---------- */
+  /* ---------- UI ---------- */
   var CSS='#tc-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;font-family:var(--font,system-ui,sans-serif)}'+
     '#tc-modal[hidden]{display:none!important}'+
     '.tc-scrim{position:absolute;inset:0;background:rgba(2,5,10,.6);opacity:0;transition:opacity .22s}'+
@@ -9990,8 +10001,7 @@ document.addEventListener('DOMContentLoaded', function() {
       '<div class="tc-list" id="tc-list"></div></div></div></div>');
     document.getElementById('tc-q').addEventListener('input',function(e){ q=e.target.value; render(); });
   }
-  function meta(w){ var m=TYPES[(w.type||'').toLowerCase()]; return m?m:['Item','🗑']; }
-  function lbl(w){ return w.name||(w.item&&(w.item.name||w.item.title||w.item.text||w.item.fileName||w.item.task))||'Untitled item'; }
+  var ICONS={notes:'📝',notices:'📌',habits:'🔁',files:'📎',assignments:'📚',goals:'🎯',readinglist:'🔖',flashcards:'🃏'};
   function render(){
     var list=document.getElementById('tc-list'); if(!list) return;
     var d=loadData(),tr=d.trash||[];
@@ -10000,12 +10010,14 @@ document.addEventListener('DOMContentLoaded', function() {
     ea.textContent=armedEmpty?'Really empty all?':'Empty trash';
     ea.style.color=armedEmpty?'var(--danger,#f0938c)':'';
     var f=tr.map(function(w,i){return{w:w,i:i};}).filter(function(x){
-      return !q||(lbl(x.w)+' '+(x.w.type||'')).toLowerCase().indexOf(q.toLowerCase())>-1; });
+      var t=(x.w.type||guessType(innerItem(x.w))||'');
+      return !q||(labelOf(innerItem(x.w))+' '+t).toLowerCase().indexOf(q.toLowerCase())>-1; });
     list.innerHTML=tr.length===0
-      ?'<div class="tc-empty">Trash is empty.<br>Deleted notes, files, habits, decks and more will appear here — recoverable until you empty it.</div>'
-      :(f.length?f.map(function(x){ var m=meta(x.w);
-        return '<div class="tc-row"><span class="tc-ic">'+m[1]+'</span>'+
-          '<span class="tc-main"><b>'+esc(lbl(x.w))+'</b><i>'+esc(m[0])+' · '+when(x.w)+'</i></span>'+
+      ?'<div class="tc-empty">Trash is empty.<br>Deleted notes, files, habits, decks and more will appear here.</div>'
+      :(f.length?f.map(function(x){
+        var back=innerItem(x.w), type=(x.w.type||guessType(back)||'item').toLowerCase();
+        return '<div class="tc-row"><span class="tc-ic">'+(ICONS[type]||'🗑')+'</span>'+
+          '<span class="tc-main"><b>'+esc(labelOf(back)||'Untitled item')+'</b><i>'+esc(type)+' · '+when(x.w)+'</i></span>'+
           (armed===x.i
             ?'<span class="tc-acts"><button class="tc-btn danger" data-tc-confirm="'+x.i+'">Sure?</button><button class="tc-btn" data-tc-cancel="1">Keep</button></span>'
             :'<span class="tc-acts"><button class="tc-btn" data-tc-restore="'+x.i+'">Restore</button><button class="tc-btn danger" data-tc-arm="'+x.i+'">Delete</button></span>')+'</div>';
@@ -10017,35 +10029,44 @@ document.addEventListener('DOMContentLoaded', function() {
   function close(){ var m=document.getElementById('tc-modal'); if(!m||m.hidden) return;
     m.classList.remove('tc-in'); setTimeout(function(){ m.hidden=true; },220); }
 
-  /* ---------- 4 · EVENTS ---------- */
+  /* ---------- EVENTS ---------- */
   document.addEventListener('click',function(e){
-    var b=e.target;
-    if(b.closest){
-      var tb=b.closest('#trashBtn');                                 /* navbar entry */
-      if(tb){ e.preventDefault(); e.stopImmediatePropagation(); open(); return; }
-      var a=b.closest('[data-tc-restore],[data-tc-arm],[data-tc-confirm],[data-tc-cancel],#tc-restoreall,#tc-emptyall,[data-tc-close]');
-      if(a){
-        if(a.hasAttribute('data-tc-close')){ close(); return; }
-        if(a.id==='tc-restoreall'){ restoreAll(); return; }
-        if(a.id==='tc-emptyall'){
-          if(!armedEmpty){ armedEmpty=true; render(); clearTimeout(armedEmptyT);
-            armedEmptyT=setTimeout(function(){ armedEmpty=false; render(); },3000); }
-          else{ armedEmpty=false; emptyAll(); } return; }
-        if(a.dataset.tcRestore!=null){ armed=-1; restoreAt(+a.dataset.tcRestore); return; }
-        if(a.dataset.tcArm!=null){ armed=+a.dataset.tcArm; armedEmpty=false; render(); clearTimeout(armedT);
-          armedT=setTimeout(function(){ armed=-1; render(); },3000); return; }
-        if(a.dataset.tcConfirm!=null){ armed=-1; deleteAt(+a.dataset.tcConfirm); return; }
-        if(a.dataset.tcCancel!=null){ armed=-1; render(); return; }
-      }
-    }
+    var b=e.target; if(!b.closest) return;
+    if(b.closest('#trashBtn')){ e.preventDefault(); e.stopImmediatePropagation(); open(); return; }
+    var a=b.closest('[data-tc-restore],[data-tc-arm],[data-tc-confirm],[data-tc-cancel],#tc-restoreall,#tc-emptyall,[data-tc-close]');
+    if(!a) return;
+    if(a.hasAttribute('data-tc-close')){ close(); return; }
+    if(a.id==='tc-restoreall'){ restoreAll(); return; }
+    if(a.id==='tc-emptyall'){
+      if(!armedEmpty){ armedEmpty=true; render(); clearTimeout(armedEmptyT);
+        armedEmptyT=setTimeout(function(){ armedEmpty=false; render(); },3000); }
+      else{ armedEmpty=false; emptyAll(); } return; }
+    if(a.dataset.tcRestore!=null){ armed=-1; restoreAt(+a.dataset.tcRestore); return; }
+    if(a.dataset.tcArm!=null){ armed=+a.dataset.tcArm; armedEmpty=false; render(); clearTimeout(armedT);
+      armedT=setTimeout(function(){ armed=-1; render(); },3000); return; }
+    if(a.dataset.tcConfirm!=null){ armed=-1; deleteAt(+a.dataset.tcConfirm); return; }
+    if(a.dataset.tcCancel!=null){ armed=-1; render(); return; }
   },true);
   document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
 
-  /* ---------- 5 · BOOT ---------- */
+  /* ---------- BOOT + DIAGNOSTICS ---------- */
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateBadge);
   else updateBadge();
   setTimeout(updateBadge,800);
-  console.log('[TrashCore] active —',count(),'item(s) in trash');
-  window.TrashCore={ open:open, close:close, count:count, push:pushToTrash,
-                     restoreAll:restoreAll, empty:emptyAll };
+  console.log('[TrashCore v2] active —',count(),'item(s)');
+  window.TrashCore={
+    open:open, close:close, count:count, restoreAll:restoreAll, empty:emptyAll,
+    diag:function(){
+      console.log('— WRAP CHAIN —');
+      console.log('saveData.name =',saveData.name,'| wrapped:',!!saveData.__tcWrapped);
+      console.log('old autotrash still loaded:',!!window.AutoTrash,'(if true → remove its <script> tag!)');
+      console.log('old trash-ui still loaded:',!!document.getElementById('ehtr-modal'));
+      console.log('— TRASH CONTENTS —');
+      try{ console.table((loadData().trash||[]).map(function(t,i){
+        var it=innerItem(t);
+        return { i:i, type:t.type||guessType(it)||'?', label:t.name||labelOf(it),
+                 entryKeys:Object.keys(t).join(','), itemKeys:(it&&typeof it==='object')?Object.keys(it).join(','):'-',
+                 sample:JSON.stringify(it).slice(0,90) }; })); }catch(e){ console.log(e); }
+    }
+  };
 })();
