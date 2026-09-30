@@ -585,7 +585,7 @@
             '<input id="eh-mark" class="eh-input" type="number" min="0" placeholder="87"><span class="eh-slash">/</span>' +
             '<input id="eh-total" class="eh-input" type="number" min="1" value="100"></div></div>' +
           '<div class="eh-field"><label>' + T('out_of', 'Out of') + '</label><div class="eh-tchips">' +
-            [100, 90, 80, 75, 60, 50].map(t => '<button class="eh-chip' + (t === 100 ? ' on' : '') + '" data-total="' + t + '">' + t + '</button>').join('') +
+            (prof.year <= 8 ? [100, 75, 50, 40, 25, 10] : [100, 90, 80, 75, 60, 50]).map(t => '<button class="eh-chip' + (t === 100 ? ' on' : '') + '" data-total="' + t + '">' + t + '</button>').join('') +
           '</div></div>' +
         '</div>' +
         '<div class="eh-err" id="eh-ferr" hidden></div>' +
