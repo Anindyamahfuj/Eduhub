@@ -10082,6 +10082,7 @@ document.addEventListener('DOMContentLoaded', function() {
   else updateBadge();
   setTimeout(updateBadge,800);
   console.log('[TrashCore v2] active —',count(),'item(s)');
+    window.openTrashModal = open;   /* palette + legacy callers now open the unified popup */
   window.TrashCore={
     open:open, close:close, count:count, restoreAll:restoreAll, empty:emptyAll,
     diag:function(){
