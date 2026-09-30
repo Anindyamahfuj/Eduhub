@@ -555,12 +555,24 @@
     return '<option value="" disabled selected>' + T('choose_sub', 'Choose a subject…') + '</option>' +
       Object.keys(fams).map(f => '<optgroup label="' + esc(T(labels[f], en[f])) + '">' + fams[f].join('') + '</optgroup>').join('');
   }
+
+  function examComponents(prof) {
+    const hy = T('comp_hy', 'Half-yearly examination');
+    const yr = T('comp_yearly', 'Yearly examination');
+    const ct = T('comp_test', 'Class test');
+    const st = T('comp_surprise', 'Surprise test');
+    if (prof.year <= 8) return [hy, yr, ct, st];
+    return [T('comp_full', 'Full exam / mock'),
+      T('paper', 'Paper') + ' 1', T('paper', 'Paper') + ' 2', T('paper', 'Paper') + ' 3', T('paper', 'Paper') + ' 4',
+      T('comp_p6', 'Paper 6 (practical)'),
+      hy, yr, ct, st,
+      T('comp_past', 'Past paper practice')];
+  }
+   
   function renderAnalyzer() {
     setHead(T('an_eyebrow', 'Mark Intelligence'), T('an_title', 'Mark Analyzer'));
     const prof = store.get(LS.PROF, null);
-    const comps = [T('comp_full', 'Full exam / mock'),
-      T('paper', 'Paper') + ' 1', T('paper', 'Paper') + ' 2', T('paper', 'Paper') + ' 3', T('paper', 'Paper') + ' 4',
-      T('comp_p6', 'Paper 6 (practical)'), T('comp_test', 'Class test'), T('comp_past', 'Past paper practice')];
+        const comps = examComponents(prof);
     $('#eh-body').innerHTML = profileStripHTML(prof) +
       '<div class="eh-card" id="eh-formcard">' +
         '<div class="eh-formrow">' +
