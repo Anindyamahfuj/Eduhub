@@ -260,6 +260,30 @@ window.EH_I18N = (function () {
   grp_quant:'数学・理科・情報',grp_essay:'英語・ビジネス・人文',grp_memory:'生物・地理',
   sub_maths:'数学',sub_physics:'物理',sub_chemistry:'化学',sub_biology:'生物',sub_english:'英語（言語・文学）',sub_economics:'経済学',sub_business:'ビジネス',sub_cs:'コンピュータ科学',sub_geography:'地理',sub_history:'歴史'}
   };
+
+  /* school-exam component keys — injected per language */
+  (function () {
+    var EXTRA = {
+      es: { comp_hy: 'Examen semestral', comp_yearly: 'Examen anual', comp_surprise: 'Prueba sorpresa', exam_type: 'Tipo de examen' },
+      fr: { comp_hy: 'Examen semestriel', comp_yearly: 'Examen annuel', comp_surprise: 'Contrôle surprise', exam_type: 'Type d’examen' },
+      de: { comp_hy: 'Halbjahresprüfung', comp_yearly: 'Jahresprüfung', comp_surprise: 'Überraschungstest', exam_type: 'Prüfungsart' },
+      pt: { comp_hy: 'Prova semestral', comp_yearly: 'Prova anual', comp_surprise: 'Teste surpresa', exam_type: 'Tipo de prova' },
+      ru: { comp_hy: 'Полугодовой экзамен', comp_yearly: 'Годовой экзамен', comp_surprise: 'Внезапная контрольная', exam_type: 'Тип экзамена' },
+      zh: { comp_hy: '期中考试', comp_yearly: '学年考试', comp_surprise: '突击测验', exam_type: '考试类型' },
+      hi: { comp_hy: 'अर्धवार्षिक परीक्षा', comp_yearly: 'वार्षिक परीक्षा', comp_surprise: 'आकस्मिक टेस्ट', exam_type: 'परीक्षा प्रकार' },
+      ar: { comp_hy: 'امتحان نصف السنة', comp_yearly: 'امتحان نهاية السنة', comp_surprise: 'اختبار مفاجئ', exam_type: 'نوع الامتحان' },
+      bn: { comp_hy: 'অর্ধবার্ষিক পরীক্ষা', comp_yearly: 'বার্ষিক পরীক্ষা', comp_surprise: 'চমক পরীক্ষা', exam_type: 'পরীক্ষার ধরন' },
+      ur: { comp_hy: 'نصف سالانہ امتحان', comp_yearly: 'سالانہ امتحان', comp_surprise: 'اچانک ٹیسٹ', exam_type: 'امتحان کی قسم' },
+      id: { comp_hy: 'Ujian tengah semester', comp_yearly: 'Ujian akhir tahun', comp_surprise: 'Kuis kejutan', exam_type: 'Jenis ujian' },
+      sw: { comp_hy: 'Mtihani wa kati ya mwaka', comp_yearly: 'Mtihani wa mwisho wa mwaka', comp_surprise: 'Jaribio la ghafla', exam_type: 'Aina ya mtihani' },
+      tr: { comp_hy: 'Dönem sınavı', comp_yearly: 'Yıl sonu sınavı', comp_surprise: 'Sürpriz test', exam_type: 'Sınav türü' },
+      ja: { comp_hy: '中間試験', comp_yearly: '学年末試験', comp_surprise: '抜き打ちテスト', exam_type: '試験の種類' }
+    };
+    Object.keys(EXTRA).forEach(function (l) {
+      if (LANGS[l]) { for (var k in EXTRA[l]) LANGS[l][k] = EXTRA[l][k]; }
+    });
+  })();
+   
   var ALIAS = { english:'en', spanish:'es', 'español':'es', espanol:'es', chinese:'zh', '中文':'zh', 'zh-cn':'zh', 'zh-tw':'zh', 'zh-hk':'zh', hindi:'hi', 'हिन्दी':'hi', 'हिंदी':'hi', arabic:'ar', 'العربية':'ar', french:'fr', 'français':'fr', russian:'ru', 'русский':'ru', portuguese:'pt', 'português':'pt', 'pt-br':'pt', bengali:'bn', 'বাংলা':'bn', urdu:'ur', 'اردو':'ur', indonesian:'id', indonesia:'id', bahasa:'id', 'in':'id', german:'de', deutsch:'de', japanese:'ja', '日本語':'ja', swahili:'sw', kiswahili:'sw', turkish:'tr', 'türkçe':'tr', turkce:'tr' };
   var cur = null;
   function norm(v) {
