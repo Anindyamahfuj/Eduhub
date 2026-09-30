@@ -9945,18 +9945,46 @@ document.addEventListener('DOMContentLoaded', function() {
   function arrFor(d,type){ var c=d;
     String(RESTORE[(type||'').toLowerCase()]||'').split('.').forEach(function(k){ c=c?c[k]:null; });
     return (c&&c.push)?c:null; }
+
+
+  /* ---------- SCREEN REFRESH after restore ---------- */
+  var RENDER_CANDIDATES = {
+    notes:['renderNotes','initNotes','loadNotes','displayNotes','showNotes'],
+    notices:['renderNotices','initNotices','loadNotices','displayNotices'],
+    habits:['renderHabits','initHabits','loadHabits','displayHabits'],
+    files:['renderFiles','initFiles','loadFiles','displayFiles'],
+    assignments:['renderAssignments','initAssignments','loadAssignments','displayAssignments'],
+    goals:['renderGoals','initGoals','loadGoals'],
+    readingList:['renderReading','initReading','loadReading','displayReading'],
+    flashcards:['renderFlashcards','renderDecks','initFlashcards','loadFlashcards']
+  };
+  function refreshLists(types){
+    var hit = 0;
+    (types||[]).forEach(function(t){
+      (RENDER_CANDIDATES[t]||[]).forEach(function(n){
+        try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
+      });
+    });
+    ['renderAll','refreshAll'].forEach(function(n){
+      try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
+    });
+    /* nothing matched → guaranteed-correct fallback */
+    if(!hit && !window.TRASH_NO_RELOAD) setTimeout(function(){ location.reload(); }, 350);
+  }
+    
   function restoreAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
     var it=d.trash[i], back=innerItem(it), type=it.type||guessType(back), a=type?arrFor(d,type):null;
-    if(a){ a.push(back); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); }
+    if(a){ a.push(back); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); refreshLists([type]); }
     else toast('Unknown item type — use TrashCore.diag()'); }
   function deleteAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
     d.trash.splice(i,1); saveData(d); toast('Deleted forever'); render(); }
   function restoreAll(){ var d=loadData(),n=(d.trash||[]).length;
-    if(!n){ toast('Trash is empty'); return; } var ok=0;
+    if(!n){ toast('Trash is empty'); return; } var ok=0, types={};
     for(var i=d.trash.length-1;i>=0;i--){ var back=innerItem(d.trash[i]),
       type=d.trash[i].type||guessType(back), a=type?arrFor(d,type):null;
-      if(a){ a.push(back); d.trash.splice(i,1); ok++; } }
-    saveData(d); toast(ok+' of '+n+' restored'+(ok<n?' ('+(n-ok)+' unknown types left)':'')); render(); }
+      if(a){ a.push(back); d.trash.splice(i,1); ok++; types[type]=1; } }
+    saveData(d); toast(ok+' of '+n+' restored'+(ok<n?' ('+(n-ok)+' unknown types left)':'')); render();
+    refreshLists(Object.keys(types)); }
   function emptyAll(){ var d=loadData(),n=(d.trash||[]).length;
     if(!n){ toast('Trash is already empty'); return; }
     d.trash=[]; saveData(d); toast(n+' item(s) deleted forever'); render(); }
