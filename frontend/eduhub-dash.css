@@ -1,0 +1,277 @@
+/* ============================================================
+   EDUHUB · DASH PRO v1 — dashboard refinement layer
+   Loads AFTER style.css + eduhub-theme.css.
+   Discipline: one accent · mono data · micro-caps labels ·
+   hairline structure · sticky sidebar · semantic quadrants.
+   ============================================================ */
+
+/* ---------- 1 · GLOBAL REFINEMENTS (safe on all pages) ---------- */
+
+/* Cards: tighter rhythm, calmer hover, consistent padding */
+.glass-card { padding: 1.5rem 1.6rem; margin-bottom: 1.5rem; border-radius: 18px; }
+.glass-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); border-color: var(--line-2); }
+
+/* Unified card-title system: hairline base, one accent, quiet weight */
+.card-title,
+.glass-card .card-title {
+  display: flex; align-items: center; gap: .55rem;
+  font-size: .98rem; font-weight: 650; letter-spacing: -.01em;
+  color: var(--ink); margin-bottom: 1.1rem; padding-bottom: .85rem;
+  border-bottom: 1px solid var(--line);
+}
+.card-title [class*="hl-"] { color: var(--accent); }
+.card-title [class*="ph-"] { font-size: 1.05rem; }
+.dash-header h1 [class*="hl-"] { color: var(--accent); }
+
+.page-header h1 { letter-spacing: -.03em; }
+
+/* ---------- 2 · MASTHEAD ---------- */
+.dash-header {
+  align-items: flex-end; margin-bottom: 1.75rem;
+  padding-bottom: 1.4rem; border-bottom: 1px solid var(--line);
+}
+.dash-header h1 { font-size: clamp(1.55rem, 2.3vw, 2.05rem); letter-spacing: -.035em; }
+.dash-header .subtitle { font-size: .875rem; margin-top: .45rem; max-width: 62ch; }
+.dash-date-badge {
+  background: transparent; border: 1px solid var(--line);
+  color: var(--muted); box-shadow: none; padding: .42rem 1rem;
+}
+.dash-date-badge [class*="ph-"] { color: var(--accent); }
+
+/* ---------- 3 · COMMAND-CENTER STATS STRIP ---------- */
+body .overview-strip {
+  display: flex; align-items: stretch; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); padding: 1.15rem 0; margin-bottom: 1.75rem;
+  position: relative; overflow: hidden;
+}
+.overview-strip::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
+  opacity: .35;
+}
+.ov-item {
+  flex: 1 1 150px; display: flex; flex-direction: column; gap: .5rem;
+  padding: .15rem 1.5rem; min-width: 0;
+}
+.ov-divider { width: 1px; background: var(--line); margin: .2rem 0; align-self: stretch; }
+.ov-label {
+  order: -1; display: flex; align-items: center; gap: .45rem;
+  font-size: .65rem; text-transform: uppercase; letter-spacing: .16em;
+  font-weight: 700; color: var(--muted);
+}
+.ov-icon { font-size: 1rem; color: var(--accent); opacity: .85; }
+.ov-value {
+  font-family: var(--mono); font-size: 1.75rem; font-weight: 700;
+  letter-spacing: -.02em; color: var(--ink); line-height: 1;
+  font-variant-numeric: tabular-nums; transition: color var(--dur) var(--ease);
+}
+.ov-item:hover .ov-value { color: var(--accent); }
+.ov-unit { font-size: .78rem; font-weight: 600; color: var(--muted); margin-left: .2rem; font-family: var(--font); }
+
+/* ---------- 4 · BENTO LAYOUT + STICKY SIDEBAR ---------- */
+body .dashboard-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.5rem; align-items: start; margin-top: .25rem;
+}
+.dash-main { min-width: 0; display: flex; flex-direction: column; }
+.dash-main .glass-card { margin-bottom: 1.5rem; }
+.dash-main .glass-card:last-child { margin-bottom: 0; }
+.dash-sidebar {
+  position: sticky; top: 92px;
+  display: flex; flex-direction: column; gap: 1.5rem;
+}
+.dash-sidebar .glass-card { margin-bottom: 0; }
+
+/* ---------- 5 · CLOCK TOOLBAR ---------- */
+body .clock-section { padding: .9rem 1.3rem; margin-bottom: 1.75rem; align-items: center; }
+.digital-clock { font-size: 2.1rem; letter-spacing: .06em; }
+.clock-toggle {
+  background: var(--surface-2); border-color: var(--line); color: var(--muted);
+  font-size: .75rem; padding: .4rem .85rem;
+}
+.clock-toggle:hover { background: var(--surface-3); border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.calendar-widget { background: var(--surface-2); padding: .55rem .95rem; }
+.calendar-expand-btn {
+  background: transparent; border-color: var(--line); color: var(--muted); width: 34px; height: 34px;
+}
+.calendar-expand-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface-3); }
+
+/* ---------- 6 · SEARCH + SHORTCUTS ---------- */
+.search-section .card-title { justify-content: flex-start; }
+.search-section .search-box { max-width: 580px; margin-top: 1rem; }
+.search-section .search-box input { padding: .8rem 1.15rem; }
+.search-section .search-box button { padding: .8rem 1.5rem; }
+.keyboard-toggle { margin: .9rem 0 0; font-size: .78rem; padding: .45rem 1.1rem; }
+.search-tip { margin-top: .8rem; font-size: .75rem; }
+
+.shortcuts-block {
+  margin-top: 1.5rem; padding-top: 1.25rem;
+  border-top: 1px dashed var(--line); text-align: left;
+}
+.shortcuts-title {
+  display: flex; align-items: center; gap: .45rem;
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .16em; color: var(--muted); margin-bottom: .8rem;
+}
+.shortcuts-title [class*="ph-"] { color: var(--accent); }
+#shortcutsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .6rem; }
+.shortcut-tile {
+  display: flex; flex-direction: column; align-items: center; gap: .45rem;
+  padding: .85rem .5rem .7rem; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 12px; text-decoration: none;
+  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.shortcut-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+.shortcut-tile .sc-logo { width: 26px; height: 26px; }
+.shortcut-tile .sc-logo img { width: 100%; height: 100%; object-fit: contain; }
+.shortcut-tile .sc-name { font-size: .72rem; font-weight: 600; color: var(--ink-2); text-align: center; line-height: 1.25; }
+.shortcut-add-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
+  padding: .85rem .5rem .7rem; background: transparent;
+  border: 1px dashed var(--line-2); border-radius: 12px;
+  color: var(--muted); cursor: pointer; font: inherit;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.shortcut-add-tile:hover { border-color: var(--accent); color: var(--accent); }
+.shortcut-add-tile .add-plus { font-size: 1.1rem; font-weight: 700; }
+.shortcut-add-tile .add-label { font-size: .72rem; font-weight: 600; }
+.shortcuts-empty { margin-top: .75rem; font-size: .8rem; color: var(--faint); }
+.shortcut-tile .sc-edit, .shortcut-tile .sc-delete {
+  position: absolute; width: 20px; height: 20px; padding: 0;
+  border: none; background: transparent; color: var(--faint);
+  display: grid; place-items: center; cursor: pointer; font-size: .7rem;
+}
+.shortcut-tile .sc-edit { top: 5px; left: 5px; }
+.shortcut-tile .sc-delete { top: 5px; right: 5px; }
+.shortcut-tile .sc-edit:hover, .shortcut-tile .sc-delete:hover { color: var(--accent); }
+
+/* ---------- 7 · TWIN TIMER CARDS ---------- */
+body .timers-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.timers-row .glass-card { margin-bottom: 1.5rem; }
+.pomodoro-widget, .deepwork-widget { display: flex; flex-direction: column; gap: 1.05rem; }
+.pomodoro-timer, .deepwork-timer {
+  font-family: var(--mono); font-size: clamp(2.3rem, 3.6vw, 2.9rem);
+  font-weight: 700; letter-spacing: .01em; color: var(--ink);
+  min-width: 0; line-height: 1; font-variant-numeric: tabular-nums;
+  padding-left: .85rem; border-left: 3px solid var(--accent);
+}
+.pomodoro-controls, .deepwork-controls { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.pomodoro-controls button, .deepwork-controls button,
+.pomodoro-task-select, .pomodoro-sound-select {
+  background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--ink-2); padding: .45rem 1rem; border-radius: var(--r-pill);
+  font-weight: 600; font-size: .8rem; font-family: inherit; cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.pomodoro-controls button:hover, .deepwork-controls button:hover,
+.pomodoro-task-select:hover, .pomodoro-sound-select:hover {
+  border-color: var(--accent); color: var(--accent); background: var(--surface-3); box-shadow: none; transform: none;
+}
+#pomoStart {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700;
+}
+#pomoStart:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-ink); }
+.pomo-duration-input, #pomoDuration {
+  width: 68px; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--r-pill); color: var(--ink); padding: .45rem .7rem;
+  font-family: var(--mono); font-size: .8rem; text-align: center;
+}
+.pomo-unit { font-size: .75rem; color: var(--muted); }
+.pomodoro-logs, .deepwork-stats { font-size: .78rem; color: var(--muted); }
+.deepwork-stats { display: flex; gap: .6rem; flex-wrap: wrap; }
+.pomodoro-logs b, .deepwork-stats b { color: var(--ink); font-family: var(--mono); font-weight: 700; }
+.dw-sep { color: var(--ghost); }
+
+/* ---------- 8 · PRIORITY MATRIX — SEMANTIC QUADRANTS ---------- */
+.priority-input-row { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+.priority-input-row input { flex: 1 1 220px; }
+.priority-input-row select, .priority-input-row input {
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm);
+  color: var(--ink); padding: .6rem .85rem; font-family: inherit; font-size: .85rem;
+}
+.priority-input-row input:focus-visible, .priority-input-row select:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: var(--focus-ring);
+}
+body .priority-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+.priority-quadrant {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 1rem 1.1rem 1.1rem; min-height: 132px;
+  transition: border-color var(--dur) var(--ease);
+}
+.priority-quadrant:hover { border-color: var(--line-2); }
+.priority-quadrant h3 {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .78rem; font-weight: 650; letter-spacing: .02em;
+  color: var(--ink-2); margin-bottom: .85rem; padding-bottom: .6rem;
+  border-bottom: 1px solid var(--line);
+}
+.priority-quadrant h3 [class*="ph-"] { font-size: .95rem; }
+.q1 h3 [class*="ph-"] { color: var(--danger); }
+.q2 h3 [class*="ph-"] { color: var(--info); }
+.q3 h3 [class*="ph-"] { color: var(--warn); }
+.q4 h3 [class*="ph-"] { color: var(--muted); }
+.priority-task {
+  display: flex; justify-content: space-between; align-items: center; gap: .55rem;
+  padding: .5rem .65rem; border-radius: var(--r-xs);
+  background: transparent; border: 1px solid transparent;
+  font-size: .84rem; color: var(--ink-2);
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.priority-task:hover { background: var(--surface-3); border-color: var(--line); }
+.priority-task .delete-item-btn { min-width: 24px; min-height: 24px; width: 24px; height: 24px; margin-left: 0; font-size: .65rem; }
+
+/* ---------- 9 · JOURNAL ---------- */
+.journal-area textarea {
+  background: var(--surface-2); border-radius: var(--r);
+  min-height: 112px; padding: 1rem 1.1rem; font-size: .9rem;
+}
+.journal-past div { padding: .45rem 0; font-size: .8rem; }
+.journal-past .hl-cyan { color: var(--accent); font-family: var(--mono); font-size: .72rem; }
+
+/* ---------- 10 · SIDEBAR CARDS ---------- */
+.assignments-section .assignment-item { padding: .6rem .1rem; font-size: .85rem; }
+.history-section .section-header { margin-bottom: .9rem; }
+.history-section .btn-primary-sm { width: 100%; justify-content: center; display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; }
+
+/* ---------- 11 · BLOCKER BANNER ---------- */
+.blocker-banner {
+  display: flex; align-items: center; gap: .65rem;
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--danger) 26%, transparent);
+  border-radius: var(--r); padding: .75rem 1.1rem; margin-bottom: 1.5rem;
+  font-size: .84rem; color: var(--ink-2);
+}
+.blocker-banner strong { color: var(--danger); }
+
+/* ---------- 12 · FOOTER ---------- */
+.footer { padding: 2.2rem 1.35rem; font-size: .8rem; margin-top: 1rem; }
+
+/* ---------- 13 · RESPONSIVE ---------- */
+@media (max-width: 1100px) {
+  body .dashboard-layout { grid-template-columns: 1fr; }
+  .dash-sidebar { position: static; }
+}
+@media (max-width: 900px) {
+  body .overview-strip { padding: 1rem 0; }
+  .ov-item { flex: 1 1 40%; padding: .5rem 1.25rem; }
+  .ov-divider { display: none; }
+}
+@media (max-width: 860px) {
+  body .timers-row { grid-template-columns: 1fr; }
+  .timers-row .glass-card { margin-bottom: 0; }
+  .dash-main .timers-row { margin-bottom: 1.5rem; }
+}
+@media (max-width: 640px) {
+  .container { padding: 1.1rem 1.1rem 2.2rem; }
+  .glass-card { padding: 1.2rem 1.15rem; }
+  body .priority-grid { grid-template-columns: 1fr; }
+  .digital-clock { font-size: 1.6rem; }
+  .ov-value { font-size: 1.4rem; }
+  .dash-header h1 { font-size: 1.45rem; }
+}
+
+/* ---------- 14 · MOTION SAFETY ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card, .ov-value, .priority-task, .shortcut-tile { transition: none !important; }
+}
