@@ -413,7 +413,9 @@
     var meta = document.getElementById('ehNewsMeta');
     if (meta && res.ts) {
       var t = new Date(res.ts);
-      meta.textContent = 'Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + (res.cached ? ' · cached' : '');
+           var borrowed = res.items && res.items.length && res.items[0]._x;
+      meta.textContent = 'Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) +
+        (borrowed ? ' · loading…' : (res.cached ? ' · cached' : ''));
     }
     if (!res.items || !res.items.length) {
       grid.innerHTML = '<div class="eh-nw-msg">📡 Couldn\'t load the briefing right now.' +
