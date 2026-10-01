@@ -346,7 +346,7 @@
     world:    /conflict|war|ceasefire|election|summit|president|minister|attack|protest|border|united nations|diplomac|government/i,
     tech:     /\bAI\b|technolog|software|smartphone|startup|cyber|chip|app\b|internet|computer|robot|data|coding/i,
     science:  /scientist|research|study|space|NASA|climate|telescope|species|discovered|physics|quantum|genome| fossil/i,
-    business: /econom|market|bank|trade|inflation|stock|oil|tariff|currency|GDP|merger|billion|investment|recession/i
+
   };
   function fromAnyPool(cat) {
     var c = loadCache(), best = null;
