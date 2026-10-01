@@ -7166,71 +7166,68 @@ function openFile(fileId, mode) {
 // ================================================================
 function initBreakReminder() {
     var breakKey = 'studyHubLastBreakReminder';
-    var INTERVAL = 50 * 60 * 1000;   // 50 minutes
-    var breakTick = null;
+    var INTERVAL  = 50 * 60 * 1000;  // 50 minutes of active study
+    var STALE     = 10 * 60 * 1000;  // away > 10 min = the break already happened
+    var HEARTBEAT = 30 * 1000;       // keeps the session timestamp fresh while visible
+    var breakTick = null, heartTick = null, hiddenAt = 0;
+
+    function getLast() { try { return parseInt(localStorage.getItem(breakKey) || '0', 10) || 0; } catch (e) { return 0; } }
+    function setLast(t) { try { localStorage.setItem(breakKey, String(t)); } catch (e) {} }
 
     function fireReminder() {
         try { notifyBreak(); } catch (e) {}
-        try { localStorage.setItem(breakKey, Date.now()); } catch (e) {}
-        // Optional: also show a small in-page toast so it's impossible to miss
+        setLast(Date.now());
         if (typeof window.showToast === 'function') {
             try { window.showToast('☕ Time for a break! You have been studying for 50 minutes.', 'ok'); } catch (e) {}
         }
     }
 
-    function startTimer() {
-        if (breakTick) clearInterval(breakTick);
-        // Fire every 50 minutes regardless of the last stored time
-        breakTick = setInterval(fireReminder, INTERVAL);
+    /* Arm ONE shot for `remaining`, then settle into a repeating 50-min cycle. */
+    function arm(remaining) {
+        if (breakTick) { clearTimeout(breakTick); clearInterval(breakTick); breakTick = null; }
+        breakTick = setTimeout(function () {
+            fireReminder();
+            breakTick = setInterval(fireReminder, INTERVAL);
+        }, Math.max(5000, remaining));
     }
 
-    // If the stored timestamp is already older than 50 min,
-    // fire once on load and then continue on the repeating schedule.
-    var last = parseInt(localStorage.getItem(breakKey) || '0', 10);
-    var now = Date.now();
-
-    if (last && (now - last) >= INTERVAL) {
-        fireReminder();
-    } else if (!last) {
-        try { localStorage.setItem(breakKey, now); } catch (e) {}
+    /* Session continuity:
+       gap < 10 min  → same study session (refresh / quick alt-tab) → resume remaining time
+       gap ≥ 10 min  → the user was genuinely away → FRESH clock, never fire on open */
+    function start() {
+        var gap = Date.now() - getLast();
+        arm(gap > 0 && gap < STALE ? INTERVAL - gap : INTERVAL);
+        if (!heartTick) {
+            heartTick = setInterval(function () { if (!document.hidden) setLast(Date.now()); }, HEARTBEAT);
+        }
+    }
+    function pause() {
+        if (breakTick) { clearTimeout(breakTick); clearInterval(breakTick); breakTick = null; }
     }
 
-    startTimer();
+    /* Boot: opened after a shutdown / long absence → new session, NO reminder on open. */
+    var last = getLast();
+    if (last && (Date.now() - last) >= STALE) setLast(Date.now());
+    start();
 
-    // Pause the reminder when the tab is hidden so it doesn't drift
+    /* Hidden = paused. Returning after a long idle counts as the break itself. */
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
-            if (breakTick) { clearInterval(breakTick); breakTick = null; }
+            hiddenAt = Date.now();
+            pause();
         } else {
-            startTimer();
+            if (hiddenAt && (Date.now() - hiddenAt) > STALE) setLast(Date.now());
+            start();
+            hiddenAt = 0;
         }
     });
 
-    // Expose a manual trigger for the console / other scripts
+    /* Same public API as before — nothing else in your code breaks. */
     window.studyHubBreakReminder = {
-        reset: function () {
-            try { localStorage.setItem(breakKey, Date.now()); } catch (e) {}
-        },
+        reset: function () { setLast(Date.now()); start(); },
         fire: fireReminder,
-        stop: function () { if (breakTick) { clearInterval(breakTick); breakTick = null; } }
+        stop: function () { pause(); if (heartTick) { clearInterval(heartTick); heartTick = null; } }
     };
-}
-
-function notifyBreak() {
-    if ("Notification" in window && Notification.permission === "granted") {
-        new Notification('☕ Time for a break!', { body: 'You have been studying for 50 minutes. Stand up, stretch, and rest your eyes.' });
-    }
-    try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        var o = ctx.createOscillator();
-        var g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = 880;
-        g.gain.setValueAtTime(0.15, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(); o.stop(ctx.currentTime + 1.2);
-    } catch(e){}
 }
 
 // ================================================================
