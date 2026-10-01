@@ -119,11 +119,44 @@
     }
     return out;
   }
+    var RELAYS = [
+    { kind: 'json', url: function (u) { return 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) + '&count=20'; } },
+    { kind: 'xml',  url: function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); } },
+    { kind: 'xml',  url: function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); } },
+    { kind: 'xml',  url: function (u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); } }
+  ];
+  function parseRss2Json(j, sourceName) {
+    if (!j || j.status !== 'ok' || !Array.isArray(j.items) || !j.items.length) throw new Error('bad json');
+    var out = [];
+    j.items.forEach(function (it) {
+      if (!it.title || !it.link || out.length >= 20) return;
+      var ms = it.pubDate ? Date.parse(it.pubDate) : 0; if (isNaN(ms)) ms = 0;
+      var img = it.thumbnail || (it.enclosure && it.enclosure.link) || '';
+      if (!img) {
+        var m = String(it.description || it.content || '').match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (m) img = m[1];
+      }
+      out.push({ t: String(it.title).slice(0, 200), l: it.link, s: sourceName, d: ms, img: img });
+    });
+    if (!out.length) throw new Error('empty');
+    return out;
+  }
   function fetchFeed(url, source) {
-    /* relay 1 → relay 2 → give up (caller falls back to cache) */
-    return fetchText('https://api.allorigins.win/raw?url=' + encodeURIComponent(url))
-      .catch(function(){ return fetchText('https://corsproxy.io/?url=' + encodeURIComponent(url)); })
-      .then(function(x){ return parseFeed(x, source); });
+    /* try each relay in order until one returns parseable data */
+    var i = 0;
+    function attempt() {
+      if (i >= RELAYS.length) return Promise.reject(new Error('all relays failed'));
+      var r = RELAYS[i++];
+      return fetchText(r.url(url), 9000).then(function (x) {
+        if (r.kind === 'json') {
+          var j = null;
+          try { j = JSON.parse(x); } catch (e) { throw new Error('bad json'); }
+          return parseRss2Json(j, source);
+        }
+        return parseFeed(x, source);
+      }).catch(function () { return attempt(); });
+    }
+    return attempt();
   }
   function loadCategory(cat, force) {
     var conf = FEEDS[cat], c = loadCache();
