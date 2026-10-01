@@ -58,8 +58,8 @@
       ';animation:ehRip .55s ease-out forwards}' +
     '@keyframes ehRip{to{transform:scale(2.6);opacity:0}}';
   if (!REDUCED) CSS +=
-    'main.container{animation:ehCineIn .6s cubic-bezier(.16,1,.3,1) both}' +
-    '@keyframes ehCineIn{from{opacity:0;transform:translateY(16px) scale(.995)}to{opacity:1;transform:none}}';
+    'main.container{animation:ehCineIn .5s ease-out both}' +
+    '@keyframes ehCineIn{from{opacity:0}to{opacity:1}}';
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
 
   /* ---------- 1 · aurora canvas ---------- */
