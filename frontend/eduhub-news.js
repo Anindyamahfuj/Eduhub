@@ -311,7 +311,7 @@
     }
   };
 
-  /* ---------- category loader ---------- */
+  /* ---------- category loader + prefetch ---------- */
   function store(cat, items) {
     var c = loadCache();
     c[cat] = { date: today(), ts: Date.now(), items: items };
@@ -322,25 +322,70 @@
     var c = loadCache();
     return { items: (c[cat] && c[cat].items) || [], ts: c[cat] && c[cat].ts, cached: true };
   }
+
+  var inFlight = {};   /* category → Promise, shared across tabs */
+
   function loadCategory(cat, force) {
     var c = loadCache();
     if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length)
       return Promise.resolve({ items: c[cat].items, ts: c[cat].ts, cached: false });
+
+    if (!force && inFlight[cat]) return inFlight[cat];   /* join an already-running fetch */
+
     var conf = FEEDS[cat];
-    return Promise.all(conf.feeds.map(function (f) {
+    var p = Promise.all(conf.feeds.map(function (f) {
       return fetchFeed(f.u, f.s).catch(function (e) { console.warn('[News]', f.s, e && e.message); return []; });
     })).then(function (arrs) {
-      var merged = dedupe(arrs).sort(function (a, b) { return (b.d || 0) - (a.d || 0); }).slice(0, PER_CAT);
-      if (merged.length) return store(cat, merged);
-      var fb = FALLBACKS[cat];
-      if (!fb) return stale(cat);
-      return fb().then(function (items) {
-        if (items && items.length) return store(cat, items.slice(0, PER_CAT));
-        return stale(cat);
-      });
+      var merged = dedupe(arrs).sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
+      if (merged.length < 4) {   /* thin → blend in the native fallbacks */
+        return FALLBACKS[cat]().then(function (fb) {
+          var all = dedupe([merged, fb]).sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
+          return store(cat, all.slice(0, PER_CAT));
+        }).catch(function () {
+          return merged.length ? store(cat, merged.slice(0, PER_CAT)) : stale(cat);
+        });
+      }
+      return store(cat, merged.slice(0, PER_CAT));
     }).catch(function () { return stale(cat); });
+
+    inFlight[cat] = p;
+    p.then(function () { delete inFlight[cat]; });
+    return p;
   }
 
+  /* cross-tab instant switching: filter the freshest big pool by keywords */
+  var LENS = {
+    world:    /conflict|war|ceasefire|election|summit|president|minister|attack|protest|border|united nations|diplomac|government/i,
+    tech:     /\bAI\b|technolog|software|smartphone|startup|cyber|chip|app\b|internet|computer|robot|data|coding/i,
+    science:  /scientist|research|study|space|NASA|climate|telescope|species|discovered|physics|quantum|genome| fossil/i,
+    business: /econom|market|bank|trade|inflation|stock|oil|tariff|currency|GDP|merger|billion|investment|recession/i
+  };
+  function fromAnyPool(cat) {
+    var c = loadCache(), best = null;
+    Object.keys(c).forEach(function (k) {
+      if (k === cat || !c[k] || !Array.isArray(c[k].items)) return;
+      if (c[k].date !== today() || c[k].items.length < 5) return;
+      if (!best || (c[k].ts || 0) > (best.ts || 0)) best = c[k];
+    });
+    if (!best) return [];
+    var hits = best.items.filter(function (it) { return LENS[cat].test(it.t); });
+    if (hits.length < 3) hits = hits.concat(best.items.filter(function (it) { return !LENS[cat].test(it.t); }));
+    return hits.slice(0, PER_CAT).map(function (it) {
+      return { t: it.t, l: it.l, s: it.s, d: it.d, img: it.img, _x: 1 };   /* _x = borrowed */
+    });
+  }
+
+  /* warm the default tab the moment the page opens — before the user looks */
+  var PREFETCHED = false;
+  function prefetch() {
+    if (PREFETCHED) return; PREFETCHED = true;
+    try {
+      var saved = localStorage.getItem(TAB_KEY) || 'world';
+      loadCategory(FEEDS[saved] ? saved : 'world', false);
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', prefetch);
+  else prefetch();
   /* ---------- UI ---------- */
   var curTab = null, busy = false;
   function skeleton() {
