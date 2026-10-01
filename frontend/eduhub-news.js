@@ -282,16 +282,7 @@
         gdelt('(conflict OR election OR summit OR ceasefire OR diplomacy OR "united nations")').catch(function () { return []; })
       ]).then(function (r) { return mix(r[0], r[1]); });
     },
-    business: function () {
-      return Promise.all([
-        wikiITN(/econom|market|bank|trade|inflation|stock|oil|OPEC|IMF|tariff|currency|GDP|merger|billion|investment/i),
-        gdelt('(economy OR markets OR inflation OR trade OR stocks OR "central bank" OR tariffs OR recession)').catch(function () { return []; })
-      ]).then(function (r) {
-        var merged = mix(r[0], r[1]);
-        if (merged.length >= 3) return merged;
-        return wikiITN(null);   /* rare last resort — GDELT usually fills it first */
-      });
-    },
+    
     tech: function () {
       return Promise.all([
         devto(),
