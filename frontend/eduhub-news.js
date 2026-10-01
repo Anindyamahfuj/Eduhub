@@ -12,7 +12,7 @@
   var CACHE_KEY = 'studyHubNews.v1', TAB_KEY = 'studyHubNewsTab';
   var PER_CAT = 8;
 
-  var FEEDS = {
+   var FEEDS = {
     world:    { label: 'World',    icon: '🌍', feeds: [
                   { u: 'https://feeds.bbci.co.uk/news/world/rss.xml', s: 'BBC News' },
                   { u: 'https://www.aljazeera.com/xml/rss/all.xml',   s: 'Al Jazeera' } ] },
@@ -21,10 +21,7 @@
                   { u: 'https://techcrunch.com/feed/',                s: 'TechCrunch' } ] },
     science:  { label: 'Science',  icon: '🔬', feeds: [
                   { u: 'https://phys.org/rss-feed/',                  s: 'Phys.org' },
-                  { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] },
-    business: { label: 'Business', icon: '📈', feeds: [
-                  { u: 'https://feeds.bbci.co.uk/news/business/rss.xml', s: 'BBC News' },
-                  { u: 'https://fortune.com/feed/',                   s: 'Fortune' } ] }
+                  { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] }
   };
   var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)',
               science: 'var(--brand,#7fe3c8)', business: 'var(--warn,#f0b46a)' };
