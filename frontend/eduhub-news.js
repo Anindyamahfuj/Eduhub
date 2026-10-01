@@ -1,10 +1,8 @@
 /* =====================================================================
-   EDUHUB · Daily Briefing v1 — Microsoft-Start-style news widget
-   • International RSS: World · Tech · Science · Business
-   • Daily cache: loads instantly from localStorage, refetches once/day
-   • Manual refresh · skeletons · graceful offline fallback
-   • Injects itself into the dashboard (index.html only). No HTML edits.
-   Console: EduNews.refresh()
+   EDUHUB · Daily Briefing v2 — resilient news engine
+   Strategy: RSS via 4-relay chain → native-CORS fallback APIs
+   (Wikipedia In-the-News · Hacker News · Spaceflight News).
+   Fallbacks are ad-blocker/ISP-proof. Daily cache. EduNews.debug().
    ===================================================================== */
 (function () {
   'use strict';
@@ -28,10 +26,10 @@
                   { u: 'https://feeds.bbci.co.uk/news/business/rss.xml', s: 'BBC News' },
                   { u: 'https://fortune.com/feed/',                   s: 'Fortune' } ] }
   };
-  var CATS = Object.keys(FEEDS);
   var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)',
               science: 'var(--brand,#7fe3c8)', business: 'var(--warn,#f0b46a)' };
 
+  /* ---------- helpers ---------- */
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function pad(n){ return String(n).padStart(2,'0'); }
   function today(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
@@ -44,6 +42,21 @@
     if(s<3600) return Math.round(s/60)+'m ago';
     if(s<86400) return Math.round(s/3600)+'h ago';
     return Math.round(s/86400)+'d ago';
+  }
+  function stripTags(h){ var d=document.createElement('div'); d.innerHTML=h||''; return (d.textContent||'').replace(/\s+/g,' ').trim(); }
+  function titleFrom(text){
+    text = String(text||'').trim();
+    var cut = text.slice(0,150);
+    var dot = cut.search(/[.!?] /);
+    if (dot > 40) cut = cut.slice(0, dot + 1);
+    else if (text.length > 150) cut = cut.slice(0, cut.lastIndexOf(' ')) + '…';
+    return cut;
+  }
+  function dedupe(arrs){
+    var seen={}, out=[];
+    arrs.forEach(function(a){ (a||[]).forEach(function(it){
+      var k=(it.t||'').toLowerCase(); if(!k||seen[k]) return; seen[k]=1; out.push(it); }); });
+    return out;
   }
 
   /* ---------- CSS ---------- */
@@ -77,13 +90,14 @@
     '.eh-nw-msg button{margin-left:.5rem;background:transparent;border:1px solid var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);border-radius:8px;padding:.3rem .8rem;font:600 .78rem var(--font,inherit);cursor:pointer}';
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
 
-  /* ---------- fetching ---------- */
+  /* ---------- fetch + parse ---------- */
   function fetchText(url, ms) {
     var ctrl = ('AbortController' in window) ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, ms || 9000) : null;
     return fetch(url, ctrl ? { signal: ctrl.signal } : {})
       .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.text(); })
-      .finally(function(){ if (timer) clearTimeout(timer); });
+      .then(function(x){ if (timer) clearTimeout(timer); return x; },
+            function(e){ if (timer) clearTimeout(timer); throw e; });
   }
   function parseFeed(xml, sourceName) {
     var doc = new DOMParser().parseFromString(xml, 'text/xml');
@@ -92,7 +106,6 @@
     if (!nodes.length) nodes = doc.getElementsByTagName('entry');
     var out = [];
     for (var i = 0; i < nodes.length && out.length < 20; i++) {
-      var n = nodes[i];
       (function (n) {
         function g(t){ var e=n.getElementsByTagName(t); return e.length ? e[0].textContent.trim() : ''; }
         var title = g('title'); if (!title) return;
@@ -103,7 +116,7 @@
           if (!link && ls[j].textContent.trim()) link = ls[j].textContent.trim();
         }
         if (!link) return;
-        var ds = g('pubDate') || g('published') || g('updated') || g('date');
+        var ds = g('pubDate') || g('published') || g('updated');
         var ms = ds ? Date.parse(ds) : 0; if (isNaN(ms)) ms = 0;
         var img = '';
         var enc = n.getElementsByTagName('enclosure');
@@ -111,20 +124,14 @@
         if (!img) { var mc = n.getElementsByTagName('media:content'); if (mc.length) img = mc[0].getAttribute('url') || ''; }
         if (!img) { var mt = n.getElementsByTagName('media:thumbnail'); if (mt.length) img = mt[0].getAttribute('url') || ''; }
         if (!img) {
-          var html = (g('description') || g('content') || g('summary')).slice(0, 20000);
-          var m = html.match(/<img[^>]+src=["']([^"']+)["']/i); if (m) img = m[1];
+          var m = (g('description') || g('content') || g('summary')).match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (m) img = m[1];
         }
         out.push({ t: title.slice(0, 200), l: link, s: sourceName, d: ms, img: img });
-      })(n);
+      })(nodes[i]);
     }
     return out;
   }
-    var RELAYS = [
-    { kind: 'json', url: function (u) { return 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) + '&count=20'; } },
-    { kind: 'xml',  url: function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); } },
-    { kind: 'xml',  url: function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); } },
-    { kind: 'xml',  url: function (u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); } }
-  ];
   function parseRss2Json(j, sourceName) {
     if (!j || j.status !== 'ok' || !Array.isArray(j.items) || !j.items.length) throw new Error('bad json');
     var out = [];
@@ -141,11 +148,18 @@
     if (!out.length) throw new Error('empty');
     return out;
   }
+
+  /* ---------- relay chain ---------- */
+  var RELAYS = [
+    { name: 'rss2json',  kind: 'json', url: function (u) { return 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) + '&count=20'; } },
+    { name: 'codetabs',  kind: 'xml',  url: function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); } },
+    { name: 'allorigins',kind: 'xml',  url: function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); } },
+    { name: 'corsproxy', kind: 'xml',  url: function (u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); } }
+  ];
   function fetchFeed(url, source) {
-    /* try each relay in order until one returns parseable data */
-    var i = 0;
+    var i = 0, lastErr = '';
     function attempt() {
-      if (i >= RELAYS.length) return Promise.reject(new Error('all relays failed'));
+      if (i >= RELAYS.length) throw new Error('all relays failed (' + lastErr + ')');
       var r = RELAYS[i++];
       return fetchText(r.url(url), 9000).then(function (x) {
         if (r.kind === 'json') {
@@ -154,25 +168,115 @@
           return parseRss2Json(j, source);
         }
         return parseFeed(x, source);
-      }).catch(function () { return attempt(); });
+      }).catch(function (e) { lastErr = r.name + ':' + (e && e.message || e); return attempt(); });
     }
-    return attempt();
+    return Promise.resolve().then(attempt);
+  }
+
+  /* ---------- native-CORS fallbacks (ad-blocker / ISP proof) ---------- */
+  /* World + Business: Wikipedia "In the news" — official Wikimedia feed API */
+  function wikiITN(filterRe) {
+    function day(i) {
+      var d = new Date(Date.now() - i * 86400000);
+      return d.getUTCFullYear() + '/' + pad(d.getUTCMonth() + 1) + '/' + pad(d.getUTCDate());
+    }
+    function tryDay(i) {
+      if (i > 5) return Promise.resolve([]);
+      return fetchText('https://api.wikimedia.org/feed/v1/wikipedia/en/featured/' + day(i), 8000)
+        .then(function (x) {
+          var j = JSON.parse(x);
+          var news = (j && j.news) || [];
+          var out = [];
+          news.forEach(function (n) {
+            var text = stripTags(n.story);
+            if (filterRe && !filterRe.test(text)) return;
+            var link = null, thumb = '', title = '';
+            var links = n.links || [];
+            if (links.length) {
+              var L = links[0];
+              title = (L.titles && L.titles.normalized) || L.title || '';
+              thumb = (L.thumbnail && L.thumbnail.source) || '';
+              link = (L.content_urls && L.content_urls.desktop && L.content_urls.desktop.page) || null;
+            }
+            if (!link && title) link = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(title.replace(/ /g, '_'));
+            out.push({ t: titleFrom(text), l: link || 'https://en.wikipedia.org/wiki/Portal:Current_events',
+                       s: 'Wikipedia ITN', d: Date.now() - i * 86400000, img: thumb });
+          });
+          if (out.length) return out;
+          return tryDay(i + 1);
+        })
+        .catch(function () { return tryDay(i + 1); });
+    }
+    return tryDay(0);
+  }
+  /* Tech: Hacker News front page (Algolia, native CORS) */
+  function hnFront() {
+    return fetchText('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=14', 8000)
+      .then(function (x) {
+        var j = JSON.parse(x), out = [];
+        ((j && j.hits) || []).forEach(function (h) {
+          if (!h.title || out.length >= 20) return;
+          out.push({ t: String(h.title).slice(0, 200),
+                     l: h.url || ('https://news.ycombinator.com/item?id=' + h.objectID),
+                     s: 'Hacker News', d: Date.parse(h.created_at) || 0, img: '' });
+        });
+        return out;
+      });
+  }
+  /* Science: Spaceflight News API (native CORS) */
+  function spaceNews() {
+    return fetchText('https://api.spaceflightnewsapi.net/v4/articles/?limit=14', 8000)
+      .then(function (x) {
+        var j = JSON.parse(x), out = [];
+        ((j && j.results) || []).forEach(function (a) {
+          if (!a.title || !a.url || out.length >= 20) return;
+          out.push({ t: String(a.title).slice(0, 200), l: a.url,
+                     s: a.news_site || 'Spaceflight News',
+                     d: Date.parse(a.published_at) || 0, img: a.image_url || '' });
+        });
+        return out;
+      });
+  }
+  var FALLBACKS = {
+    world:    function () { return wikiITN(null); },
+    tech:     function () { return hnFront().catch(function(){ return wikiITN(/technolog|internet|AI |software|computer/i); }); },
+    science:  function () { return spaceNews().catch(function(){ return wikiITN(/scientist|research|study|space|NASA|climate|species|discovered/i); }); },
+    business: function () {
+      return wikiITN(/econom|market|bank|trade|inflation|stock|oil|OPEC|IMF|tariff|currency|GDP|merger|billion/i)
+        .then(function (items) {
+          return items.length >= 3 ? items : wikiITN(null);
+        });
+    }
+  };
+
+  /* ---------- category loader ---------- */
+  function store(cat, items) {
+    var c = loadCache();
+    c[cat] = { date: today(), ts: Date.now(), items: items };
+    saveCache(c);
+    return { items: items, ts: Date.now(), cached: false };
+  }
+  function stale(cat) {
+    var c = loadCache();
+    return { items: (c[cat] && c[cat].items) || [], ts: c[cat] && c[cat].ts, cached: true };
   }
   function loadCategory(cat, force) {
-    var conf = FEEDS[cat], c = loadCache();
+    var c = loadCache();
     if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length)
       return Promise.resolve({ items: c[cat].items, ts: c[cat].ts, cached: false });
+    var conf = FEEDS[cat];
     return Promise.all(conf.feeds.map(function (f) {
-      return fetchFeed(f.u, f.s).catch(function () { return []; });
+      return fetchFeed(f.u, f.s).catch(function (e) { console.warn('[News]', f.s, e && e.message); return []; });
     })).then(function (arrs) {
-      var seen = {}, merged = [];
-      arrs.forEach(function (a) { a.forEach(function (it) {
-        var k = it.t.toLowerCase(); if (seen[k]) return; seen[k] = 1; merged.push(it); }); });
-      merged.sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
-      merged = merged.slice(0, PER_CAT);
-      if (merged.length) { c[cat] = { date: today(), ts: Date.now(), items: merged }; saveCache(c); }
-      return { items: merged, ts: Date.now(), cached: !merged.length && !!(c[cat] && c[cat].items) };
-    });
+      var merged = dedupe(arrs).sort(function (a, b) { return (b.d || 0) - (a.d || 0); }).slice(0, PER_CAT);
+      if (merged.length) return store(cat, merged);
+      var fb = FALLBACKS[cat];
+      if (!fb) return stale(cat);
+      return fb().then(function (items) {
+        if (items && items.length) return store(cat, items.slice(0, PER_CAT));
+        return stale(cat);
+      });
+    }).catch(function () { return stale(cat); });
   }
 
   /* ---------- UI ---------- */
@@ -181,24 +285,6 @@
     var h = '';
     for (var i = 0; i < 6; i++) h += '<div class="eh-nw-skel"><i></i><b></b><i></i></div>';
     return h;
-  }
-  function render(cat, res) {
-    var grid = document.getElementById('ehNewsGrid'); if (!grid) return;
-    var meta = document.getElementById('ehNewsMeta');
-    if (meta && res.ts) meta.innerHTML = stampHTML(res);
-    if (!res.items || !res.items.length) {
-      grid.innerHTML = '<div class="eh-nw-msg">📡 Couldn\'t load the briefing right now' +
-        (res.cached ? ' — showing the last saved edition below.' : '.') +
-        ' <button data-ehnw-retry>Retry</button></div>' +
-        (res.cached ? cardsHTML(loadCache()[cat].items, cat) : '');
-      return;
-    }
-    grid.innerHTML = cardsHTML(res.items, cat);
-  }
-  function stampHTML(res) {
-    var t = new Date(res.ts || Date.now());
-    return 'Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) +
-           (res.cached ? ' · cached' : '');
   }
   function cardsHTML(items, cat) {
     return items.map(function (it) {
@@ -215,34 +301,24 @@
         '</span></a>';
     }).join('');
   }
-  function setTab(cat, force) {
-    if (busy) return;
-    curTab = cat;
-    try { localStorage.setItem(TAB_KEY, cat); } catch (e) {}
-    document.querySelectorAll('.eh-nw-tab').forEach(function (b) {
-      b.classList.toggle('on', b.dataset.cat === cat);
-    });
-    var grid = document.getElementById('ehNewsGrid');
-    var c = loadCache();
-    if (!force && c[cat] && c[cat].date === today()) {
-      render(cat, { items: c[cat].items, ts: c[cat].ts, cached: false });
+  function render(cat, res) {
+    var grid = document.getElementById('ehNewsGrid'); if (!grid) return;
+    var meta = document.getElementById('ehNewsMeta');
+    if (meta && res.ts) {
+      var t = new Date(res.ts);
+      meta.textContent = 'Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + (res.cached ? ' · cached' : '');
+    }
+    if (!res.items || !res.items.length) {
+      grid.innerHTML = '<div class="eh-nw-msg">📡 Couldn\'t load the briefing right now.' +
+        ' <button data-ehnw-retry>Retry</button></div>';
       return;
     }
-    grid.innerHTML = skeleton();
-    busy = true; spin(true);
-    loadCategory(cat, force).then(function (res) { render(cat, res); })
-      .catch(function () { render(cat, { items: [], cached: !!c[cat] }); })
-      .finally ? null : null;
-    loadCategory; /* noop guard for minifiers */
-    function done(){ busy = false; spin(false); }
-    setTimeout(done, 0);
+    grid.innerHTML = cardsHTML(res.items, cat);
   }
   function spin(on) {
     var b = document.getElementById('ehNewsRefresh');
     if (b) b.classList.toggle('spin', !!on);
   }
-
-  /* honest loading wrapper: render only after fetch settles */
   function goto(cat, force) {
     if (busy) return;
     curTab = cat;
@@ -260,30 +336,26 @@
     busy = true; spin(true);
     loadCategory(cat, force)
       .then(function (res) { render(cat, res); })
-      .catch(function () { render(cat, { items: (c[cat] && c[cat].items) || [], ts: c[cat] && c[cat].ts, cached: true }); })
       .then(function () { busy = false; spin(false); });
   }
 
   function build() {
     if (document.getElementById('ehNewsCard')) return true;
     var strip = document.querySelector('.overview-strip');
-    var layout = document.querySelector('.dashboard-layout');
-    if (!strip || !layout) return false;                 /* dashboard only */
-
+    if (!strip) return false;
     var sec = document.createElement('section');
     sec.className = 'glass-card'; sec.id = 'ehNewsCard';
     sec.innerHTML =
       '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;">' +
-        '<span style="display:flex;align-items:center;gap:.55rem;"><span class="hl-cyan" style="color:var(--accent,#3fd2b0)"><i class="ph ph-newspaper" aria-hidden="true"></i></span> Daily Briefing</span>' +
+        '<span style="display:flex;align-items:center;gap:.55rem;"><span style="color:var(--accent,#3fd2b0)"><i class="ph ph-newspaper" aria-hidden="true"></i></span> Daily Briefing</span>' +
         '<span id="ehNewsMeta"></span>' +
         '<button id="ehNewsRefresh" title="Refresh briefing" aria-label="Refresh"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i></button>' +
       '</div>' +
       '<div class="eh-nw-tabs" id="ehNewsTabs"></div>' +
       '<div id="ehNewsGrid"></div>';
     strip.insertAdjacentElement('afterend', sec);
-
     var tabs = sec.querySelector('#ehNewsTabs');
-    CATS.forEach(function (c) {
+    Object.keys(FEEDS).forEach(function (c) {
       var b = document.createElement('button');
       b.className = 'eh-nw-tab'; b.type = 'button'; b.dataset.cat = c;
       b.textContent = FEEDS[c].icon + ' ' + FEEDS[c].label;
@@ -296,21 +368,32 @@
     document.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('[data-ehnw-retry]') && curTab) goto(curTab, true);
     });
-
     var saved = 'world';
     try { saved = localStorage.getItem(TAB_KEY) || 'world'; } catch (e) {}
     goto(FEEDS[saved] ? saved : 'world', false);
     return true;
   }
-
   (function boot() {
     if (build()) return;
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
     else setTimeout(build, 500);
   })();
 
+  console.log('[News] engine v2 ready — relays + native fallbacks');
   window.EduNews = {
     refresh: function () { if (curTab) goto(curTab, true); },
-    goto: goto
+    goto: goto,
+    /* run EduNews.debug() in console — prints each relay's exact result */
+    debug: function (cat) {
+      cat = cat || curTab || 'world';
+      FEEDS[cat].feeds.forEach(function (f) {
+        RELAYS.forEach(function (r) {
+          fetchText(r.url(f.u), 8000)
+            .then(function (x) { console.log('✅', r.name, '→', f.s, x.length + ' bytes'); })
+            .catch(function (e) { console.log('❌', r.name, '→', f.s, String(e && e.message || e)); });
+        });
+      });
+      console.log('fallback:', FALLBACKS[cat] ? 'available for ' + cat : 'none');
+    }
   };
 })();
