@@ -246,3 +246,34 @@ html #eh-modal .eh-select optgroup {
 #eh-modal[dir="rtl"] .eh-vspark { margin-left: 0; margin-right: auto; }
 #eh-modal[dir="rtl"] .eh-formrow.end { justify-content: flex-end; }
 #ehtr-fab { display: none; }
+
+/* calendar events: neutralize inherited header-button styling on the Today pill */
+#calendarModal .calendar-modal-header .eh-ev-today,
+#calendarModal .calendar-modal-header #ehEvToday {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;              /* pushes « ‹ title › » group to the right */
+  cursor: pointer;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--line, rgba(148,163,184,.22));
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface-2, rgba(148,163,184,.07));
+  color: var(--muted, #8d9aa9);
+  font: 600 12px var(--font, "DM Sans", sans-serif);
+  letter-spacing: .02em;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+#calendarModal .calendar-modal-header .eh-ev-today:hover,
+#calendarModal .calendar-modal-header #ehEvToday:hover {
+  border-color: var(--accent, #3fd2b0);
+  color: var(--accent, #3fd2b0);
+  background: var(--surface-3, rgba(148,163,184,.11));
+}
+#calendarModal .calendar-modal-header .eh-ev-today:active,
+#calendarModal .calendar-modal-header #ehEvToday:active {
+  transform: none;
+}
