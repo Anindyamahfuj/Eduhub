@@ -23,8 +23,8 @@
                   { u: 'https://phys.org/rss-feed/',                  s: 'Phys.org' },
                   { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] }
   };
-  var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)',
-              science: 'var(--brand,#7fe3c8)', business: 'var(--warn,#f0b46a)' };
+   var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)',
+              science: 'var(--brand,#7fe3c8)' };
 
   /* ---------- helpers ---------- */
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
