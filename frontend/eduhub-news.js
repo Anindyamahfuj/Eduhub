@@ -237,15 +237,77 @@
         return out;
       });
   }
+    /* ---------- more native sources ---------- */
+  /* GDELT DOC 2.0 — global news index, native CORS, sometimes carries an image */
+  function gdelt(query) {
+    var url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' +
+      encodeURIComponent(query + ' sourcelang:english') +
+      '&mode=artlist&maxrecords=25&format=json&sort=datedesc';
+    return fetchText(url, 9000).then(function (x) {
+      var j = JSON.parse(x), out = [];
+      ((j && j.articles) || []).forEach(function (a) {
+        if (!a.title || !a.url || out.length >= 20) return;
+        var ms = 0, m = /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/.exec(a.seendate || '');
+        if (m) ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+        out.push({ t: String(a.title).replace(/\s+/g, ' ').slice(0, 200), l: a.url,
+                   s: a.domain || 'GDELT', d: ms, img: a.socialimage || '' });
+      });
+      return out;
+    });
+  }
+  /* DEV.to — tech articles, native CORS, almost always has a cover image */
+  function devto() {
+    return fetchText('https://dev.to/api/articles?per_page=20&top=7', 8000).then(function (x) {
+      var arr = JSON.parse(x), out = [];
+      (Array.isArray(arr) ? arr : []).forEach(function (a) {
+        if (!a.title || !a.url || out.length >= 20) return;
+        out.push({ t: String(a.title).slice(0, 200), l: a.url, s: 'DEV Community',
+                   d: Date.parse(a.published_at) || 0,
+                   img: a.social_image || a.cover_image || '' });
+      });
+      return out;
+    });
+  }
+  function mix() {
+    var out = [];
+    for (var i = 0; i < arguments.length; i++) {
+      (arguments[i] || []).forEach(function (it) {
+        if (out.length < 24) out.push(it);
+      });
+    }
+    return out;
+  }
+
   var FALLBACKS = {
-    world:    function () { return wikiITN(null); },
-    tech:     function () { return hnFront().catch(function(){ return wikiITN(/technolog|internet|AI |software|computer/i); }); },
-    science:  function () { return spaceNews().catch(function(){ return wikiITN(/scientist|research|study|space|NASA|climate|species|discovered/i); }); },
+    world: function () {
+      return Promise.all([
+        wikiITN(null),
+        gdelt('(conflict OR election OR summit OR ceasefire OR diplomacy OR "united nations")').catch(function () { return []; })
+      ]).then(function (r) { return mix(r[0], r[1]); });
+    },
     business: function () {
-      return wikiITN(/econom|market|bank|trade|inflation|stock|oil|OPEC|IMF|tariff|currency|GDP|merger|billion/i)
-        .then(function (items) {
-          return items.length >= 3 ? items : wikiITN(null);
-        });
+      return Promise.all([
+        wikiITN(/econom|market|bank|trade|inflation|stock|oil|OPEC|IMF|tariff|currency|GDP|merger|billion|investment/i),
+        gdelt('(economy OR markets OR inflation OR trade OR stocks OR "central bank" OR tariffs OR recession)').catch(function () { return []; })
+      ]).then(function (r) {
+        var merged = mix(r[0], r[1]);
+        if (merged.length >= 3) return merged;
+        return wikiITN(null);   /* rare last resort — GDELT usually fills it first */
+      });
+    },
+    tech: function () {
+      return Promise.all([
+        devto(),
+        hnFront(),
+        gdelt('(AI OR technology OR smartphone OR software OR cybersecurity)').catch(function () { return []; })
+      ]).then(function (r) { return mix(r[0], r[1], r[2]); });
+    },
+    science: function () {
+      return Promise.all([
+        spaceNews(),
+        wikiITN(/scientist|research|study|space|NASA|climate|species|discovered|telescope/i),
+        gdelt('(NASA OR research OR climate OR telescope OR physics OR "scientific study")').catch(function () { return []; })
+      ]).then(function (r) { return mix(r[0], r[1], r[2]); });
     }
   };
 
