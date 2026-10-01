@@ -433,7 +433,7 @@
     document.querySelectorAll('.eh-nw-tab').forEach(function (b) {
       b.classList.toggle('on', b.dataset.cat === cat);
     });
-    var c = loadCache();
+        var c = loadCache();
     if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length) {
       render(cat, { items: c[cat].items, ts: c[cat].ts, cached: false });
       return;
