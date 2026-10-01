@@ -438,8 +438,13 @@
       render(cat, { items: c[cat].items, ts: c[cat].ts, cached: false });
       return;
     }
-    var grid = document.getElementById('ehNewsGrid');
-    if (grid) grid.innerHTML = skeleton();
+       var grid = document.getElementById('ehNewsGrid');
+    /* borrowed pool while the real fetch warms: text now, real cards seconds later */
+    if (grid && !busy) {
+      var borrowed = fromAnyPool(cat);
+      if (borrowed.length) render(cat, { items: borrowed, ts: Date.now(), cached: true });
+    }
+    if (grid && grid.innerHTML.indexOf('eh-nw-card') === -1) grid.innerHTML = skeleton();
     busy = true; spin(true);
     loadCategory(cat, force)
       .then(function (res) { render(cat, res); })
