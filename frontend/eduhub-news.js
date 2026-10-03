@@ -425,6 +425,20 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', prefetch);
   else prefetch();
   /* ---------- UI ---------- */
+
+  function setMeta(txt) { var m = document.getElementById('ehNewsMeta'); if (m) m.textContent = txt; }
+  function markSeen(cat, items) {
+    var c = loadCache(), e = c[cat]; if (!e || !items) return;
+    var seen = Array.isArray(e.seen) ? e.seen : [];
+    items.forEach(function (it) { if (seen.indexOf(it.t) === -1) seen.push(it.t); });
+    e.seen = seen.slice(-250); saveCache(c);
+  }
+  function updateMoreBtns(cat) {
+    var c = loadCache(), e = (c[cat] || {});
+    var top = document.getElementById('ehTopBtn');
+    if (top) top.hidden = !((e.batch || 1) > 1);
+  }
+   
   var curTab = null, busy = false;
   function skeleton() {
     var h = '';
