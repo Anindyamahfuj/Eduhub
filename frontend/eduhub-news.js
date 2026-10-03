@@ -1,30 +1,31 @@
 /* =====================================================================
-   EDUHUB · Daily Briefing v2 — resilient news engine
-   Strategy: RSS via 4-relay chain → native-CORS fallback APIs
-   (Wikipedia In-the-News · Hacker News · Spaceflight News).
-   Fallbacks are ad-blocker/ISP-proof. Daily cache. EduNews.debug().
+   EDUHUB · Daily Briefing v3 — fast, functional, batched news engine
+   • Racing relays (parallel pairs, first valid wins) → ~1.5–3s typical
+   • 16s watchdog: the UI can NEVER lock, refresh always recovers
+   • Stale-while-revalidate refresh; instant Prev/Next batch navigation
+   • Recency-trimmed pool, category-faithful facet rotation
+   • Cache: studyHubNews.v2 (v1 purged). Console: EduNews.debug()/state()
    ===================================================================== */
 (function () {
   'use strict';
   if (window.__EH_NEWS__) return;
   window.__EH_NEWS__ = true;
 
-  var CACHE_KEY = 'studyHubNews.v1', TAB_KEY = 'studyHubNewsTab';
-  var PER_CAT = 8;
+  var CACHE_KEY = 'studyHubNews.v2', TAB_KEY = 'studyHubNewsTab';
+  var PER_CAT = 8, MAX_BATCHES = 6, POOL_MAX = 80, WATCHDOG_MS = 16000;
 
-   var FEEDS = {
-    world:    { label: 'World',    icon: '🌍', feeds: [
-                  { u: 'https://feeds.bbci.co.uk/news/world/rss.xml', s: 'BBC News' },
-                  { u: 'https://www.aljazeera.com/xml/rss/all.xml',   s: 'Al Jazeera' } ] },
-    tech:     { label: 'Tech',     icon: '💡', feeds: [
-                  { u: 'https://www.theverge.com/rss/index.xml',      s: 'The Verge' },
-                  { u: 'https://techcrunch.com/feed/',                s: 'TechCrunch' } ] },
-    science:  { label: 'Science',  icon: '🔬', feeds: [
-                  { u: 'https://phys.org/rss-feed/',                  s: 'Phys.org' },
-                  { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] }
+  var FEEDS = {
+    world:   { label: 'World',   icon: '🌍', feeds: [
+                 { u: 'https://feeds.bbci.co.uk/news/world/rss.xml', s: 'BBC News' },
+                 { u: 'https://www.aljazeera.com/xml/rss/all.xml',   s: 'Al Jazeera' } ] },
+    tech:    { label: 'Tech',    icon: '💡', feeds: [
+                 { u: 'https://www.theverge.com/rss/index.xml',      s: 'The Verge' },
+                 { u: 'https://techcrunch.com/feed/',                s: 'TechCrunch' } ] },
+    science: { label: 'Science', icon: '🔬', feeds: [
+                 { u: 'https://phys.org/rss-feed/',                  s: 'Phys.org' },
+                 { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] }
   };
-   var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)',
-              science: 'var(--brand,#7fe3c8)' };
+  var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)', science: 'var(--brand,#7fe3c8)' };
 
   /* ---------- helpers ---------- */
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
@@ -55,10 +56,20 @@
       var k=(it.t||'').toLowerCase(); if(!k||seen[k]) return; seen[k]=1; out.push(it); }); });
     return out;
   }
+  function byDate(a,b){ return (b.d||0)-(a.d||0); }
+  /* relevance: after the 10 freshest, drop anything older than 48h */
+  function recencyTrim(items){
+    var now = Date.now(), out = [];
+    for (var i=0;i<items.length;i++){
+      if (i < 10) { out.push(items[i]); continue; }
+      if (items[i].d && (now - items[i].d) < 48*3600*1000) out.push(items[i]);
+    }
+    return out;
+  }
 
   /* ---------- CSS ---------- */
   var CSS =
-    '#ehNewsCard .eh-nw-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.35rem 0 1rem}' +
+    '#ehNewsCard .eh-nw-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.35rem 0 .9rem}' +
     '.eh-nw-tab{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.32rem .9rem;font:600 .76rem var(--font,inherit);cursor:pointer;transition:all .18s}' +
     '.eh-nw-tab:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
     '.eh-nw-tab.on{background:var(--accent-soft,rgba(63,210,176,.12));border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
@@ -67,6 +78,11 @@
     '#ehNewsRefresh:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
     '#ehNewsRefresh.spin i{animation:ehNwSpin .8s linear infinite}' +
     '@keyframes ehNwSpin{to{transform:rotate(360deg)}}' +
+    '.eh-nw-batches{display:flex;align-items:center;gap:.5rem;margin:-.2rem 0 .95rem;flex-wrap:wrap}' +
+    '.eh-nw-nav{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.32rem .95rem;font:600 .76rem var(--font,inherit);cursor:pointer;transition:all .18s}' +
+    '.eh-nw-nav:hover:not(:disabled){border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
+    '.eh-nw-nav:disabled{opacity:.35;cursor:not-allowed}' +
+    '.eh-nw-blabel{flex:1;min-width:120px;text-align:center;font:700 .72rem var(--font,inherit);text-transform:uppercase;letter-spacing:.12em;color:var(--muted,#8d9aa9)}' +
     '#ehNewsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.85rem}' +
     '.eh-nw-card{display:flex;flex-direction:column;background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.13));border-radius:14px;overflow:hidden;text-decoration:none;transition:border-color .18s,transform .18s}' +
     '.eh-nw-card:hover{border-color:var(--accent,#3fd2b0);transform:translateY(-2px)}' +
@@ -87,20 +103,10 @@
     '.eh-nw-msg button{margin-left:.5rem;background:transparent;border:1px solid var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);border-radius:8px;padding:.3rem .8rem;font:600 .78rem var(--font,inherit);cursor:pointer}';
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
 
-
-  var CSS2 =
-    '.eh-nw-more{display:flex;gap:.45rem;margin:-.5rem 0 .95rem}' +
-    '.eh-nw-morebtn{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.34rem .95rem;font:600 .78rem var(--font,inherit);cursor:pointer;transition:all .18s}' +
-    '.eh-nw-morebtn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
-    '.eh-nw-morebtn.subtle{border-style:dashed}' +
-    '.eh-nw-morebtn[hidden]{display:none}';
-  var st2 = document.createElement('style'); st2.textContent = CSS2; document.head.appendChild(st2);
-   
-
   /* ---------- fetch + parse ---------- */
   function fetchText(url, ms) {
     var ctrl = ('AbortController' in window) ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, ms || 9000) : null;
+    var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, ms || 6500) : null;
     return fetch(url, ctrl ? { signal: ctrl.signal } : {})
       .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.text(); })
       .then(function(x){ if (timer) clearTimeout(timer); return x; },
@@ -156,32 +162,39 @@
     return out;
   }
 
-  /* ---------- relay chain ---------- */
-  var RELAYS = [
-    { name: 'rss2json',  kind: 'json', url: function (u) { return 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) + '&count=20'; } },
-    { name: 'codetabs',  kind: 'xml',  url: function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); } },
-    { name: 'allorigins',kind: 'xml',  url: function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); } },
-    { name: 'corsproxy', kind: 'xml',  url: function (u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); } }
+  /* ---------- racing relays: pairs in parallel, first valid wins ---------- */
+  var RELAY_GROUPS = [
+    [ { name:'rss2json', kind:'json', url:function(u){ return 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) + '&count=20'; } },
+      { name:'codetabs', kind:'xml',  url:function(u){ return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); } } ],
+    [ { name:'allorigins', kind:'xml', url:function(u){ return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); } },
+      { name:'corsproxy',  kind:'xml', url:function(u){ return 'https://corsproxy.io/?url=' + encodeURIComponent(u); } } ]
   ];
+  function relayAttempt(r, url, source) {
+    return fetchText(r.url(url), 6500).then(function (x) {
+      if (r.kind === 'json') {
+        var j = null;
+        try { j = JSON.parse(x); } catch (e) { throw new Error('bad json'); }
+        return parseRss2Json(j, source);
+      }
+      return parseFeed(x, source);
+    });
+  }
   function fetchFeed(url, source) {
-    var i = 0, lastErr = '';
-    function attempt() {
-      if (i >= RELAYS.length) throw new Error('all relays failed (' + lastErr + ')');
-      var r = RELAYS[i++];
-      return fetchText(r.url(url), 9000).then(function (x) {
-        if (r.kind === 'json') {
-          var j = null;
-          try { j = JSON.parse(x); } catch (e) { throw new Error('bad json'); }
-          return parseRss2Json(j, source);
-        }
-        return parseFeed(x, source);
-      }).catch(function (e) { lastErr = r.name + ':' + (e && e.message || e); return attempt(); });
+    function group(gi) {
+      if (gi >= RELAY_GROUPS.length) return Promise.reject(new Error('all relays failed'));
+      return Promise.all(RELAY_GROUPS[gi].map(function (r) {
+        return relayAttempt(r, url, source).catch(function (e) {
+          console.warn('[News relay]', r.name, e && e.message); return null;
+        });
+      })).then(function (res) {
+        for (var i = 0; i < res.length; i++) if (res[i] && res[i].length) return res[i];
+        return group(gi + 1);
+      });
     }
-    return Promise.resolve().then(attempt);
+    return group(0);
   }
 
   /* ---------- native-CORS fallbacks (ad-blocker / ISP proof) ---------- */
-  /* World + Business: Wikipedia "In the news" — official Wikimedia feed API */
   function wikiITN(filterRe) {
     function day(i) {
       var d = new Date(Date.now() - i * 86400000);
@@ -216,7 +229,6 @@
     }
     return tryDay(0);
   }
-  /* Tech: Hacker News front page (Algolia, native CORS) */
   function hnFront() {
     return fetchText('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=14', 8000)
       .then(function (x) {
@@ -230,7 +242,6 @@
         return out;
       });
   }
-  /* Science: Spaceflight News API (native CORS) */
   function spaceNews() {
     return fetchText('https://api.spaceflightnewsapi.net/v4/articles/?limit=14', 8000)
       .then(function (x) {
@@ -244,8 +255,6 @@
         return out;
       });
   }
-    /* ---------- more native sources ---------- */
-  /* GDELT DOC 2.0 — global news index, native CORS, sometimes carries an image */
   function gdelt(query) {
     var url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' +
       encodeURIComponent(query + ' sourcelang:english') +
@@ -262,7 +271,6 @@
       return out;
     });
   }
-  /* DEV.to — tech articles, native CORS, almost always has a cover image */
   function devto() {
     return fetchText('https://dev.to/api/articles?per_page=20&top=7', 8000).then(function (x) {
       var arr = JSON.parse(x), out = [];
@@ -277,14 +285,10 @@
   }
   function mix() {
     var out = [];
-    for (var i = 0; i < arguments.length; i++) {
-      (arguments[i] || []).forEach(function (it) {
-        if (out.length < 24) out.push(it);
-      });
-    }
+    for (var i = 0; i < arguments.length; i++)
+      (arguments[i] || []).forEach(function (it) { if (out.length < 24) out.push(it); });
     return out;
   }
-
   var FALLBACKS = {
     world: function () {
       return Promise.all([
@@ -292,11 +296,9 @@
         gdelt('(conflict OR election OR summit OR ceasefire OR diplomacy OR "united nations")').catch(function () { return []; })
       ]).then(function (r) { return mix(r[0], r[1]); });
     },
-    
     tech: function () {
       return Promise.all([
-        devto(),
-        hnFront(),
+        devto(), hnFront(),
         gdelt('(AI OR technology OR smartphone OR software OR cybersecurity)').catch(function () { return []; })
       ]).then(function (r) { return mix(r[0], r[1], r[2]); });
     },
@@ -309,13 +311,13 @@
     }
   };
 
-  /* ---------- "Different stories" engine (category-faithful) ---------- */
+  /* ---------- facet rotation (category-faithful "more") ---------- */
   var FACETS = {
     world: [
       { label: 'Conflicts & elections', q: '(conflict OR election OR summit OR ceasefire OR diplomacy OR "united nations")' },
       { label: 'Politics & borders',    q: '(protest OR border OR president OR parliament OR sanctions OR treaty)' },
       { label: 'Disasters & relief',    q: '(earthquake OR flood OR wildfire OR drought OR humanitarian OR refugee)' },
-      { label: 'Courts & society',      q: '(court OR verdict OR justice OR police OR inquiry OR election result)' }
+      { label: 'Courts & society',      q: '(court OR verdict OR justice OR police OR inquiry OR "election result")' }
     ],
     tech: [
       { label: 'AI & software',          q: '(AI OR "artificial intelligence" OR software OR app OR cybersecurity)' },
@@ -337,13 +339,6 @@
       out.push({ t: String(a.title).slice(0,200), l: a.url, s: 'DEV Community',
                  d: Date.parse(a.published_at)||0, img: a.social_image || a.cover_image || '' });
     }); return out; }); }
-  function spacePage(p) { return fetchText('https://api.spaceflightnewsapi.net/v4/articles/?limit=20&page=' + p, 8000).then(function (x) {
-    var j = JSON.parse(x), out = [];
-    ((j && j.results) || []).forEach(function (a) {
-      if (!a.title || !a.url || out.length >= 20) return;
-      out.push({ t: String(a.title).slice(0,200), l: a.url, s: a.news_site || 'Spaceflight News',
-                 d: Date.parse(a.published_at)||0, img: a.image_url || '' });
-    }); return out; }); }
   function hnPage(p) { return fetchText('https://hn.algolia.com/api/v1/search_by_date?tags=story&numericFilters=points%3E60&page=' + p + '&hitsPerPage=20', 8000).then(function (x) {
     var j = JSON.parse(x), out = [];
     ((j && j.hits) || []).forEach(function (h) {
@@ -351,104 +346,54 @@
       out.push({ t: String(h.title).slice(0,200), l: h.url || ('https://news.ycombinator.com/item?id=' + h.objectID),
                  s: 'Hacker News', d: Date.parse(h.created_at)||0, img: '' });
     }); return out; }); }
-   
-  /* ---------- category loader + prefetch ---------- */
-    function store(cat, items, opts) {
-    opts = opts || {};
-    var c = loadCache();
-    var prev = c[cat] || {};
-    var pool = opts.extendPool && Array.isArray(prev.pool) ? prev.pool.slice() : items.slice();
-    if (opts.extendPool) {
-      var inPool = {}; pool.forEach(function (p) { inPool[p.t.toLowerCase()] = 1; });
-      items.forEach(function (it) { if (!inPool[it.t.toLowerCase()]) pool.push(it); });
-    }
-    c[cat] = { date: today(), ts: Date.now(), items: items, pool: pool.slice(0, 60),
-               seen: opts.keepSeen && prev.seen ? prev.seen : [],
-               batch: opts.batch != null ? opts.batch : (prev.batch || 1),
-               facet: opts.facet != null ? opts.facet : (prev.facet || 0),
-               page: prev.page || 1, facetLabel: opts.facetLabel || prev.facetLabel || '' };
-    saveCache(c);
-    return { items: items, ts: Date.now(), cached: false };
-  }
+  function spacePage(p) { return fetchText('https://api.spaceflightnewsapi.net/v4/articles/?limit=20&page=' + p, 8000).then(function (x) {
+    var j = JSON.parse(x), out = [];
+    ((j && j.results) || []).forEach(function (a) {
+      if (!a.title || !a.url || out.length >= 20) return;
+      out.push({ t: String(a.title).slice(0,200), l: a.url, s: a.news_site || 'Spaceflight News',
+                 d: Date.parse(a.published_at)||0, img: a.image_url || '' });
+    }); return out; }); }
 
-  var inFlight = {};   /* category → Promise, shared across tabs */
-
-  function loadCategory(cat, force) {
-    var c = loadCache();
-    if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length)
-      return Promise.resolve({ items: c[cat].items, ts: c[cat].ts, cached: false });
-
-    if (!force && inFlight[cat]) return inFlight[cat];   /* join an already-running fetch */
-
+  /* ---------- pool builder + cache model ---------- */
+  function buildPool(cat) {
     var conf = FEEDS[cat];
-    var p = Promise.all(conf.feeds.map(function (f) {
+    return Promise.all(conf.feeds.map(function (f) {
       return fetchFeed(f.u, f.s).catch(function (e) { console.warn('[News]', f.s, e && e.message); return []; });
     })).then(function (arrs) {
-      var merged = dedupe(arrs).sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
-      if (merged.length < 4) {   /* thin → blend in the native fallbacks */
-        return FALLBACKS[cat]().then(function (fb) {
-          var all = dedupe([merged, fb]).sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
-          return store(cat, all.slice(0, PER_CAT));
-        }).catch(function () {
-          return merged.length ? store(cat, merged.slice(0, PER_CAT)) : stale(cat);
-        });
-      }
-      return store(cat, merged.slice(0, PER_CAT));
-    }).catch(function () { return stale(cat); });
-
+      var merged = recencyTrim(dedupe(arrs).sort(byDate));
+      if (merged.length >= 6) return merged;
+      return FALLBACKS[cat]().then(function (fb) {
+        return recencyTrim(dedupe([merged, fb]).sort(byDate));
+      }).catch(function () { return merged; });
+    });
+  }
+  function staleEntry(cat) {
+    var c = loadCache();
+    return (c[cat] && c[cat].batches && c[cat].batches.length) ? c[cat] : null;
+  }
+  var inFlight = {};
+  function ensureEntry(cat, force) {
+    var c = loadCache();
+    if (!force && c[cat] && c[cat].date === today() && c[cat].batches && c[cat].batches.length)
+      return Promise.resolve(c[cat]);
+    if (!force && inFlight[cat]) return inFlight[cat];
+    var p = buildPool(cat).then(function (pool) {
+      if (!pool.length) return staleEntry(cat);
+      c = loadCache();
+      c[cat] = { date: today(), ts: Date.now(),
+                 pool: pool.slice(0, POOL_MAX),
+                 batches: [{ items: pool.slice(0, PER_CAT), label: 'Top stories' }],
+                 batchIdx: 0, facet: 0, page: 1 };
+      saveCache(c);
+      return c[cat];
+    });
     inFlight[cat] = p;
-    p.then(function () { delete inFlight[cat]; });
+    function clear(){ delete inFlight[cat]; }
+    p.then(clear, clear);
     return p;
   }
 
-  /* cross-tab instant switching: filter the freshest big pool by keywords */
-  var LENS = {
-    world:    /conflict|war|ceasefire|election|summit|president|minister|attack|protest|border|united nations|diplomac|government/i,
-    tech:     /\bAI\b|technolog|software|smartphone|startup|cyber|chip|app\b|internet|computer|robot|data|coding/i,
-    science:  /scientist|research|study|space|NASA|climate|telescope|species|discovered|physics|quantum|genome| fossil/i,
-
-  };
-  function fromAnyPool(cat) {
-    var c = loadCache(), best = null;
-    Object.keys(c).forEach(function (k) {
-      if (k === cat || !c[k] || !Array.isArray(c[k].items)) return;
-      if (c[k].date !== today() || c[k].items.length < 5) return;
-      if (!best || (c[k].ts || 0) > (best.ts || 0)) best = c[k];
-    });
-    if (!best) return [];
-    var hits = best.items.filter(function (it) { return LENS[cat].test(it.t); });
-    if (hits.length < 3) hits = hits.concat(best.items.filter(function (it) { return !LENS[cat].test(it.t); }));
-    return hits.slice(0, PER_CAT).map(function (it) {
-      return { t: it.t, l: it.l, s: it.s, d: it.d, img: it.img, _x: 1 };   /* _x = borrowed */
-    });
-  }
-
-  /* warm the default tab the moment the page opens — before the user looks */
-  var PREFETCHED = false;
-  function prefetch() {
-    if (PREFETCHED) return; PREFETCHED = true;
-    try {
-      var saved = localStorage.getItem(TAB_KEY) || 'world';
-      loadCategory(FEEDS[saved] ? saved : 'world', false);
-    } catch (e) {}
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', prefetch);
-  else prefetch();
   /* ---------- UI ---------- */
-
-  function setMeta(txt) { var m = document.getElementById('ehNewsMeta'); if (m) m.textContent = txt; }
-  function markSeen(cat, items) {
-    var c = loadCache(), e = c[cat]; if (!e || !items) return;
-    var seen = Array.isArray(e.seen) ? e.seen : [];
-    items.forEach(function (it) { if (seen.indexOf(it.t) === -1) seen.push(it.t); });
-    e.seen = seen.slice(-250); saveCache(c);
-  }
-  function updateMoreBtns(cat) {
-    var c = loadCache(), e = (c[cat] || {});
-    var top = document.getElementById('ehTopBtn');
-    if (top) top.hidden = !((e.batch || 1) > 1);
-  }
-   
   var curTab = null, busy = false;
   function skeleton() {
     var h = '';
@@ -470,86 +415,96 @@
         '</span></a>';
     }).join('');
   }
-  function render(cat, res) {
-    var grid = document.getElementById('ehNewsGrid'); if (!grid) return;
-    var meta = document.getElementById('ehNewsMeta');
-    if (meta && res.ts) {
-      var t = new Date(res.ts);
-           var borrowed = res.items && res.items.length && res.items[0]._x;
-      meta.textContent = 'Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) +
-        (borrowed ? ' · loading…' : (res.cached ? ' · cached' : ''));
-    }
-    if (!res.items || !res.items.length) {
-      grid.innerHTML = '<div class="eh-nw-msg">📡 Couldn\'t load the briefing right now.' +
-        ' <button data-ehnw-retry>Retry</button></div>';
-      return;
-    }
-    grid.innerHTML = cardsHTML(res.items, cat);
+  function setMeta(txt) { var m = document.getElementById('ehNewsMeta'); if (m) m.textContent = txt; }
+  function renderMsg() {
+    var g = document.getElementById('ehNewsGrid');
+    if (g) g.innerHTML = '<div class="eh-nw-msg">📡 Couldn\'t load the briefing right now.' +
+      ' <button data-ehnw-retry>Retry</button></div>';
   }
   function spin(on) {
     var b = document.getElementById('ehNewsRefresh');
     if (b) b.classList.toggle('spin', !!on);
   }
+  function render(cat, e) {
+    var grid = document.getElementById('ehNewsGrid'); if (!grid || !e) return;
+    var idx = Math.max(0, Math.min(e.batchIdx || 0, e.batches.length - 1));
+    var b = e.batches[idx];
+    var t = new Date(e.ts || Date.now());
+    setMeta('Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()));
+    var lbl = document.getElementById('ehBatchLabel');
+    if (lbl) {
+      var name = (idx === 0) ? 'Top stories' :
+        'Batch ' + (idx + 1) + (b.label && b.label !== 'Top stories' && b.label !== 'More stories' ? ' · ' + b.label : '');
+      lbl.textContent = name;
+    }
+    var pv = document.getElementById('ehPrevBtn');
+    if (pv) { pv.disabled = (idx === 0); pv.style.opacity = (idx === 0) ? '.4' : ''; }
+    var items = (b && b.items) ? b.items : [];
+    grid.innerHTML = items.length ? cardsHTML(items, cat)
+      : '<div class="eh-nw-msg">📡 Nothing here yet.</div>';
+  }
 
-  function moreStories(cat) {
+  /* ---------- navigation ---------- */
+  function showIdx(cat, idx) {
+    var c = loadCache(), e = c[cat];
+    if (!e || !e.batches || !e.batches.length) return;
+    idx = Math.max(0, Math.min(idx, e.batches.length - 1));
+    if (idx === e.batchIdx) { render(cat, e); return; }
+    e.batchIdx = idx; saveCache(c); render(cat, e);
+  }
+  function prevBatch(cat) { var c = loadCache(), e = c[cat]; if (e) showIdx(cat, (e.batchIdx || 0) - 1); }
+
+  function pushBatch(cat, items, label) {
+    var c = loadCache(), e = c[cat]; if (!e) return;
+    e.batches.push({ items: items, label: label || 'More stories' });
+    if (e.batches.length > MAX_BATCHES) e.batches.shift();
+    e.batchIdx = e.batches.length - 1;
+    saveCache(c);
+    busy = false; spin(false);
+    render(cat, e);
+  }
+  function nextBatch(cat) {
     if (busy) return;
+    var c = loadCache(), e = c[cat];
+    if (!e || !e.batches || !e.batches.length) { goto(cat, false); return; }
+    /* history browsing: instant, offline */
+    if (e.batchIdx < e.batches.length - 1) { showIdx(cat, e.batchIdx + 1); return; }
+    /* new batch: serve unseen pool instantly, else rotate facet */
+    var used = {};
+    e.batches.forEach(function (b) { b.items.forEach(function (it) { used[it.t.toLowerCase()] = 1; }); });
+    var unseen = (e.pool || []).filter(function (it) { return !used[it.t.toLowerCase()]; });
+    if (unseen.length >= 4) { pushBatch(cat, unseen.slice(0, PER_CAT), 'More stories'); return; }
+
     busy = true; spin(true);
-    var c = loadCache();
-    var e = c[cat] || {};
-    var pool = (Array.isArray(e.pool) && e.pool.length) ? e.pool : (e.items || []);
-    var seen = Array.isArray(e.seen) ? e.seen : [];
-    var unseen = pool.filter(function (it) { return seen.indexOf(it.t) === -1; });
-
-    function finish(batch, label) {
-      markSeen(cat, batch);
-      c = loadCache(); if (c[cat]) { c[cat].batch = (c[cat].batch || 1) + 1; c[cat].facetLabel = label || ''; saveCache(c); }
-      render(cat, { items: batch, ts: Date.now(), cached: true });
-      setMeta('Batch ' + ((c[cat] && c[cat].batch) || 2) + (label ? ' · ' + label : ''));
-      busy = false; spin(false); updateMoreBtns(cat);
-    }
-    function encore() {   /* cycled through everything — say so honestly */
-      c = loadCache(); if (c[cat]) { c[cat].seen = []; c[cat].batch = 1; saveCache(c); }
-      render(cat, { items: pool.slice(0, PER_CAT), ts: Date.now(), cached: true });
-      setMeta('Encore edition · you\'ve seen all fresh ' + cat + ' stories');
-      busy = false; spin(false); updateMoreBtns(cat);
-    }
-
-    if (unseen.length >= PER_CAT) { finish(unseen.slice(0, PER_CAT), e.facetLabel || ''); return; }
-
-    /* pool is thin → rotate to the next facet of the same category */
     var fi = e.facet || 0;
     var facet = FACETS[cat][fi % FACETS[cat].length];
     var page = (e.page || 1) + 1;
     var jobs = [gdelt(facet.q).catch(function () { return []; })];
-    if (cat === 'tech')    jobs.push(devtoPage(page).catch(function () { return []; }), hnPage(page).catch(function () { return []; }));
+    if (cat === 'tech')    jobs.push(devtoPage(page).catch(function () { return []; }),
+                                     hnPage(page).catch(function () { return []; }));
     if (cat === 'science') jobs.push(spacePage(page).catch(function () { return []; }));
     if (cat === 'world')   jobs.push(wikiITN(null).catch(function () { return []; }));
-
+    var wd = setTimeout(function () { busy = false; spin(false); }, WATCHDOG_MS);
     Promise.all(jobs).then(function (r) {
-      var fresh = dedupe(r).sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
-      var have = {};
-      pool.forEach(function (p) { have[p.t.toLowerCase()] = 1; });
-      seen.forEach(function (t) { have[t.toLowerCase()] = 1; });
-      fresh = fresh.filter(function (it) { return !have[it.t.toLowerCase()]; });
-      var nextPool = pool.concat(fresh).slice(0, 60);
-      c = loadCache();
-      if (c[cat]) { c[cat].pool = nextPool; c[cat].page = page; c[cat].facet = fi + 1; saveCache(c); }
+      clearTimeout(wd);
+      var fresh = dedupe(r).sort(byDate).filter(function (it) { return !used[it.t.toLowerCase()]; });
+      c = loadCache(); e = c[cat] || e;
+      var inPool = {};
+      (e.pool || []).forEach(function (p) { inPool[p.t.toLowerCase()] = 1; });
+      (e.pool = e.pool || []);
+      fresh.forEach(function (it) { if (!inPool[it.t.toLowerCase()]) e.pool.push(it); });
+      e.pool = e.pool.slice(0, POOL_MAX);
+      e.facet = fi + 1; e.page = page;
       var batch = fresh.slice(0, PER_CAT);
-      if (batch.length >= 3) finish(batch, facet.label);
-      else encore();
-    }).catch(function () { encore(); });
+      if (batch.length >= 3) pushBatch(cat, batch, facet.label);
+      else {
+        busy = false; spin(false); saveCache(c); render(cat, e);
+        setMeta('Encore edition — you\'ve seen all fresh ' + cat + ' stories today');
+      }
+    }).catch(function () { clearTimeout(wd); busy = false; spin(false); });
   }
-  function topStories(cat) {
-    if (busy) return;
-    var c = loadCache(), e = c[cat] || {};
-    var pool = (Array.isArray(e.pool) && e.pool.length) ? e.pool : (e.items || []);
-    if (!pool.length) { goto(cat, true); return; }
-    e.seen = []; e.batch = 1; e.facetLabel = ''; saveCache(c);
-    render(cat, { items: pool.slice(0, PER_CAT), ts: Date.now(), cached: true });
-    setMeta('Top stories');
-    updateMoreBtns(cat);
-  }
-   
+
+  /* ---------- goto: cache-first, stale-while-revalidate, watchdog ---------- */
   function goto(cat, force) {
     if (busy) return;
     curTab = cat;
@@ -557,26 +512,28 @@
     document.querySelectorAll('.eh-nw-tab').forEach(function (b) {
       b.classList.toggle('on', b.dataset.cat === cat);
     });
-        var c = loadCache();
-      if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length) {
-      render(cat, { items: c[cat].items, ts: c[cat].ts, cached: false });
-      markSeen(cat, c[cat].items);
-      updateMoreBtns(cat);
-      return;
-    }
-       var grid = document.getElementById('ehNewsGrid');
-    /* borrowed pool while the real fetch warms: text now, real cards seconds later */
-    if (grid && !busy) {
-      var borrowed = fromAnyPool(cat);
-      if (borrowed.length) render(cat, { items: borrowed, ts: Date.now(), cached: true });
-    }
-    if (grid && grid.innerHTML.indexOf('eh-nw-card') === -1) grid.innerHTML = skeleton();
+    var c = loadCache();
+    var e = (c[cat] && c[cat].date === today() && c[cat].batches && c[cat].batches.length) ? c[cat] : null;
+    if (e && !force) { render(cat, e); return; }
+    var grid = document.getElementById('ehNewsGrid');
+    if (e) render(cat, e);                       /* stale-while-revalidate: keep cards visible */
+    else if (grid) grid.innerHTML = skeleton();
     busy = true; spin(true);
-    loadCategory(cat, force)
-      .then(function (res) { render(cat, res); if (res.items && res.items.length && !res.items[0]._x) markSeen(cat, res.items); updateMoreBtns(cat); })
-      .then(function () { busy = false; spin(false); });
+    var wd = setTimeout(function () {            /* watchdog: never lock the UI */
+      busy = false; spin(false);
+      var cur = loadCache()[cat];
+      if (cur && cur.batches && cur.batches.length) render(cat, cur);
+      else if (!e) renderMsg();
+    }, WATCHDOG_MS);
+    ensureEntry(cat, force).then(function (ne) {
+      clearTimeout(wd);
+      busy = false; spin(false);
+      if (ne) render(cat, ne);
+      else if (!e) renderMsg();
+    });
   }
 
+  /* ---------- build + boot ---------- */
   function build() {
     if (document.getElementById('ehNewsCard')) return true;
     var strip = document.querySelector('.overview-strip');
@@ -589,9 +546,12 @@
         '<span id="ehNewsMeta"></span>' +
         '<button id="ehNewsRefresh" title="Refresh briefing" aria-label="Refresh"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i></button>' +
       '</div>' +
-           '<div class="eh-nw-tabs" id="ehNewsTabs"></div>' +
-      '<div class="eh-nw-more"><button class="eh-nw-morebtn" id="ehMoreBtn" type="button">✦ Different stories</button>' +
-      '<button class="eh-nw-morebtn subtle" id="ehTopBtn" type="button" hidden>⤴ Top stories</button></div>' +
+      '<div class="eh-nw-tabs" id="ehNewsTabs"></div>' +
+      '<div class="eh-nw-batches">' +
+        '<button class="eh-nw-nav" id="ehPrevBtn" type="button">‹ Prev</button>' +
+        '<span class="eh-nw-blabel" id="ehBatchLabel">Top stories</span>' +
+        '<button class="eh-nw-nav" id="ehNextBtn" type="button">✦ Next batch ›</button>' +
+      '</div>' +
       '<div id="ehNewsGrid"></div>';
     strip.insertAdjacentElement('afterend', sec);
     var tabs = sec.querySelector('#ehNewsTabs');
@@ -605,14 +565,12 @@
     sec.querySelector('#ehNewsRefresh').addEventListener('click', function () {
       if (curTab) goto(curTab, true);
     });
-
-    sec.querySelector('#ehMoreBtn').addEventListener('click', function () {
-      if (curTab) moreStories(curTab);
+    sec.querySelector('#ehPrevBtn').addEventListener('click', function () {
+      if (curTab) prevBatch(curTab);
     });
-    sec.querySelector('#ehTopBtn').addEventListener('click', function () {
-      if (curTab) topStories(curTab);
+    sec.querySelector('#ehNextBtn').addEventListener('click', function () {
+      if (curTab) nextBatch(curTab);
     });
-     
     document.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('[data-ehnw-retry]') && curTab) goto(curTab, true);
     });
@@ -622,26 +580,42 @@
     return true;
   }
   (function boot() {
+    try { localStorage.removeItem('studyHubNews.v1'); } catch (e) {}   /* purge old format */
     if (build()) return;
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
     else setTimeout(build, 500);
   })();
+  /* warm the default tab even before the card builds */
+  (function prefetch(){
+    function warm(){ try { var s = localStorage.getItem(TAB_KEY) || 'world'; ensureEntry(FEEDS[s] ? s : 'world', false); } catch (e) {} }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', warm);
+    else warm();
+  })();
 
-  console.log('[News] engine v2 ready — relays + native fallbacks');
+  console.log('[News] engine v3 ready — racing relays, watchdog, batch navigation');
   window.EduNews = {
     refresh: function () { if (curTab) goto(curTab, true); },
     goto: goto,
-    /* run EduNews.debug() in console — prints each relay's exact result */
+    next: function () { if (curTab) nextBatch(curTab); },
+    prev: function () { if (curTab) prevBatch(curTab); },
+    /* health check: EduNews.debug('world') → prints each relay's exact result */
     debug: function (cat) {
       cat = cat || curTab || 'world';
       FEEDS[cat].feeds.forEach(function (f) {
-        RELAYS.forEach(function (r) {
+        RELAY_GROUPS.forEach(function (g) { g.forEach(function (r) {
           fetchText(r.url(f.u), 8000)
             .then(function (x) { console.log('✅', r.name, '→', f.s, x.length + ' bytes'); })
             .catch(function (e) { console.log('❌', r.name, '→', f.s, String(e && e.message || e)); });
-        });
+        }); });
       });
-      console.log('fallback:', FALLBACKS[cat] ? 'available for ' + cat : 'none');
+    },
+    state: function () {
+      var c = loadCache();
+      Object.keys(c).forEach(function (k) {
+        var e = c[k];
+        console.log(k, '| batches:', e.batches && e.batches.length, '| idx:', e.batchIdx,
+                    '| pool:', e.pool && e.pool.length, '| date:', e.date);
+      });
     }
   };
 })();
