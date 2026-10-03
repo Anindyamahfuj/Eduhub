@@ -343,15 +343,22 @@
     }); return out; }); }
    
   /* ---------- category loader + prefetch ---------- */
-  function store(cat, items) {
+    function store(cat, items, opts) {
+    opts = opts || {};
     var c = loadCache();
-    c[cat] = { date: today(), ts: Date.now(), items: items };
+    var prev = c[cat] || {};
+    var pool = opts.extendPool && Array.isArray(prev.pool) ? prev.pool.slice() : items.slice();
+    if (opts.extendPool) {
+      var inPool = {}; pool.forEach(function (p) { inPool[p.t.toLowerCase()] = 1; });
+      items.forEach(function (it) { if (!inPool[it.t.toLowerCase()]) pool.push(it); });
+    }
+    c[cat] = { date: today(), ts: Date.now(), items: items, pool: pool.slice(0, 60),
+               seen: opts.keepSeen && prev.seen ? prev.seen : [],
+               batch: opts.batch != null ? opts.batch : (prev.batch || 1),
+               facet: opts.facet != null ? opts.facet : (prev.facet || 0),
+               page: prev.page || 1, facetLabel: opts.facetLabel || prev.facetLabel || '' };
     saveCache(c);
     return { items: items, ts: Date.now(), cached: false };
-  }
-  function stale(cat) {
-    var c = loadCache();
-    return { items: (c[cat] && c[cat].items) || [], ts: c[cat] && c[cat].ts, cached: true };
   }
 
   var inFlight = {};   /* category → Promise, shared across tabs */
