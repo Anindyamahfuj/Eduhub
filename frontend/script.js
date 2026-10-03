@@ -9823,18 +9823,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 /* ================================================================
-   TRASH CORE v2 — single-writer, schema-proof, self-diagnosing
+   TRASH CORE v2.1 — single-writer, schema-proof, self-diagnosing
+   Covers: notes · notices · habits · files · assignments · goals ·
+   readingList · flashcard decks · LISTS (List Maker).
+   Handles both capture format {type,name,item,ts} and the site's
+   pushToTrash format {id,type,data,deletedAt}. Planner excluded.
+   Integrations required elsewhere in script.js:
+     • getDefaultData() must contain  lists: [],
+     • notes.html loads eduhub-lists.js (exposes renderListMaker).
    ================================================================ */
 (function () {
   'use strict';
   if (window.__TRASH_CORE__) return;
   window.__TRASH_CORE__ = true;
 
-  var WATCH = ['notes','notices','habits','files','assignments','goals','readingList'];
+  var WATCH = ['notes','notices','habits','files','assignments','goals','readingList','lists'];
   var MAX_TRASH = 80, QUOTA = 4300000;
   var prev = null, armed = -1, armedEmpty = false, armedT = null, armedEmptyT = null, q = '';
 
-  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function innerItem(e){ return e && typeof e==='object' ? (e.item!=null?e.item:(e.data!=null?e.data:(e.payload!=null?e.payload:e))) : e; }
 
   /* label = preferred key, else FIRST readable string anywhere in the object */
@@ -9842,7 +9849,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if(it==null) return '';
     if(typeof it!=='object') return String(it).slice(0,60);
     var prefer=['name','title','text','label','fileName','task','content','front','question','body','note','desc','description','subject','url'];
-    for(var i=0;i<prefer.length;i++){ var v=it[prefer[i]]; if(typeof v==='string'&&v.trim()&&v.indexOf('data:')!==0) return v.slice(0,60); }
+    for(var i=0;i<prefer.length;i++){ var v=it[prefer[i]];
+      if(typeof v==='string'&&v.trim()&&v.indexOf('data:')!==0) return v.slice(0,60); }
     for(var k in it){ var s=it[k];
       if(typeof s==='string'&&s.trim()&&s.length<300&&s.indexOf('data:')!==0&&s.indexOf('<')!==0) return s.slice(0,60); }
     var nest=['item','data','payload'];
@@ -9859,6 +9867,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function guessType(o){
     if(!o||typeof o!=='object') return null;
     var ks=Object.keys(o).join(' ');
+    if(/createdAt|updatedAt|items/i.test(ks)&&/name/i.test(ks)) return 'lists';
     if(/front|deck|card/i.test(ks)) return 'flashcards';
     if(/streak|done/i.test(ks)) return 'habits';
     if(/size|dataUrl/i.test(ks)) return 'files';
@@ -9887,7 +9896,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if(t){ t.textContent=m; t.hidden=false; t.classList.add('show');
       setTimeout(function(){ t.classList.remove('show'); t.hidden=true; },2200); }
     else console.log('[Trash]',m); }
-  function when(w){ try{ if(!w.ts) return '—'; var d=new Date(w.ts);
+  function when(w){ try{ if(!w.ts&&!w.deletedAt) return '—';
+    var d=new Date(w.ts||w.deletedAt);
     return d.toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+
       d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }catch(e){ return '—'; } }
   function updateBadge(){ var b=document.getElementById('trashBtn'); if(!b) return; var n=count();
@@ -9904,14 +9914,16 @@ document.addEventListener('DOMContentLoaded', function() {
         WATCH.forEach(function(k){
           var r=diff(prev[k]||[],d[k]||[]);
           if(!r.removed.length||r.added.length) return;
-          r.removed.forEach(function(it){ if(it&&typeof it==='object') cap.push({type:k,name:labelOf(it),item:it,ts:Date.now()}); });
+          r.removed.forEach(function(it){ if(it&&typeof it==='object')
+            cap.push({type:k,name:labelOf(it),item:it,ts:Date.now()}); });
         });
         var rd=diff(prev._decks||[],decksOf(d));
         if(rd.removed.length&&!rd.added.length) rd.removed.forEach(function(it){
-          if(it&&typeof it==='object') cap.push({type:'flashcards',name:labelOf(it),item:it,ts:Date.now()}); });
+          if(it&&typeof it==='object')
+            cap.push({type:'flashcards',name:labelOf(it),item:it,ts:Date.now()}); });
         if(cap.length&&d.trash&&d.trash.length){
           /* identity dedup: skip if an equivalent item was added to trash during THIS save
-             (by old scripts still linked, or by the site's own delete code) */
+             (by the site's own pushToTrash, or any other writer) */
           var prevSet={}; (prev._tk||[]).forEach(function(k){ prevSet[k]=1; });
           var fresh={};
           d.trash.forEach(function(e){ var k=keyOf(innerItem(e)); if(!prevSet[k]) fresh[k]=1; });
@@ -9936,15 +9948,21 @@ document.addEventListener('DOMContentLoaded', function() {
   if(!saveData.__tcWrapped){ saveData=wrappedSave; saveData.__tcWrapped=true; }
 
   /* ---------- OPERATIONS ---------- */
-  var RESTORE={ notes:'notes',note:'notes',notices:'notices',notice:'notices',habits:'habits',habit:'habits',
-    files:'files',file:'files',assignments:'assignments',assignment:'assignments',goals:'goals',goal:'goals',
-    readinglist:'readingList',reading:'readingList',flashcards:'flashcards.decks',deck:'flashcards.decks' };
+  var RESTORE={
+    notes:'notes',note:'notes',notices:'notices',notice:'notices',
+    habits:'habits',habit:'habits',files:'files',file:'files',
+    assignments:'assignments',assignment:'assignments',
+    goals:'goals',goal:'goals',
+    readinglist:'readingList',reading:'readingList',
+    lists:'lists',list:'lists',
+    flashcards:'flashcards.decks',deck:'flashcards.decks' };
   function arrFor(d,type){ var c=d;
     String(RESTORE[(type||'').toLowerCase()]||'').split('.').forEach(function(k){ c=c?c[k]:null; });
     return (c&&c.push)?c:null; }
 
-
   /* ---------- SCREEN REFRESH after restore ---------- */
+  /* notes/habits/notices/files/lists have safe global entry points → instant.
+     assignments/reading/decks have no safe re-render → auto-reload (correct). */
   var RENDER_CANDIDATES = {
     notes:['renderNotes','initNotes','loadNotes','displayNotes','showNotes'],
     notices:['renderNotices','initNotices','loadNotices','displayNotices'],
@@ -9953,22 +9971,27 @@ document.addEventListener('DOMContentLoaded', function() {
     assignments:['renderAssignments','initAssignments','loadAssignments','displayAssignments'],
     goals:['renderGoals','initGoals','loadGoals'],
     readingList:['renderReading','initReading','loadReading','displayReading'],
-    flashcards:['renderFlashcards','renderDecks','initFlashcards','loadFlashcards']
+    flashcards:['renderFlashcards','renderDecks','initFlashcards','loadFlashcards'],
+    lists:['renderListMaker']
   };
   function refreshLists(types){
-  var hit = 0;
-  /* site's real global entry points (guarded & idempotent) */
-  var safe = { notes:'setupNotes', notices:'setupNotice', habits:'setupHabits', files:'renderFileList' };
-  (types||[]).forEach(function(t){
-    if(safe[t]){ try{ if(typeof window[safe[t]]==='function'){ window[safe[t]](); hit++; } }catch(e){} }
-  });
-  ['refreshCurrentPage','renderDashboard'].forEach(function(n){
-    try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
-  });
-  /* flashcards/assignments/reading have no safe re-render → auto-reload is correct there */
-  if(!hit && !window.TRASH_NO_RELOAD) setTimeout(function(){ location.reload(); }, 350);
-}
-    
+    var hit = 0;
+    var safe = { notes:'setupNotes', notices:'setupNotice', habits:'setupHabits',
+                 files:'renderFileList', lists:'renderListMaker' };
+    (types||[]).forEach(function(t){
+      if(safe[t]){ try{ if(typeof window[safe[t]]==='function'){ window[safe[t]](); hit++; } }catch(e){} }
+      (RENDER_CANDIDATES[t]||[]).forEach(function(n){
+        if(safe[t]===n) return;   /* already tried the safe one */
+        try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
+      });
+    });
+    ['refreshCurrentPage','renderDashboard'].forEach(function(n){
+      try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
+    });
+    /* nothing matched → guaranteed-correct fallback */
+    if(!hit && !window.TRASH_NO_RELOAD) setTimeout(function(){ location.reload(); }, 350);
+  }
+
   function restoreAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
     var it=d.trash[i], back=innerItem(it), type=it.type||guessType(back), a=type?arrFor(d,type):null;
     if(a){ a.push(back); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); refreshLists([type]); }
@@ -10026,7 +10049,9 @@ document.addEventListener('DOMContentLoaded', function() {
       '<div class="tc-list" id="tc-list"></div></div></div></div>');
     document.getElementById('tc-q').addEventListener('input',function(e){ q=e.target.value; render(); });
   }
-  var ICONS={notes:'📝',notices:'📌',habits:'🔁',files:'📎',assignments:'📚',goals:'🎯',readinglist:'🔖',flashcards:'🃏'};
+  var ICONS={ notes:'📝',note:'📝',notices:'📌',notice:'📌',habits:'🔁',habit:'🔁',
+    files:'📎',file:'📎',assignments:'📚',assignment:'📚',goals:'🎯',goal:'🎯',
+    readinglist:'🔖',reading:'🔖',lists:'🗒',list:'🗒',flashcards:'🃏',deck:'🃏' };
   function render(){
     var list=document.getElementById('tc-list'); if(!list) return;
     var d=loadData(),tr=d.trash||[];
@@ -10038,7 +10063,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var t=(x.w.type||guessType(innerItem(x.w))||'');
       return !q||(labelOf(innerItem(x.w))+' '+t).toLowerCase().indexOf(q.toLowerCase())>-1; });
     list.innerHTML=tr.length===0
-      ?'<div class="tc-empty">Trash is empty.<br>Deleted notes, files, habits, decks and more will appear here.</div>'
+      ?'<div class="tc-empty">Trash is empty.<br>Deleted notes, files, habits, decks, lists and more will appear here.</div>'
       :(f.length?f.map(function(x){
         var back=innerItem(x.w), type=(x.w.type||guessType(back)||'item').toLowerCase();
         return '<div class="tc-row"><span class="tc-ic">'+(ICONS[type]||'🗑')+'</span>'+
@@ -10078,8 +10103,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateBadge);
   else updateBadge();
   setTimeout(updateBadge,800);
-  console.log('[TrashCore v2] active —',count(),'item(s)');
-    window.openTrashModal = open;   /* palette + legacy callers now open the unified popup */
+  console.log('[TrashCore v2.1] active —',count(),'item(s)');
+  window.openTrashModal = open;   /* Ctrl+K palette + legacy callers → unified popup */
   window.TrashCore={
     open:open, close:close, count:count, restoreAll:restoreAll, empty:emptyAll,
     diag:function(){
@@ -10095,49 +10120,4 @@ document.addEventListener('DOMContentLoaded', function() {
                  sample:JSON.stringify(it).slice(0,90) }; })); }catch(e){ console.log(e); }
     }
   };
-})();
-
-
-
-/* ================================================================
-   GMAIL QUICK ACCESS — navbar pill beside "Sign out"
-   Opens the browser's signed-in Google account inbox in a new tab.
-   Styled with .focus-toggle so it matches Trash / Focus Off and
-   follows the theme automatically. Runs on every page.
-   ================================================================ */
-(function () {
-  'use strict';
-  if (window.__GMAIL_BTN__) return;
-  window.__GMAIL_BTN__ = true;
-
-  var tries = 0;
-  function inject() {
-    if (document.getElementById('gmailBtn')) return true;   /* already injected */
-    var nav = document.querySelector('.nav-right') || document.querySelector('.nav-container');
-    if (!nav) return false;
-
-    var a = document.createElement('a');
-    a.id = 'gmailBtn';
-    a.className = 'focus-toggle';                 /* same pill as Trash / Focus Off */
-    a.href = 'https://mail.google.com/';
-    a.target = '_blank';                          /* never navigate away from StudyHub */
-    a.rel = 'noopener noreferrer';
-    a.title = 'Open your Gmail inbox';
-    a.innerHTML = '<i class="ph ph-google-logo" aria-hidden="true"></i> Gmail';
-
-    /* place it right after "Sign out" when we can find it; otherwise last in the group */
-    var after = null;
-    var els = nav.querySelectorAll('button, a');
-    for (var i = 0; i < els.length; i++) {
-      var sig = ((els[i].id || '') + ' ' + (els[i].textContent || '')).toLowerCase();
-      if (/sign\s*out|signout|logout/.test(sig)) { after = els[i]; break; }
-    }
-    if (after && after.parentNode === nav) nav.insertBefore(a, after.nextSibling);
-    else nav.appendChild(a);
-    return true;
-  }
-  (function boot() {
-    if (inject() || ++tries > 10) return;         /* retries in case the navbar renders late */
-    setTimeout(boot, 300);
-  })();
 })();
