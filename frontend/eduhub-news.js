@@ -480,6 +480,66 @@
     var b = document.getElementById('ehNewsRefresh');
     if (b) b.classList.toggle('spin', !!on);
   }
+
+  function moreStories(cat) {
+    if (busy) return;
+    busy = true; spin(true);
+    var c = loadCache();
+    var e = c[cat] || {};
+    var pool = (Array.isArray(e.pool) && e.pool.length) ? e.pool : (e.items || []);
+    var seen = Array.isArray(e.seen) ? e.seen : [];
+    var unseen = pool.filter(function (it) { return seen.indexOf(it.t) === -1; });
+
+    function finish(batch, label) {
+      markSeen(cat, batch);
+      c = loadCache(); if (c[cat]) { c[cat].batch = (c[cat].batch || 1) + 1; c[cat].facetLabel = label || ''; saveCache(c); }
+      render(cat, { items: batch, ts: Date.now(), cached: true });
+      setMeta('Batch ' + ((c[cat] && c[cat].batch) || 2) + (label ? ' · ' + label : ''));
+      busy = false; spin(false); updateMoreBtns(cat);
+    }
+    function encore() {   /* cycled through everything — say so honestly */
+      c = loadCache(); if (c[cat]) { c[cat].seen = []; c[cat].batch = 1; saveCache(c); }
+      render(cat, { items: pool.slice(0, PER_CAT), ts: Date.now(), cached: true });
+      setMeta('Encore edition · you\'ve seen all fresh ' + cat + ' stories');
+      busy = false; spin(false); updateMoreBtns(cat);
+    }
+
+    if (unseen.length >= PER_CAT) { finish(unseen.slice(0, PER_CAT), e.facetLabel || ''); return; }
+
+    /* pool is thin → rotate to the next facet of the same category */
+    var fi = e.facet || 0;
+    var facet = FACETS[cat][fi % FACETS[cat].length];
+    var page = (e.page || 1) + 1;
+    var jobs = [gdelt(facet.q).catch(function () { return []; })];
+    if (cat === 'tech')    jobs.push(devtoPage(page).catch(function () { return []; }), hnPage(page).catch(function () { return []; }));
+    if (cat === 'science') jobs.push(spacePage(page).catch(function () { return []; }));
+    if (cat === 'world')   jobs.push(wikiITN(null).catch(function () { return []; }));
+
+    Promise.all(jobs).then(function (r) {
+      var fresh = dedupe(r).sort(function (a, b) { return (b.d || 0) - (a.d || 0); });
+      var have = {};
+      pool.forEach(function (p) { have[p.t.toLowerCase()] = 1; });
+      seen.forEach(function (t) { have[t.toLowerCase()] = 1; });
+      fresh = fresh.filter(function (it) { return !have[it.t.toLowerCase()]; });
+      var nextPool = pool.concat(fresh).slice(0, 60);
+      c = loadCache();
+      if (c[cat]) { c[cat].pool = nextPool; c[cat].page = page; c[cat].facet = fi + 1; saveCache(c); }
+      var batch = fresh.slice(0, PER_CAT);
+      if (batch.length >= 3) finish(batch, facet.label);
+      else encore();
+    }).catch(function () { encore(); });
+  }
+  function topStories(cat) {
+    if (busy) return;
+    var c = loadCache(), e = c[cat] || {};
+    var pool = (Array.isArray(e.pool) && e.pool.length) ? e.pool : (e.items || []);
+    if (!pool.length) { goto(cat, true); return; }
+    e.seen = []; e.batch = 1; e.facetLabel = ''; saveCache(c);
+    render(cat, { items: pool.slice(0, PER_CAT), ts: Date.now(), cached: true });
+    setMeta('Top stories');
+    updateMoreBtns(cat);
+  }
+   
   function goto(cat, force) {
     if (busy) return;
     curTab = cat;
