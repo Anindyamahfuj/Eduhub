@@ -10120,4 +10120,49 @@ document.addEventListener('DOMContentLoaded', function() {
                  sample:JSON.stringify(it).slice(0,90) }; })); }catch(e){ console.log(e); }
     }
   };
+
+    
+})();
+
+
+/* ================================================================
+   GMAIL QUICK ACCESS — navbar pill beside "Sign out"
+   Opens the browser's signed-in Google account inbox in a new tab.
+   Styled with .focus-toggle so it matches Trash / Focus Off and
+   follows the theme automatically. Runs on every page.
+   ================================================================ */
+(function () {
+  'use strict';
+  if (window.__GMAIL_BTN__) return;
+  window.__GMAIL_BTN__ = true;
+
+  var tries = 0;
+  function inject() {
+    if (document.getElementById('gmailBtn')) return true;   /* already injected */
+    var nav = document.querySelector('.nav-right') || document.querySelector('.nav-container');
+    if (!nav) return false;
+
+    var a = document.createElement('a');
+    a.id = 'gmailBtn';
+    a.className = 'focus-toggle';
+    a.href = 'https://mail.google.com/';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.title = 'Open your Gmail inbox';
+    a.innerHTML = '<i class="ph ph-google-logo" aria-hidden="true"></i> Gmail';
+
+    var after = null;
+    var els = nav.querySelectorAll('button, a');
+    for (var i = 0; i < els.length; i++) {
+      var sig = ((els[i].id || '') + ' ' + (els[i].textContent || '')).toLowerCase();
+      if (/sign\s*out|signout|logout/.test(sig)) { after = els[i]; break; }
+    }
+    if (after && after.parentNode === nav) nav.insertBefore(a, after.nextSibling);
+    else nav.appendChild(a);
+    return true;
+  }
+  (function boot() {
+    if (inject() || ++tries > 10) return;
+    setTimeout(boot, 300);
+  })();
 })();
