@@ -558,8 +558,10 @@
       b.classList.toggle('on', b.dataset.cat === cat);
     });
         var c = loadCache();
-    if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length) {
+      if (!force && c[cat] && c[cat].date === today() && c[cat].items && c[cat].items.length) {
       render(cat, { items: c[cat].items, ts: c[cat].ts, cached: false });
+      markSeen(cat, c[cat].items);
+      updateMoreBtns(cat);
       return;
     }
        var grid = document.getElementById('ehNewsGrid');
@@ -571,7 +573,7 @@
     if (grid && grid.innerHTML.indexOf('eh-nw-card') === -1) grid.innerHTML = skeleton();
     busy = true; spin(true);
     loadCategory(cat, force)
-      .then(function (res) { render(cat, res); })
+      .then(function (res) { render(cat, res); if (res.items && res.items.length && !res.items[0]._x) markSeen(cat, res.items); updateMoreBtns(cat); })
       .then(function () { busy = false; spin(false); });
   }
 
