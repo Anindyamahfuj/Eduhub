@@ -577,7 +577,9 @@
         '<span id="ehNewsMeta"></span>' +
         '<button id="ehNewsRefresh" title="Refresh briefing" aria-label="Refresh"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i></button>' +
       '</div>' +
-      '<div class="eh-nw-tabs" id="ehNewsTabs"></div>' +
+           '<div class="eh-nw-tabs" id="ehNewsTabs"></div>' +
+      '<div class="eh-nw-more"><button class="eh-nw-morebtn" id="ehMoreBtn" type="button">✦ Different stories</button>' +
+      '<button class="eh-nw-morebtn subtle" id="ehTopBtn" type="button" hidden>⤴ Top stories</button></div>' +
       '<div id="ehNewsGrid"></div>';
     strip.insertAdjacentElement('afterend', sec);
     var tabs = sec.querySelector('#ehNewsTabs');
@@ -591,6 +593,14 @@
     sec.querySelector('#ehNewsRefresh').addEventListener('click', function () {
       if (curTab) goto(curTab, true);
     });
+
+    sec.querySelector('#ehMoreBtn').addEventListener('click', function () {
+      if (curTab) moreStories(curTab);
+    });
+    sec.querySelector('#ehTopBtn').addEventListener('click', function () {
+      if (curTab) topStories(curTab);
+    });
+     
     document.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('[data-ehnw-retry]') && curTab) goto(curTab, true);
     });
