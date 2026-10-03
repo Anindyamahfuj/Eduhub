@@ -299,6 +299,49 @@
     }
   };
 
+  /* ---------- "Different stories" engine (category-faithful) ---------- */
+  var FACETS = {
+    world: [
+      { label: 'Conflicts & elections', q: '(conflict OR election OR summit OR ceasefire OR diplomacy OR "united nations")' },
+      { label: 'Politics & borders',    q: '(protest OR border OR president OR parliament OR sanctions OR treaty)' },
+      { label: 'Disasters & relief',    q: '(earthquake OR flood OR wildfire OR drought OR humanitarian OR refugee)' },
+      { label: 'Courts & society',      q: '(court OR verdict OR justice OR police OR inquiry OR election result)' }
+    ],
+    tech: [
+      { label: 'AI & software',          q: '(AI OR "artificial intelligence" OR software OR app OR cybersecurity)' },
+      { label: 'Gadgets & EVs',          q: '(gadget OR smartphone OR laptop OR "electric vehicle" OR console)' },
+      { label: 'Startups & open source', q: '(startup OR funding OR "open source" OR browser OR developer)' },
+      { label: 'Chips & frontier',       q: '(semiconductor OR chip OR robotics OR satellite OR quantum OR battery)' }
+    ],
+    science: [
+      { label: 'Space & physics',  q: '(NASA OR mars OR rocket OR telescope OR astronomy OR physics)' },
+      { label: 'Health & biology', q: '(genome OR medicine OR vaccine OR brain OR biology OR "clinical trial")' },
+      { label: 'Climate & nature', q: '(climate OR ocean OR species OR wildfire OR glacier OR ecosystem)' },
+      { label: 'Discoveries',      q: '"scientific study" OR researchers OR discovery OR fossil OR fusion OR experiment' }
+    ]
+  };
+  function devtoPage(p) { return fetchText('https://dev.to/api/articles?per_page=20&top=7&page=' + p, 8000).then(function (x) {
+    var arr = JSON.parse(x), out = [];
+    (Array.isArray(arr) ? arr : []).forEach(function (a) {
+      if (!a.title || !a.url || out.length >= 20) return;
+      out.push({ t: String(a.title).slice(0,200), l: a.url, s: 'DEV Community',
+                 d: Date.parse(a.published_at)||0, img: a.social_image || a.cover_image || '' });
+    }); return out; }); }
+  function spacePage(p) { return fetchText('https://api.spaceflightnewsapi.net/v4/articles/?limit=20&page=' + p, 8000).then(function (x) {
+    var j = JSON.parse(x), out = [];
+    ((j && j.results) || []).forEach(function (a) {
+      if (!a.title || !a.url || out.length >= 20) return;
+      out.push({ t: String(a.title).slice(0,200), l: a.url, s: a.news_site || 'Spaceflight News',
+                 d: Date.parse(a.published_at)||0, img: a.image_url || '' });
+    }); return out; }); }
+  function hnPage(p) { return fetchText('https://hn.algolia.com/api/v1/search_by_date?tags=story&numericFilters=points%3E60&page=' + p + '&hitsPerPage=20', 8000).then(function (x) {
+    var j = JSON.parse(x), out = [];
+    ((j && j.hits) || []).forEach(function (h) {
+      if (!h.title || out.length >= 20) return;
+      out.push({ t: String(h.title).slice(0,200), l: h.url || ('https://news.ycombinator.com/item?id=' + h.objectID),
+                 s: 'Hacker News', d: Date.parse(h.created_at)||0, img: '' });
+    }); return out; }); }
+   
   /* ---------- category loader + prefetch ---------- */
   function store(cat, items) {
     var c = loadCache();
