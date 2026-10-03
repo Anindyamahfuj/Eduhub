@@ -87,6 +87,16 @@
     '.eh-nw-msg button{margin-left:.5rem;background:transparent;border:1px solid var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);border-radius:8px;padding:.3rem .8rem;font:600 .78rem var(--font,inherit);cursor:pointer}';
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
 
+
+  var CSS2 =
+    '.eh-nw-more{display:flex;gap:.45rem;margin:-.5rem 0 .95rem}' +
+    '.eh-nw-morebtn{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.34rem .95rem;font:600 .78rem var(--font,inherit);cursor:pointer;transition:all .18s}' +
+    '.eh-nw-morebtn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
+    '.eh-nw-morebtn.subtle{border-style:dashed}' +
+    '.eh-nw-morebtn[hidden]{display:none}';
+  var st2 = document.createElement('style'); st2.textContent = CSS2; document.head.appendChild(st2);
+   
+
   /* ---------- fetch + parse ---------- */
   function fetchText(url, ms) {
     var ctrl = ('AbortController' in window) ? new AbortController() : null;
