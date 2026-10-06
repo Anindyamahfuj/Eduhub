@@ -835,9 +835,9 @@ function initPomodoro() {
 }
 
 // ================================================================
-// AI SUMMARIZER v3 — fused TL;DR · redundancy filter · entity topics
-// chunk-safe for long docs · Brief/Standard/Detailed · 10–40% length
-// bullets↔paragraph · download · provider-first, offline always works
+// AI SUMMARIZER v2 — modes · length control · paragraph-aware
+// Brief / Standard / Detailed · bullet or paragraph output
+// chunked scoring for long docs · download · provider-first
 // ================================================================
 function setupSummarizer() {
   var btn = document.getElementById('summarizeBtn');
@@ -845,6 +845,7 @@ function setupSummarizer() {
   var input = document.getElementById('summarizeInput');
   var output = document.getElementById('summarizeOutput');
 
+  /* ---------- styles ---------- */
   if (!document.getElementById('sumxStyles')) {
     var stl = document.createElement('style');
     stl.id = 'sumxStyles';
@@ -874,6 +875,7 @@ function setupSummarizer() {
     document.head.appendChild(stl);
   }
 
+  /* ---------- controls UI ---------- */
   var mode = 'standard', pct = 25, paraMode = false;
   var controls = document.createElement('div');
   controls.className = 'sumx-controls';
@@ -901,7 +903,7 @@ function setupSummarizer() {
     this.textContent = paraMode ? '¶ Paragraph' : '• Bullets';
   });
 
-  /* ---------- NLP core ---------- */
+  /* ---------- NLP engine ---------- */
   var STOP = {};
   ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my no nor not of off on once only or other ought our out over own same she should so some such than that the their them then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your also may might must upon among within without across along etc via per'.split(' ')).forEach(function (w) { STOP[w] = 1; });
   var CUE = /\b(in conclusion|in summary|the main|the key|important|significant|therefore|thus|hence|overall|essential|crucial|the point is|we (found|conclude|show)|this (shows|means|demonstrates))\b/i;
@@ -909,62 +911,158 @@ function setupSummarizer() {
   function cw(s) { return words(s).filter(function (w) { return w.length > 2 && !STOP[w]; }); }
   function stem(w) { return w.replace(/(ations?|itions?)$/, 'ate').replace(/(ing|ed|ly|es|s)$/, ''); }
   function splitSentences(p) {
-    var x = String(p).replace(/\b(Mr|Mrs|Dr|vs|etc|e\.g|i\.e)\./gi, '$1\u0001');
-    var out = [], buf = '';
-    for (var i = 0; i < x.length; i++) {          /* ES5-safe splitter */
-      buf += x[i];
-      if (/[.!?]/.test(x[i]) && (i + 1 >= x.length || /\s/.test(x[i + 1] || ' '))) {
-        var s = buf.trim().replace(/\u0001/g, '.');
-        if (s.length > 2) out.push(s);
-        buf = '';
-      }
-    }
-    if (buf.trim().length > 2) out.push(buf.trim());
-    return out;
+    var x = p.replace(/\b(Mr|Mrs|Dr|vs|etc|e\.g|i\.e)\./gi, '$1\u0001');
+    return x.split(/(?<=[.!?])\s+/).map(function (s) { return s.replace(/\u0001/g, '.').trim(); }).filter(function (s) { return s.length > 2; });
   }
-  /* chunking: long docs scored per ~1200-word chunk so late paragraphs compete fairly */
   function summarizeText(text) {
     var paras = String(text).replace(/\r/g, '').split(/\n{2,}/).map(function (p) { return p.trim(); }).filter(Boolean);
     if (!paras.length) paras = [String(text).trim()];
-    var sents = [], wordCount = 0;
+    var sents = [];
     paras.forEach(function (p, pi) {
-      splitSentences(p).forEach(function (s, si) {
-        sents.push({ s: s, p: pi, i: si });
-        wordCount += cw(s).length;
-      });
+      splitSentences(p).forEach(function (s, si) { sents.push({ s: s, p: pi, i: si }); });
     });
     if (!sents.length) return null;
-    var CHUNK = 200;                               /* sentences per scoring chunk */
-    var chunks = [];
-    for (var c = 0; c < sents.length; c += CHUNK) chunks.push(sents.slice(c, c + CHUNK));
-    chunks.forEach(function (chunk) {
-      var freq = {}, maxF = 1;
-      chunk.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); freq[k] = (freq[k] || 0) + 1; }); });
-      Object.keys(freq).forEach(function (k) { if (freq[k] > maxF) maxF = freq[k]; });
-      chunk.forEach(function (en) {
-        var toks = cw(en.s).map(stem), wc = toks.length || 1, score = 0;
-        toks.forEach(function (w) { score += (freq[w] || 0) / maxF; });
-        score /= Math.sqrt(wc);
-        if (en.i === 0) score *= 1.35;
-        if (en.p === 0 && en.i === 0) score *= 1.2;
-        if (CUE.test(en.s)) score *= 1.25;
-        var nums = (en.s.match(/\b\d+(\.\d+)?%?\b/g) || []).length;
-        score *= 1 + Math.min(0.25, nums * 0.05);
-        if (wc < 5) score *= 0.6; else if (wc > 45) score *= 0.85;
-        en.score = score;
-      });
+    var freq = {};
+    sents.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); freq[k] = (freq[k] || 0) + 1; }); });
+    var maxF = 1; Object.keys(freq).forEach(function (k) { if (freq[k] > maxF) maxF = freq[k]; });
+    sents.forEach(function (en, idx) {
+      var toks = cw(en.s).map(stem), wc = toks.length || 1, score = 0;
+      toks.forEach(function (w) { score += (freq[w] || 0) / maxF; });
+      score /= Math.sqrt(wc);
+      if (en.i === 0) score *= 1.35;                       /* paragraph-leading */
+      if (en.p === 0 && en.i === 0) score *= 1.2;          /* doc-leading */
+      if (CUE.test(en.s)) score *= 1.25;
+      var nums = (en.s.match(/\b\d+(\.\d+)?%?\b/g) || []).length;
+      score *= 1 + Math.min(0.25, nums * 0.05);
+      if (wc < 5) score *= 0.6; else if (wc > 45) score *= 0.85;
+      en.score = score; en.idx = idx;
     });
-    var target = Math.max(1, Math.min(16, Math.round(sents.length * (pct / 100))));
+    var target = Math.max(1, Math.min(14, Math.round(sents.length * (pct / 100))));
     if (mode === 'brief') target = Math.min(target, 2);
     if (mode === 'standard') target = Math.max(2, Math.min(target, 6));
     if (mode === 'detailed') target = Math.max(3, Math.min(target, 12));
-    var picked = sents.slice().sort(function (a, b) { return b.score - a.score; }).slice(0, target);
-    picked.sort(function (a, b) { return a.idx - b.idx; });
-    /* redundancy filter: >60% shared content words with a kept sentence = duplicate */
-    var kept = [];
-    picked.forEach(function (en) {
-      var ws = {};
-      cw(en.s).forEach(function (w) { ws
+    var top = sents.slice().sort(function (a, b) { return b.score - a.score; }).slice(0, target);
+    top.sort(function (a, b) { return a.idx - b.idx; });
+    var kws = (function () {
+      var m = {};
+      sents.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); m[k] = (m[k] || 0) + 1; }); });
+      return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).slice(0, 6);
+    })();
+    return { sents: sents, top: top, kws: kws };
+  }
+  function compress(s) {
+    var out = String(s).trim()
+      .replace(/^(as (we|you|one) (can |could )?see,?\s*(that)?\s*|it (is|'s) (important|worth) (to note|noting) (that)?\s*|needless to say,?\s*|in other words,?\s*)/i, '')
+      .replace(/^(and|but|so|then|also|well|okay|basically|actually|literally|just)\b[,\s]+/i, '')
+      .replace(/\b(basically|actually|honestly|literally|really|very|quite|definitely|obviously|essentially)\s+/gi, '')
+      .replace(/\s{2,}/g, ' ').replace(/^[,;:\-\s]+/, '');
+    if (!out) return '';
+    if (!/[.!?…]$/.test(out)) out += '.';
+    return out.charAt(0).toUpperCase() + out.slice(1);
+  }
+
+  function renderResult(r) {
+    if (!r || r.error) { output.innerHTML = '<div class="sumx-msg">' + getTranslation('ai_summary_empty') + '</div>'; return; }
+    var html = '<div class="sumx-out">';
+    html += '<div class="sumx-label">' + (r.engine ? r.engine + ' · ' : '') + 'TL;DR</div>';
+    html += '<div class="sumx-tldr">' + escHtmlS(r.tldr) + '</div>';
+    if (r.points && r.points.length) {
+      if (r.paraMode) {
+        html += '<div class="sumx-label">Summary</div>';
+        html += '<p class="sumx-para">' + escHtmlS(r.points.join(' ')) + '</p>';
+      } else {
+        html += '<div class="sumx-label">Key Points</div><ul class="sumx-points">';
+        r.points.forEach(function (p) { html += '<li>' + escHtmlS(p) + '</li>'; });
+        html += '</ul>';
+      }
+    }
+    if (r.keywords && r.keywords.length) {
+      html += '<div class="sumx-label">Key Topics</div><div class="sumx-kw">';
+      r.keywords.forEach(function (k) { html += '<span>#' + escHtmlS(k) + '</span>'; });
+      html += '</div>';
+    }
+    html += '<div class="sumx-stats">' +
+      '<span>📄 <b>' + r.origWords + '</b> words in</span>' +
+      '<span>✂️ <b>' + r.sumWords + '</b> out (' + r.reduction + '% shorter)</span>' +
+      '<span>⏱ <b>~' + r.readSec + 's</b> read</span></div>';
+    html += '<div class="sumx-actions">' +
+      '<button type="button" id="sumxCopy">📋 Copy</button>' +
+      '<button type="button" id="sumxDl">⬇ Download .txt</button></div>';
+    html += '</div>';
+    output.innerHTML = html;
+    var plain = 'TL;DR: ' + r.tldr + '\n\n' + (r.paraMode ? r.points.join('\n\n') : 'Key Points:\n' + r.points.map(function (p) { return '• ' + p; }).join('\n')) + '\n\nKey Topics: ' + (r.keywords || []).map(function (k) { return '#' + k; }).join(' ');
+    document.getElementById('sumxCopy').addEventListener('click', function () {
+      var b = this;
+      function done(ok) { b.textContent = ok ? '✓ Copied' : '✕ Failed'; setTimeout(function () { b.textContent = '📋 Copy'; }, 1500); }
+      if (navigator.clipboard) navigator.clipboard.writeText(plain).then(function () { done(true); }, function () { done(false); });
+      else done(false);
+    });
+    document.getElementById('sumxDl').addEventListener('click', function () {
+      var blob = new Blob([plain], { type: 'text/plain' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'summary.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+    });
+  }
+  function escHtmlS(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+
+  btn.addEventListener('click', function () {
+    var text = input.value.trim();
+    if (!text) { renderResult({ error: true }); return; }
+    btn.disabled = true;
+    var origWords = (text.match(/[A-Za-z0-9'\-]+/g) || []).length;
+
+    function finish(r, engine) {
+      btn.disabled = false;
+      if (!r || r.error) { renderResult({ error: true }); return; }
+      var sumText = (r.tldr + ' ' + (r.points || []).join(' ')).trim();
+      var sumWords = (sumText.match(/[A-Za-z0-9'\-]+/g) || []).length;
+      renderResult({
+        tldr: r.tldr, points: r.points || [], keywords: r.keywords || [],
+        paraMode: paraMode, engine: engine,
+        origWords: origWords, sumWords: sumWords,
+        reduction: origWords > 0 ? Math.max(0, Math.round((1 - sumWords / origWords) * 100)) : 0,
+        readSec: Math.max(1, Math.round(sumWords / 3.3))
+      });
+      try {
+        var data = loadData();
+        addActivity(data, 'ai_summary', getTranslation('ai_summary_log'));
+        saveData(data);
+      } catch (e) {}
+    }
+    function offline() {
+      var r = summarizeText(text);
+      if (!r) return finish({ error: true }, '');
+      var tldr = compress(r.top.length ? r.top[0].s : text.slice(0, 140));
+      var points = r.top.map(function (t) { return compress(t.s); })
+        .filter(function (p) { return p && p.toLowerCase() !== tldr.toLowerCase(); });
+      if (mode === 'brief') { tldr = compress((r.top[0] || { s: text.slice(0, 140) }).s); points = []; }
+      if (paraMode) points = points.slice(0, 8);
+      finish({ tldr: tldr, points: points, keywords: r.kws }, 'Offline');
+    }
+    if (typeof StudyHubAI === 'undefined') { offline(); return; }
+    StudyHubAI.status().then(function (st) {
+      if (!st.configured) { offline(); return undefined; }
+      var modeSpec = mode === 'brief' ? 'a 1-2 sentence TL;DR only' :
+        mode === 'detailed' ? 'a TL;DR plus 6 to 10 key points' : 'a TL;DR plus 3 to 5 key points';
+      return StudyHubAI.chat([
+        { role: 'system', content: 'You summarize study material like an expert. Give ' + modeSpec +
+          '. Reply with ONLY a JSON object: {"tldr": string, "points": [short key-point strings], "keywords": [3 to 8 lowercase topic words]}. No markdown, no prose outside the JSON.' },
+        { role: 'user', content: text.slice(0, 12000) }
+      ], { jsonMode: true, maxTokens: mode === 'detailed' ? 1000 : 600, temperature: 0.3 }).then(function (res) {
+        var j = StudyHubAI.parseJsonReply(res.text);
+        if (!j || !j.tldr) throw new Error('unparseable');
+        finish({
+          tldr: String(j.tldr),
+          points: Array.isArray(j.points) ? j.points.map(String).slice(0, 12) : [],
+          keywords: Array.isArray(j.keywords) ? j.keywords.map(String).slice(0, 8) : []
+        }, 'AI');
+      }).catch(function () { offline(); });
+    }).catch(function () { offline(); });
+  });
+}
 
 // ================================================================
 // HABITS  (event-delegation — delete + complete work on every render)
