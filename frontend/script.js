@@ -518,6 +518,55 @@ function initMelodyTimer() {
     }
 }
 
+
+
+/* ================================================================
+   Translation engine removed — replaced by live Google Translate
+   (eduhub-translate.js, navbar). This shim keeps every internal
+   getTranslation() call site working with English strings.
+   ================================================================ */
+var __EH_EN = {
+  no_notes:'No notes yet.', no_habits:'No habits yet. Add one above!',
+  no_notices:'No notices pinned yet.', no_assignments:'No pending assignments.',
+  no_history:'No history recorded yet.', no_files:'No files uploaded yet.',
+  no_items:'No items.', notices_count:'notices', entries:'entries', entry:'entry',
+  complete:'Complete', done:'Done', add:'Add', delete_all:'Delete All',
+  show_keyboard:'Show Keyboard', hide_keyboard:'Hide Keyboard',
+  focus_off:'Focus Off', focus_on:'Focus On',
+  today:'Today', days:'days', notes:'Notes', habits:'Habits', notice:'Notice',
+  files:'Files', assignments:'Assignments', planner:'Planner',
+  flashcards:'Flashcards', reading:'Reading', today_word:'today',
+  reset_confirm:'Reset? This cannot be undone.',
+  quiz_next:'Next', quiz_results:'Results', quiz_score:'Score', quiz_review:'Review',
+  quiz_source:'From your note', quiz_fill_blank:'Fill in the blank',
+  quiz_cards_saved:'Wrong answers saved to your flashcards.', quiz_retry_missed:'Retry missed',
+  ai_summary_empty:'Paste some text above to see a summary.',
+  ai_summary_log:'Generated an AI summary',
+  ai_empty_query:"Type what you're working on first.",
+  ai_fallback:'Could you be more specific? Try mentioning a subject, task, or keyword.',
+  ai_offline_note:'Offline summary (connect a provider key in Admin > AI for full AI summaries).',
+  ai_error_note:'AI request failed: offline summary shown instead.',
+  ai_quiz_empty:'Add at least 3 notes to generate a quiz.',
+  ai_quiz_offline:'Offline quiz from your notes.',
+  ai_fc_none:'No notes available. Add some notes first!',
+  act_ai_recommend:'Asked AI for a recommendation: "{q}"',
+  generate_quiz_btn:'Generate Quiz from Notes', clear_quiz_btn:'Clear Quiz',
+  auto_flashcards_btn:'Auto-Generate from Notes',
+  blocker_on:'Blocker On', blocker_off:'Blocker Off',
+  trash_label:'Trash', switch_analog:'Switch to Analog', switch_digital:'Switch to Digital',
+  ai_planner_title:'StudyHub AI Planner',
+  ai_planner_desc:'Describe what you want: the AI will plan it for you. Try "make a routine by yourself", "easy weekend plan", "intense exam week", or "3 hours today".',
+  ai_planner_placeholder:'Type your request here...',
+  generate_plan_btn:'Generate Plan',
+  chip_auto:'Auto routine', chip_easy:'Easy', chip_exam:'Exam week', chip_weekend:'Weekend',
+  chip_math_physics:'Math + Physics', chip_surprise:'Surprise', chip_3h:'3h today',
+  reset_planner_btn:'Reset Planner'
+};
+function getTranslation(key) { return (__EH_EN && __EH_EN[key]) || key; }
+function applyTranslations() { /* removed — live Google Translate handles page translation */ }
+function initTranslations() { /* removed — see above */ }
+
+
 // ================================================================
 // DELETE HISTORY (bulk)
 // ================================================================
