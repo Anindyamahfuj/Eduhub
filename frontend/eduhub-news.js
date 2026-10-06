@@ -310,7 +310,13 @@
         spaceNews(),
         wikiITN(/scientist|research|study|space|NASA|climate|species|discovered|telescope/i),
         gdelt('(NASA OR research OR climate OR telescope OR physics OR "scientific study")').catch(function () { return []; })
-      ]).then(function (r) { return mix(r[0], r[1], r[2]); });
+            ]).then(function (r) { return mix(r[0], r[1], r[2]); });
+    },
+    sports: function () {
+      return Promise.all([
+        wikiITN(/sport|football|cricket|cup|match|tournament|olympic|championship|player|team|goal|wicket|tennis|athlete|coach/i),
+        gdelt('(football OR cricket OR "champions league" OR olympics OR tennis OR "world cup" OR tournament OR athlete)').catch(function () { return []; })
+      ]).then(function (r) { return mix(r[0], r[1]); });
     }
   };
 
