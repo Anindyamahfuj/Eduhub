@@ -338,7 +338,13 @@
       { label: 'Space & physics',  q: '(NASA OR mars OR rocket OR telescope OR astronomy OR physics)' },
       { label: 'Health & biology', q: '(genome OR medicine OR vaccine OR brain OR biology OR "clinical trial")' },
       { label: 'Climate & nature', q: '(climate OR ocean OR species OR wildfire OR glacier OR ecosystem)' },
-      { label: 'Discoveries',      q: '"scientific study" OR researchers OR discovery OR fossil OR fusion OR experiment' }
+           { label: 'Discoveries',      q: '"scientific study" OR researchers OR discovery OR fossil OR fusion OR experiment' }
+    ],
+    sports: [
+      { label: 'Football & cups',     q: '(football OR soccer OR "premier league" OR "champions league" OR fifa OR "world cup")' },
+      { label: 'Cricket',             q: '(cricket OR "test match" OR ODI OR T20 OR IPL OR "test championship")' },
+      { label: 'Courts & majors',     q: '(NBA OR NFL OR "formula 1" OR tennis OR "grand slam" OR baseball OR olympics)' },
+      { label: 'Transfers & results', q: '(transfer OR "signs for" OR defeat OR victory OR "reaches final" OR semifinal OR comeback)' }
     ]
   };
   function devtoPage(p) { return fetchText('https://dev.to/api/articles?per_page=20&top=7&page=' + p, 8000).then(function (x) {
