@@ -835,447 +835,233 @@ function initPomodoro() {
 }
 
 // ================================================================
-// AI SUMMARIZER — PREMIUM EDITION (offline, no API)
+// AI SUMMARIZER v2 — modes · length control · paragraph-aware
+// Brief / Standard / Detailed · bullet or paragraph output
+// chunked scoring for long docs · download · provider-first
 // ================================================================
 function setupSummarizer() {
-    var btn = document.getElementById('summarizeBtn');
-    if (!btn) return;
-    var input = document.getElementById('summarizeInput');
-    var output = document.getElementById('summarizeOutput');
+  var btn = document.getElementById('summarizeBtn');
+  if (!btn) return;
+  var input = document.getElementById('summarizeInput');
+  var output = document.getElementById('summarizeOutput');
 
-    // ---------- injected premium styles (once) ----------
-    if (!document.getElementById('summarizerProStyles')) {
-        var st = document.createElement('style');
-        st.id = 'summarizerProStyles';
-        st.textContent = [
-            '.sum-pro{display:flex;flex-direction:column;gap:.85rem;animation:sumFade .4s ease}',
-            '@keyframes sumFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}',
-            '.sum-block{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18);border-left:3px solid #5eead4;border-radius:12px;padding:.85rem 1rem}',
-            '.sum-block.sum-tldr{background:linear-gradient(135deg,rgba(94,234,212,.12),rgba(167,139,250,.1));box-shadow:0 8px 30px rgba(94,234,212,.08)}',
-            '.sum-label{display:flex;align-items:center;gap:.45rem;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#5eead4;margin-bottom:.5rem}',
-            '.sum-label .dot{width:6px;height:6px;border-radius:50%;background:#5eead4;box-shadow:0 0 12px #5eead4;flex-shrink:0}',
-            '.sum-body{color:#eef4fb;font-size:.95rem;line-height:1.65}',
-            '.sum-body mark{background:rgba(94,234,212,.22);color:#5eead4;padding:0 .28rem;border-radius:4px;font-weight:600}',
-            '.sum-points{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.45rem}',
-            '.sum-points li{position:relative;padding-left:1.15rem;color:#eef4fb;font-size:.9rem;line-height:1.55}',
-            '.sum-points li::before{content:"▸";position:absolute;left:0;color:#5eead4;font-weight:800}',
-            '.sum-points li mark{background:rgba(94,234,212,.18);color:#5eead4;padding:0 .2rem;border-radius:3px}',
-            '.sum-keywords{display:flex;flex-wrap:wrap;gap:.4rem}',
-            '.sum-kw{background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.32);color:#c4b5fd;padding:.2rem .65rem;border-radius:999px;font-size:.74rem;font-weight:600;letter-spacing:.02em}',
-            '.sum-stats{display:flex;flex-wrap:wrap;gap:1.2rem;font-size:.74rem;color:#8ea0b5;padding-top:.5rem;border-top:1px dashed rgba(255,255,255,.08);letter-spacing:.02em}',
-            '.sum-stats b{color:#5eead4;font-weight:700}',
-            '.sum-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.15rem}',
-            '.sum-copy{background:rgba(94,234,212,.1);border:1px solid rgba(94,234,212,.3);color:#5eead4;padding:.3rem .85rem;border-radius:999px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}',
-            '.sum-copy:hover{background:rgba(94,234,212,.22)}'
-        ].join('');
-        document.head.appendChild(st);
-    }
+  /* ---------- styles ---------- */
+  if (!document.getElementById('sumxStyles')) {
+    var stl = document.createElement('style');
+    stl.id = 'sumxStyles';
+    stl.textContent = [
+      '.sumx-controls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.6rem 0}',
+      '.sumx-chip{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,#2a3648);color:var(--muted,#8d9aa9);border-radius:999px;padding:.32rem .85rem;font:600 12px var(--font,sans-serif);cursor:pointer;transition:all .15s}',
+      '.sumx-chip:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}',
+      '.sumx-chip.on{background:var(--accent-soft,rgba(63,210,176,.12));border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}',
+      '.sumx-len{display:inline-flex;align-items:center;gap:.45rem;font:600 11px var(--font,sans-serif);color:var(--muted,#8d9aa9)}',
+      '.sumx-len input[type=range]{accent-color:var(--accent,#3fd2b0);width:110px;cursor:pointer}',
+      '.sumx-out{background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.14));border-left:3px solid var(--accent,#3fd2b0);border-radius:12px;padding:1rem 1.1rem;margin-top:.8rem}',
+      '.sumx-tldr{font:650 15px/1.6 var(--font,inherit);color:var(--ink,#edf2f7);margin-bottom:.7rem}',
+      '.sumx-label{font:700 10.5px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.14em;color:var(--accent,#3fd2b0);margin:.8rem 0 .45rem}',
+      '.sumx-points{list-style:none;padding:0;margin:0}',
+      '.sumx-points li{position:relative;padding:.3rem 0 .3rem 1.1rem;color:var(--ink-2,#cfd9e3);font-size:13.5px;line-height:1.6}',
+      '.sumx-points li::before{content:"▸";position:absolute;left:0;color:var(--accent,#3fd2b0);font-weight:800}',
+      '.sumx-para{color:var(--ink-2,#cfd9e3);font-size:13.5px;line-height:1.7;margin:0 0 .6rem}',
+      '.sumx-kw{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}',
+      '.sumx-kw span{background:rgba(63,210,176,.1);border:1px solid rgba(63,210,176,.25);color:var(--accent,#3fd2b0);border-radius:999px;padding:.15rem .6rem;font:600 11px var(--font,sans-serif)}',
+      '.sumx-stats{display:flex;flex-wrap:wrap;gap:1rem;font:600 11px var(--mono,monospace);color:var(--faint,#7a8a9e);margin-top:.9rem;padding-top:.7rem;border-top:1px dashed var(--line,rgba(148,163,184,.14))}',
+      '.sumx-stats b{color:var(--ink,#edf2f7)}',
+      '.sumx-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}',
+      '.sumx-actions button{background:transparent;border:1px solid var(--line,#2a3648);color:var(--ink-2,#cfd9e3);border-radius:8px;padding:.4rem .85rem;font:600 12px var(--font,sans-serif);cursor:pointer;transition:all .15s}',
+      '.sumx-actions button:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}',
+      '.sumx-msg{color:var(--muted,#8d9aa9);font-size:13px;line-height:1.6}'
+    ].join('');
+    document.head.appendChild(stl);
+  }
 
-    // ============================================================
-    // NLP ENGINE
-    // ============================================================
-    var STOP = {};
-    ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my my self no nor not of off on once only or other ought our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours yourself yourselves also may might must shall upon among within without across along etc via per said says say get got go goes went come came make made take taken give given see seen know known think thought want wanted use used one two three four five six seven eight nine ten many much lot lots really quite rather somewhat fairly pretty enough almost nearly however therefore moreover furthermore nevertheless nonetheless thus hence accordingly consequently meanwhile similarly likewise additionally overall').split(/\s+/).forEach(function(w){STOP[w]=1;});
-
-    var CUE_BOOST = /\b(in conclusion|in summary|to sum up|the main|the key|important(ly)?|significan(t|ce)|therefore|thus|hence|as a result|consequently|overall|essential(ly)?|crucial(ly)?|notably|primarily|chiefly|mainly|the point is|the goal|the purpose|we (found|conclude|argue|propose|show)|this (shows|means|suggests|demonstrates|proves|indicates))\b/i;
-    var FILLER_START = /^(and|but|so|then|also|now|well|okay|ok|um|uh|like|you know|anyway|basically|actually|honestly|literally|simply|just|first|firstly|second|secondly|third|thirdly|finally|lastly)\b[,\s]+/i;
-    var FILLER_MID = /\b(basically|actually|literally|honestly|really|very|quite|rather|somewhat|fairly|kind of|sort of|you know|i mean|just|simply|definitely|certainly|absolutely|totally|obviously|clearly|essentially|virtually|practically|arguably|presumably|supposedly)\s+/gi;
-    var LEADING_HEDGE = /^(as (we|you|one) (can |could )?see,?\s*(that)?\s*|it (is|'s) (important|worth|clear|obvious) (to note|noting|to mention|to say)?\s*(that)?\s*|needless to say,?\s*|in other words,?\s*|that is to say,?\s*|it (should|must) be (noted|mentioned|said) that\s*|please note that\s*|note that\s*)/i;
-
-    function cleanText(t) {
-        return String(t || '')
-            .replace(/\r\n?/g, '\n')
-            .replace(/[ \t]+/g, ' ')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-    }
-
-    function splitSentences(text) {
-        var lines = text.split(/\n+/).map(function (l) {
-            return l.replace(/^\s*[\-\*\u2022\u25cf\u25aa\u25b8]+\s*/, '')
-                    .replace(/^\s*\d+[.)]\s+/, '')
-                    .trim();
-        }).filter(function (l) { return l.length > 0; });
-
-        var out = [];
-        lines.forEach(function (line) {
-            var p = line
-                .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|e\.g|i\.e|U\.S|U\.K|a\.m|p\.m|No|Fig|al|Inc|Ltd|Co|Corp)\./gi, '$1\u0001')
-                .replace(/(\d)\.(\d)/g, '$1\u0002$2');
-            var parts = p.split(/[.!?…]+\s+/);
-            parts.forEach(function (part) {
-                var s = part.replace(/\u0001/g, '.').replace(/\u0002/g, '.').trim();
-                if (s.length > 1) out.push(s);
-            });
-        });
-        return out.length ? out : [text.trim()];
-    }
-
-    function words(s) { return (String(s).toLowerCase().match(/[a-z][a-z'\-]*/g) || []); }
-    function contentWords(s) { return words(s).filter(function (w) { return w.length > 2 && !STOP[w]; }); }
-    function stem(w) {
-        return w.replace(/(ations?|itions?)$/, 'ate')
-                .replace(/ingly$/, '')
-                .replace(/edly$/, '')
-                .replace(/ies$/, 'y')
-                .replace(/(ing|ed|ly|es|s)$/, '');
-    }
-
-    function scoreSentences(sentences) {
-        var freq = {};
-        sentences.forEach(function (s) {
-            contentWords(s).forEach(function (w) {
-                var k = stem(w);
-                freq[k] = (freq[k] || 0) + 1;
-            });
-        });
-        var maxF = 1;
-        Object.keys(freq).forEach(function (k) { if (freq[k] > maxF) maxF = freq[k]; });
-
-        var N = sentences.length;
-        return sentences.map(function (s, i) {
-            var toks = contentWords(s).map(stem);
-            var wc = toks.length || 1;
-            var score = 0;
-            toks.forEach(function (w) { score += (freq[w] || 0) / maxF; });
-            score = score / Math.sqrt(wc);
-
-            if (i === 0) score *= 1.35;
-            else if (i === 1) score *= 1.12;
-            else if (i === N - 1) score *= 1.22;
-            else if (i < 3) score *= 1.06;
-
-            if (CUE_BOOST.test(s)) score *= 1.28;
-
-            var caps = (s.match(/\b[A-Z][a-z]{2,}\b/g) || []).length;
-            var nums = (s.match(/\b\d+(\.\d+)?(%|kg|km|m|s|hrs?|min|USD|\$)?\b/g) || []).length;
-            score *= 1 + Math.min(0.3, caps * 0.045 + nums * 0.05);
-
-            if (wc < 6) score *= 0.7;
-            else if (wc > 40) score *= 0.85;
-
-            return { s: s, score: score, i: i, wc: wc };
-        });
-    }
-
-    function compressSentence(s) {
-        var out = String(s).trim();
-        out = out.replace(LEADING_HEDGE, '');
-        out = out.replace(FILLER_START, '');
-        out = out.replace(FILLER_MID, '');
-        out = out.replace(/\s*\([^)]{0,90}\)\s*/g, ' ');
-        out = out.replace(/\s{2,}/g, ' ').trim();
-        out = out.replace(/^[,;:\-\s]+/, '');
-        if (!out) return '';
-        if (!/[.!?…]$/.test(out)) out += '.';
-        out = out.charAt(0).toUpperCase() + out.slice(1);
-        return out;
-    }
-
-    function distillShort(text) {
-        var clauses = String(text)
-            .split(/(?:[,;—–]|\s-\s|\bbut\b|\bhowever\b|\balthough\b|\bwhile\b|\bbecause\b|\bsince\b|\bwhereas\b)/i)
-            .map(function (c) { return c.trim(); })
-            .filter(function (c) { return c.length > 2; });
-        if (clauses.length <= 1) return compressSentence(text);
-
-        var scored = clauses.map(function (c, i) {
-            var wc = contentWords(c).length;
-            var sc = wc + (i === 0 ? 2 : 0) + (i === clauses.length - 1 ? 1 : 0);
-            if (/\b(is|are|was|were|means|shows|proves|demonstrates|causes|leads|results|requires|involves)\b/i.test(c)) sc += 1.2;
-            return { c: c, score: sc, idx: i };
-        });
-        scored.sort(function (a, b) { return b.score - a.score; });
-        var keep = scored.slice(0, Math.max(1, Math.ceil(clauses.length * 0.55)));
-        keep.sort(function (a, b) { return a.idx - b.idx; });
-        var joined = keep.map(function (k) { return k.c; }).join(', ').replace(/,\s*,/g, ',').replace(/\s{2,}/g, ' ').trim();
-        if (!joined) return compressSentence(text);
-        if (!/[.!?…]$/.test(joined)) joined += '.';
-        return joined.charAt(0).toUpperCase() + joined.slice(1);
-    }
-
-    function hardCompress(text) {
-        var t = String(text).replace(/\s{2,}/g, ' ').trim();
-        t = t.replace(LEADING_HEDGE, '').replace(FILLER_START, '').replace(FILLER_MID, '');
-        var parts = t.split(/(?:,\s*|\s+(?:and|but|so|because|although|while|since|whereas|which|that)\s+)/i)
-            .map(function (p) { return p.trim(); })
-            .filter(function (p) { return p.length > 2; });
-        if (parts.length <= 1) {
-            var w = t.split(/\s+/);
-            if (w.length > 20) return w.slice(0, 18).join(' ') + '…';
-            if (!/[.!?…]$/.test(t)) t += '.';
-            return t.charAt(0).toUpperCase() + t.slice(1);
-        }
-        var sorted = parts.slice().sort(function (a, b) {
-            return contentWords(b).length - contentWords(a).length;
-        });
-        var keep = [parts[0]];
-        if (sorted[0] && sorted[0] !== parts[0]) keep.push(sorted[0]);
-        var out = keep.join('; ').replace(/\s{2,}/g, ' ').replace(/^[,;:\-\s]+/, '').trim();
-        if (!/[.!?…]$/.test(out)) out += '.';
-        return out.charAt(0).toUpperCase() + out.slice(1);
-    }
-
-    function extractKeywords(text, n) {
-        n = n || 6;
-        var toks = (String(text).toLowerCase().match(/[a-z][a-z'\-]*/g) || [])
-            .filter(function (w) { return w.length > 2 && !STOP[w]; });
-        if (toks.length === 0) return [];
-
-        var stemMap = {};
-        toks.forEach(function (w) {
-            var s = stem(w);
-            if (!stemMap[s]) stemMap[s] = { count: 0, forms: {} };
-            stemMap[s].count++;
-            stemMap[s].forms[w] = (stemMap[s].forms[w] || 0) + 1;
-        });
-
-        var bigrams = {};
-        for (var i = 0; i < toks.length - 1; i++) {
-            var a = toks[i], b = toks[i + 1];
-            if (a.length < 3 || b.length < 3) continue;
-            var bg = a + ' ' + b;
-            bigrams[bg] = (bigrams[bg] || 0) + 1;
-        }
-
-        var candidates = [];
-        Object.keys(stemMap).forEach(function (s) {
-            var info = stemMap[s];
-            var bestForm = Object.keys(info.forms).sort(function (a, b) { return info.forms[b] - info.forms[a]; })[0];
-            candidates.push({ w: bestForm, score: info.count * (1 + Math.min(1.5, bestForm.length / 8)) });
-        });
-        Object.keys(bigrams).forEach(function (bg) {
-            if (bigrams[bg] >= 2) candidates.push({ w: bg, score: bigrams[bg] * 2.4 });
-        });
-
-        candidates.sort(function (a, b) { return b.score - a.score; });
-
-        var picked = [], pickedLower = [];
-        candidates.forEach(function (c) {
-            if (picked.length >= n) return;
-            var low = c.w.toLowerCase();
-            for (var j = 0; j < pickedLower.length; j++) {
-                if (pickedLower[j].indexOf(low) !== -1 || low.indexOf(pickedLower[j]) !== -1) return;
-            }
-            picked.push(c.w);
-            pickedLower.push(low);
-        });
-        return picked;
-    }
-
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, function (c) {
-            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-        });
-    }
-
-    function highlight(text, keywords) {
-        var esc = escapeHtml(text);
-        if (!keywords || !keywords.length) return esc;
-        var kws = keywords.slice().sort(function (a, b) { return b.length - a.length; });
-        kws.forEach(function (kw) {
-            if (typeof kw !== 'string' || kw.length < 4) return;
-            try {
-                var re = new RegExp('\\b(' + escapeHtml(kw).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')\\b', 'gi');
-                esc = esc.replace(re, '<mark>$1</mark>');
-            } catch (e) {}
-        });
-        return esc;
-    }
-
-    function summarize(text) {
-        var cleaned = cleanText(text);
-        var sentences = splitSentences(cleaned);
-        if (sentences.length === 0) return { error: true };
-
-        var wordCount = (cleaned.match(/[A-Za-z0-9'\-]+/g) || []).length;
-        var sentCount = sentences.length;
-        var kws = extractKeywords(cleaned, 6);
-
-        // ---------- SHORT PATH: 1–2 sentences ----------
-        if (sentCount <= 2) {
-            var scored = scoreSentences(sentences);
-            scored.sort(function (a, b) { return b.score - a.score; });
-
-            var tldr;
-            if (sentCount === 1) {
-                tldr = hardCompress(sentences[0]);
-            } else {
-                tldr = compressSentence(distillShort(scored[0].s));
-            }
-
-            var points = [];
-            if (sentCount === 2) {
-                // Build a fresh clause-join gist across BOTH sentences
-                var essences = [];
-                sentences.forEach(function (s) {
-                    var cl = s.split(/[,;—–]/).map(function (c) { return c.trim(); })
-                             .filter(function (c) { return contentWords(c).length >= 2; });
-                    if (cl.length > 1) {
-                        cl.sort(function (a, b) { return contentWords(b).length - contentWords(a).length; });
-                        essences.push(cl[0]);
-                    } else {
-                        essences.push(s.replace(/[.!?…]+$/, '').trim());
-                    }
-                });
-                var gist = essences.join('; ').trim();
-                if (gist.length > 8 && gist.length < tldr.length * 1.6) {
-                    tldr = compressSentence(gist);
-                }
-                sentences.forEach(function (s) {
-                    var c = compressSentence(s);
-                    if (c && c.toLowerCase() !== tldr.toLowerCase()) points.push(c);
-                });
-                if (points.length === 0) {
-                    sentences.forEach(function (s) {
-                        var d = distillShort(s);
-                        if (d && d.toLowerCase() !== tldr.toLowerCase()) points.push(d);
-                    });
-                }
-            } else {
-                var parts = sentences[0].split(/[,;—–]/).map(function (p) { return p.trim(); })
-                              .filter(function (p) { return contentWords(p).length >= 2; });
-                if (parts.length >= 2) {
-                    parts.slice(0, 4).forEach(function (p) {
-                        var c = compressSentence(p);
-                        if (c && c.toLowerCase() !== tldr.toLowerCase()) points.push(c);
-                    });
-                }
-            }
-
-            return { short: true, tldr: tldr, points: points, keywords: kws, sentences: sentCount, words: wordCount };
-        }
-
-        // ---------- NORMAL PATH: 3+ sentences ----------
-        var scores = scoreSentences(sentences);
-        var targetCount = Math.max(2, Math.min(5, Math.round(sentences.length * 0.32)));
-        targetCount = Math.min(targetCount, sentences.length);
-
-        var top = scores.slice().sort(function (a, b) { return b.score - a.score; }).slice(0, targetCount);
-        top.sort(function (a, b) { return a.i - b.i; });
-
-        var compressed = top.map(function (t) { return compressSentence(t.s); }).filter(Boolean);
-        var tldr = compressed[0] || compressSentence(sentences[0]);
-        var points = compressed.slice(1, 5);
-        if (points.length === 0 && sentences.length > 1) points.push(compressSentence(sentences[1]));
-
-        return { short: false, tldr: tldr, points: points, keywords: kws, sentences: sentCount, words: wordCount };
-    }
-
-    function renderResult(r) {
-        if (!r || r.error) {
-            output.innerHTML = '<div class="sum-pro"><div class="sum-block"><div class="sum-body">' + getTranslation('ai_summary_empty') + '</div></div></div>';
-            return;
-        }
-        var origWords = r.words || 0;
-        var sumText = (r.tldr + ' ' + (r.points || []).join(' ')).trim();
-        var sumWords = (sumText.match(/[A-Za-z0-9'\-]+/g) || []).length;
-        var reduction = origWords > 0 ? Math.max(0, Math.round((1 - sumWords / origWords) * 100)) : 0;
-        var readSec = Math.max(1, Math.round(sumWords / 3.3));
-
-        var html = '<div class="sum-pro">';
-        if (r.engine) {
-            html += '<div class="sum-engine-note">' + escapeHtml(r.engine) + '</div>';
-        }
-        html += '<div class="sum-block sum-tldr">';
-        html += '<div class="sum-label"><span class="dot"></span>TL;DR</div>';
-        html += '<div class="sum-body">' + highlight(r.tldr, r.keywords) + '</div>';
-        html += '</div>';
-
-        if (r.points && r.points.length > 0) {
-            html += '<div class="sum-block">';
-            html += '<div class="sum-label"><span class="dot"></span>Key Points</div>';
-            html += '<ul class="sum-points">';
-            r.points.forEach(function (p) { html += '<li>' + highlight(p, r.keywords) + '</li>'; });
-            html += '</ul></div>';
-        }
-
-        if (r.keywords && r.keywords.length > 0) {
-            html += '<div class="sum-block">';
-            html += '<div class="sum-label"><span class="dot"></span>Key Topics</div>';
-            html += '<div class="sum-keywords">';
-            r.keywords.forEach(function (k) { html += '<span class="sum-kw">#' + escapeHtml(k) + '</span>'; });
-            html += '</div></div>';
-        }
-
-        html += '<div class="sum-stats">';
-        html += '<span>📄 <b>' + r.sentences + '</b> sentence' + (r.sentences === 1 ? '' : 's') + '</span>';
-        html += '<span>✂️ <b>' + reduction + '%</b> shorter</span>';
-        html += '<span>⏱️ <b>~' + readSec + 's</b> read</span>';
-        html += '<span>🔑 <b>' + (r.keywords ? r.keywords.length : 0) + '</b> topics</span>';
-        html += '</div>';
-
-        html += '<div class="sum-actions"><button class="sum-copy" id="sumCopyBtn">📋 Copy Summary</button></div>';
-        html += '</div>';
-        output.innerHTML = html;
-
-        var copyBtn = document.getElementById('sumCopyBtn');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', function () {
-                var plain = 'TL;DR: ' + r.tldr + '\n\nKey Points:\n' +
-                    (r.points || []).map(function (p) { return '• ' + p; }).join('\n') +
-                    '\n\nKey Topics: ' + (r.keywords || []).map(function (k) { return '#' + k; }).join(' ');
-                function done(ok) {
-                    copyBtn.innerHTML = ok ? '<i class="ph ph-check-circle" aria-hidden="true"></i>Copied!' : '<i class="ph ph-warning" aria-hidden="true"></i>Failed';
-                    setTimeout(function () { copyBtn.innerHTML = '<i class="ph ph-clipboard-text" aria-hidden="true"></i>Copy Summary'; }, 1600);
-                }
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(plain).then(function () { done(true); }, function () { done(false); });
-                } else {
-                    var ta = document.createElement('textarea');
-                    ta.value = plain; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-                    document.body.appendChild(ta); ta.select();
-                    var ok = false;
-                    try { ok = document.execCommand('copy'); } catch (e) {}
-                    document.body.removeChild(ta);
-                    done(ok);
-                }
-            });
-        }
-    }
-
-    btn.addEventListener('click', function () {
-        var text = input.value.trim();
-        if (!text) {
-            output.innerHTML = '<div class="sum-pro"><div class="sum-block"><div class="sum-body">' + getTranslation('ai_summary_empty') + '</div></div></div>';
-            return;
-        }
-        btn.disabled = true;
-        function finish(r) {
-            btn.disabled = false;
-            renderResult(r);
-            try {
-                var data = loadData();
-                addActivity(data, 'ai_summary', getTranslation('ai_summary_log'));
-                saveData(data);
-            } catch (e) {}
-        }
-        function offline(reason) {
-            var result;
-            try { result = summarize(text); }
-            catch (e) { result = { error: true }; }
-            if (!result.error && reason) result.engine = getTranslation(reason);
-            finish(result);
-        }
-        // Provider first (when configured); offline engine answers instantly otherwise.
-        StudyHubAI.status().then(function (st) {
-            if (!st.configured) return offline('ai_offline_note');
-            return StudyHubAI.chat([
-                { role: 'system', content: 'You summarize study material. Reply with ONLY a JSON object: {"tldr": one or two sentences, "points": [2 to 5 short key-point strings], "keywords": [3 to 8 lowercase topic words]}. No markdown, no prose outside the JSON.' },
-                { role: 'user', content: text.slice(0, 12000) }
-            ], { jsonMode: true, maxTokens: 700, temperature: 0.3 }).then(function (res) {
-                var j = StudyHubAI.parseJsonReply(res.text);
-                if (!j || !j.tldr) throw new Error('unparseable reply');
-                finish({
-                    tldr: String(j.tldr),
-                    points: Array.isArray(j.points) ? j.points.map(String).slice(0, 5) : [],
-                    keywords: Array.isArray(j.keywords) ? j.keywords.map(String).slice(0, 8) : [],
-                    sentences: (String(text).match(/[.!?]+/g) || []).length || 1,
-                    words: (String(text).match(/[A-Za-z0-9'-]+/g) || []).length
-                });
-            }).catch(function () { offline('ai_error_note'); });
-        });
+  /* ---------- controls UI ---------- */
+  var mode = 'standard', pct = 25, paraMode = false;
+  var controls = document.createElement('div');
+  controls.className = 'sumx-controls';
+  controls.innerHTML =
+    '<button type="button" class="sumx-chip on" data-mode="brief">✦ Brief</button>' +
+    '<button type="button" class="sumx-chip" data-mode="standard">☰ Standard</button>' +
+    '<button type="button" class="sumx-chip" data-mode="detailed">≣ Detailed</button>' +
+    '<span class="sumx-len">Length <input type="range" id="sumxLen" min="10" max="40" step="5" value="25"> <span id="sumxLenV">25%</span></span>' +
+    '<button type="button" class="sumx-chip" id="sumxFormat">¶ Paragraph</button>';
+  input.parentNode.insertBefore(controls, input.nextSibling);
+  controls.querySelectorAll('.sumx-chip[data-mode]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      mode = this.dataset.mode;
+      controls.querySelectorAll('.sumx-chip[data-mode]').forEach(function (x) { x.classList.toggle('on', x === c); });
     });
+  });
+  var lenIn = controls.querySelector('#sumxLen');
+  lenIn.addEventListener('input', function () {
+    pct = +this.value;
+    controls.querySelector('#sumxLenV').textContent = pct + '%';
+  });
+  controls.querySelector('#sumxFormat').addEventListener('click', function () {
+    paraMode = !paraMode;
+    this.classList.toggle('on', paraMode);
+    this.textContent = paraMode ? '¶ Paragraph' : '• Bullets';
+  });
+
+  /* ---------- NLP engine ---------- */
+  var STOP = {};
+  ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my no nor not of off on once only or other ought our out over own same she should so some such than that the their them then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your also may might must upon among within without across along etc via per'.split(' ')).forEach(function (w) { STOP[w] = 1; });
+  var CUE = /\b(in conclusion|in summary|the main|the key|important|significant|therefore|thus|hence|overall|essential|crucial|the point is|we (found|conclude|show)|this (shows|means|demonstrates))\b/i;
+  function words(s) { return (String(s).toLowerCase().match(/[a-z][a-z'\-]*/g) || []); }
+  function cw(s) { return words(s).filter(function (w) { return w.length > 2 && !STOP[w]; }); }
+  function stem(w) { return w.replace(/(ations?|itions?)$/, 'ate').replace(/(ing|ed|ly|es|s)$/, ''); }
+  function splitSentences(p) {
+    var x = p.replace(/\b(Mr|Mrs|Dr|vs|etc|e\.g|i\.e)\./gi, '$1\u0001');
+    return x.split(/(?<=[.!?])\s+/).map(function (s) { return s.replace(/\u0001/g, '.').trim(); }).filter(function (s) { return s.length > 2; });
+  }
+  function summarizeText(text) {
+    var paras = String(text).replace(/\r/g, '').split(/\n{2,}/).map(function (p) { return p.trim(); }).filter(Boolean);
+    if (!paras.length) paras = [String(text).trim()];
+    var sents = [];
+    paras.forEach(function (p, pi) {
+      splitSentences(p).forEach(function (s, si) { sents.push({ s: s, p: pi, i: si }); });
+    });
+    if (!sents.length) return null;
+    var freq = {};
+    sents.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); freq[k] = (freq[k] || 0) + 1; }); });
+    var maxF = 1; Object.keys(freq).forEach(function (k) { if (freq[k] > maxF) maxF = freq[k]; });
+    sents.forEach(function (en, idx) {
+      var toks = cw(en.s).map(stem), wc = toks.length || 1, score = 0;
+      toks.forEach(function (w) { score += (freq[w] || 0) / maxF; });
+      score /= Math.sqrt(wc);
+      if (en.i === 0) score *= 1.35;                       /* paragraph-leading */
+      if (en.p === 0 && en.i === 0) score *= 1.2;          /* doc-leading */
+      if (CUE.test(en.s)) score *= 1.25;
+      var nums = (en.s.match(/\b\d+(\.\d+)?%?\b/g) || []).length;
+      score *= 1 + Math.min(0.25, nums * 0.05);
+      if (wc < 5) score *= 0.6; else if (wc > 45) score *= 0.85;
+      en.score = score; en.idx = idx;
+    });
+    var target = Math.max(1, Math.min(14, Math.round(sents.length * (pct / 100))));
+    if (mode === 'brief') target = Math.min(target, 2);
+    if (mode === 'standard') target = Math.max(2, Math.min(target, 6));
+    if (mode === 'detailed') target = Math.max(3, Math.min(target, 12));
+    var top = sents.slice().sort(function (a, b) { return b.score - a.score; }).slice(0, target);
+    top.sort(function (a, b) { return a.idx - b.idx; });
+    var kws = (function () {
+      var m = {};
+      sents.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); m[k] = (m[k] || 0) + 1; }); });
+      return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).slice(0, 6);
+    })();
+    return { sents: sents, top: top, kws: kws };
+  }
+  function compress(s) {
+    var out = String(s).trim()
+      .replace(/^(as (we|you|one) (can |could )?see,?\s*(that)?\s*|it (is|'s) (important|worth) (to note|noting) (that)?\s*|needless to say,?\s*|in other words,?\s*)/i, '')
+      .replace(/^(and|but|so|then|also|well|okay|basically|actually|literally|just)\b[,\s]+/i, '')
+      .replace(/\b(basically|actually|honestly|literally|really|very|quite|definitely|obviously|essentially)\s+/gi, '')
+      .replace(/\s{2,}/g, ' ').replace(/^[,;:\-\s]+/, '');
+    if (!out) return '';
+    if (!/[.!?…]$/.test(out)) out += '.';
+    return out.charAt(0).toUpperCase() + out.slice(1);
+  }
+
+  function renderResult(r) {
+    if (!r || r.error) { output.innerHTML = '<div class="sumx-msg">' + getTranslation('ai_summary_empty') + '</div>'; return; }
+    var html = '<div class="sumx-out">';
+    html += '<div class="sumx-label">' + (r.engine ? r.engine + ' · ' : '') + 'TL;DR</div>';
+    html += '<div class="sumx-tldr">' + escHtmlS(r.tldr) + '</div>';
+    if (r.points && r.points.length) {
+      if (r.paraMode) {
+        html += '<div class="sumx-label">Summary</div>';
+        html += '<p class="sumx-para">' + escHtmlS(r.points.join(' ')) + '</p>';
+      } else {
+        html += '<div class="sumx-label">Key Points</div><ul class="sumx-points">';
+        r.points.forEach(function (p) { html += '<li>' + escHtmlS(p) + '</li>'; });
+        html += '</ul>';
+      }
+    }
+    if (r.keywords && r.keywords.length) {
+      html += '<div class="sumx-label">Key Topics</div><div class="sumx-kw">';
+      r.keywords.forEach(function (k) { html += '<span>#' + escHtmlS(k) + '</span>'; });
+      html += '</div>';
+    }
+    html += '<div class="sumx-stats">' +
+      '<span>📄 <b>' + r.origWords + '</b> words in</span>' +
+      '<span>✂️ <b>' + r.sumWords + '</b> out (' + r.reduction + '% shorter)</span>' +
+      '<span>⏱ <b>~' + r.readSec + 's</b> read</span></div>';
+    html += '<div class="sumx-actions">' +
+      '<button type="button" id="sumxCopy">📋 Copy</button>' +
+      '<button type="button" id="sumxDl">⬇ Download .txt</button></div>';
+    html += '</div>';
+    output.innerHTML = html;
+    var plain = 'TL;DR: ' + r.tldr + '\n\n' + (r.paraMode ? r.points.join('\n\n') : 'Key Points:\n' + r.points.map(function (p) { return '• ' + p; }).join('\n')) + '\n\nKey Topics: ' + (r.keywords || []).map(function (k) { return '#' + k; }).join(' ');
+    document.getElementById('sumxCopy').addEventListener('click', function () {
+      var b = this;
+      function done(ok) { b.textContent = ok ? '✓ Copied' : '✕ Failed'; setTimeout(function () { b.textContent = '📋 Copy'; }, 1500); }
+      if (navigator.clipboard) navigator.clipboard.writeText(plain).then(function () { done(true); }, function () { done(false); });
+      else done(false);
+    });
+    document.getElementById('sumxDl').addEventListener('click', function () {
+      var blob = new Blob([plain], { type: 'text/plain' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'summary.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+    });
+  }
+  function escHtmlS(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+
+  btn.addEventListener('click', function () {
+    var text = input.value.trim();
+    if (!text) { renderResult({ error: true }); return; }
+    btn.disabled = true;
+    var origWords = (text.match(/[A-Za-z0-9'\-]+/g) || []).length;
+
+    function finish(r, engine) {
+      btn.disabled = false;
+      if (!r || r.error) { renderResult({ error: true }); return; }
+      var sumText = (r.tldr + ' ' + (r.points || []).join(' ')).trim();
+      var sumWords = (sumText.match(/[A-Za-z0-9'\-]+/g) || []).length;
+      renderResult({
+        tldr: r.tldr, points: r.points || [], keywords: r.keywords || [],
+        paraMode: paraMode, engine: engine,
+        origWords: origWords, sumWords: sumWords,
+        reduction: origWords > 0 ? Math.max(0, Math.round((1 - sumWords / origWords) * 100)) : 0,
+        readSec: Math.max(1, Math.round(sumWords / 3.3))
+      });
+      try {
+        var data = loadData();
+        addActivity(data, 'ai_summary', getTranslation('ai_summary_log'));
+        saveData(data);
+      } catch (e) {}
+    }
+    function offline() {
+      var r = summarizeText(text);
+      if (!r) return finish({ error: true }, '');
+      var tldr = compress(r.top.length ? r.top[0].s : text.slice(0, 140));
+      var points = r.top.map(function (t) { return compress(t.s); })
+        .filter(function (p) { return p && p.toLowerCase() !== tldr.toLowerCase(); });
+      if (mode === 'brief') { tldr = compress((r.top[0] || { s: text.slice(0, 140) }).s); points = []; }
+      if (paraMode) points = points.slice(0, 8);
+      finish({ tldr: tldr, points: points, keywords: r.kws }, 'Offline');
+    }
+    if (typeof StudyHubAI === 'undefined') { offline(); return; }
+    StudyHubAI.status().then(function (st) {
+      if (!st.configured) { offline(); return undefined; }
+      var modeSpec = mode === 'brief' ? 'a 1-2 sentence TL;DR only' :
+        mode === 'detailed' ? 'a TL;DR plus 6 to 10 key points' : 'a TL;DR plus 3 to 5 key points';
+      return StudyHubAI.chat([
+        { role: 'system', content: 'You summarize study material like an expert. Give ' + modeSpec +
+          '. Reply with ONLY a JSON object: {"tldr": string, "points": [short key-point strings], "keywords": [3 to 8 lowercase topic words]}. No markdown, no prose outside the JSON.' },
+        { role: 'user', content: text.slice(0, 12000) }
+      ], { jsonMode: true, maxTokens: mode === 'detailed' ? 1000 : 600, temperature: 0.3 }).then(function (res) {
+        var j = StudyHubAI.parseJsonReply(res.text);
+        if (!j || !j.tldr) throw new Error('unparseable');
+        finish({
+          tldr: String(j.tldr),
+          points: Array.isArray(j.points) ? j.points.map(String).slice(0, 12) : [],
+          keywords: Array.isArray(j.keywords) ? j.keywords.map(String).slice(0, 8) : []
+        }, 'AI');
+      }).catch(function () { offline(); });
+    }).catch(function () { offline(); });
+  });
 }
 
 // ================================================================
