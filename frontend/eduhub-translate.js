@@ -86,9 +86,60 @@
     if (e.key === 'Escape' && opened) { opened = false; if (panel) panel.classList.remove('open'); }
   });
 
-  var fab = document.createElement('button');
-  fab.id = 'gtFab'; fab.type = 'button';
-  fab.title = 'Translate this page'; fab.setAttribute('aria-label', 'Translate page');
-  fab.innerHTML = '<i class="ph ph-translate" aria-hidden="true"></i>';
-  document.body.appendChild(fab);
+  /* --- FAB placement: sit ABOVE whatever already lives bottom-left
+         (theme picker FAB, chat widgets, ...) — measured, not guessed. --- */
+  function bottomOf(selector) {
+    var el = document.querySelector(selector);
+    if (!el) return null;
+    var cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+    var r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return null;
+    return r.bottom;   /* viewport coordinate */
+  }
+  function place() {
+    var fab = document.getElementById('gtFab');
+    if (!fab) return;
+    /* check the usual bottom-left suspects + any fixed element in the left strip */
+    var cands = [ bottomOf('.theme-picker-fab'), bottomOf('#gtFab') ];
+    try {
+      var all = document.body.getElementsByTagName('*');
+      for (var i = 0; i < all.length && i < 800; i++) {
+        var el = all[i];
+        if (el.closest && el.closest('#gtFab, #gtPanel')) continue;
+        var cs = getComputedStyle(el);
+        if (cs.position !== 'fixed' || cs.display === 'none') continue;
+        var r = el.getBoundingClientRect();
+        if (r.width < 30 || r.height < 30) continue;          /* FAB-sized only */
+        if (r.left > 90) continue;                            /* must live in the left strip */
+        if (r.top < innerHeight * 0.55) continue;             /* must be in the lower area */
+        cands.push(r.bottom);
+      }
+    } catch (e) {}
+    var lowest = 0;
+    cands.forEach(function (b) { if (b != null && b > lowest) lowest = b; });
+    var gap = 14;
+    var bottom = lowest ? Math.round(innerHeight - lowest + gap) : 20;
+    fab.style.left = '20px';
+    fab.style.bottom = Math.max(20, Math.min(bottom, Math.round(innerHeight * 0.6))) + 'px';
+  }
+  function makeFab() {
+    if (document.getElementById('gtFab')) { place(); return; }
+    var fab = document.createElement('button');
+    fab.id = 'gtFab'; fab.type = 'button';
+    fab.title = 'Translate this page'; fab.setAttribute('aria-label', 'Translate page');
+    fab.innerHTML = '<i class="ph ph-translate" aria-hidden="true"></i>';
+    document.body.appendChild(fab);
+    fab.addEventListener('click', toggle);
+    place();
+    setTimeout(place, 600);    /* theme FAB often renders late — re-measure */
+    setTimeout(place, 1800);
+    addEventListener('resize', place);
+  }
+  makeFab();
+
+  /* re-check if the theme FAB appears/moves later (it's JS-injected too) */
+  if (window.MutationObserver) {
+    new MutationObserver(function () { place(); }).observe(document.body, { childList: true, subtree: false });
+  }
 })();
