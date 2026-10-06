@@ -21,11 +21,14 @@
     tech:    { label: 'Tech',    icon: '💡', feeds: [
                  { u: 'https://www.theverge.com/rss/index.xml',      s: 'The Verge' },
                  { u: 'https://techcrunch.com/feed/',                s: 'TechCrunch' } ] },
-    science: { label: 'Science', icon: '🔬', feeds: [
+       science: { label: 'Science', icon: '🔬', feeds: [
                  { u: 'https://phys.org/rss-feed/',                  s: 'Phys.org' },
-                 { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] }
+                 { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' } ] },
+    sports:  { label: 'Sports',  icon: '⚽', feeds: [
+                 { u: 'https://feeds.bbci.co.uk/sport/rss.xml',      s: 'BBC Sport' },
+                 { u: 'https://www.skysports.com/rss/12040',         s: 'Sky Sports' } ] }
   };
-  var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)', science: 'var(--brand,#7fe3c8)' };
+  var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)', science: 'var(--brand,#7fe3c8)', sports: 'var(--ok,#5fd6a4)' };
 
   /* ---------- helpers ---------- */
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
