@@ -214,7 +214,7 @@ async function verifyGoogleIdToken(
 
 /** POST /api/auth/google  { credential } */
 authRoutes.post('/google', async (c) => {
-  const clientId = (c.env as Env).GOOGLE_CLIENT_ID;
+  const clientId = (c.env as Env).GOOGLE_CLIENT_ID || '433932276128-s5rvojg5bgbik3bc8djmht68m7lgaa7m.apps.googleusercontent.com';
   if (!clientId) return fail('Google sign-in is not configured on the server.', 501);
 
   let body: { credential?: string };
