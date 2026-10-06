@@ -1,16 +1,37 @@
 /* =====================================================================
-   EDUHUB · Live Translator v2 — navbar edition (replaces old i18n)
-   • 🌐 pill in .nav-right where the old language selector sat
-   • Styled with .focus-toggle → matches Trash / Focus / Gmail pills
-   • Panel drops below the navbar, anchored to the button
-   • Google Translate Element lazy-loads on first open
-   All pages. Coexists with nothing — it IS the translation system now.
+   EDUHUB · Live Translator v3 — navbar edition
+   • 🌐 pill in .nav-right → panel with Google page-translation
+   • NEW: notranslate guard — timers/clock/stats never glitch
+   • NEW: "Show original" button — cookie-clear + reload restore
+   All pages. Replaces the old built-in language system.
    ===================================================================== */
 (function () {
   'use strict';
   if (window.__EH_TRANSLATE__) return;
   window.__EH_TRANSLATE__ = true;
 
+  /* ---------- elements that must NEVER be translated ---------- */
+  /* (scripts rewrite these constantly → they glitch if Google touches them) */
+  var GUARD_SELECTORS = [
+    '#digitalClock', '.digital-clock', '#analogClock', '#clockToggleBtn',
+    '#pomoDisplay', '#deepworkDisplay', '#dwToday', '#dwTotal',
+    '.stat-number', '.ov-value', '#pomoCount', '#pomoCountStat', '#historyCount',
+    '#sci-result', '#sci-expr', '#calcDisplay',
+    '#ttCard', '#ttIn', '#ttOut',            /* Text Translator card stays clean */
+    '#tc-count', '#ehNewsMeta', '#ehBatchLabel'
+  ];
+  function guard() {
+    GUARD_SELECTORS.forEach(function (sel) {
+      try {
+        document.querySelectorAll(sel).forEach(function (el) {
+          if (!el.classList.contains('notranslate')) el.classList.add('notranslate');
+          if (!el.hasAttribute('translate')) el.setAttribute('translate', 'no');
+        });
+      } catch (e) {}
+    });
+  }
+
+  /* ---------- CSS ---------- */
   var CSS =
     '.gt-navbtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer}' +
     '.gt-navbtn i{font-size:15px}' +
@@ -24,6 +45,9 @@
     '.gt-title i{color:var(--accent,#3fd2b0);margin-right:6px}' +
     '.gt-x{width:26px;height:26px;border-radius:50%;border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);cursor:pointer;font-size:12px}' +
     '.gt-body{padding:13px 15px 12px}' +
+    '.gt-row{display:flex;gap:8px;align-items:stretch}' +
+    '.gt-reset{flex:none;background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,#2a3648);color:var(--muted,#8d9aa9);border-radius:10px;padding:0 12px;font:600 12px var(--font,sans-serif);cursor:pointer;transition:all .15s;white-space:nowrap}' +
+    '.gt-reset:hover{border-color:var(--danger,#f0938c);color:var(--danger,#f0938c)}' +
     '.gt-note{margin-top:10px;font:500 11px/1.5 var(--font,sans-serif);color:var(--muted,#8d9aa9)}' +
     '#gtHost .goog-te-gadget{font:500 13px var(--font,sans-serif) !important;color:var(--muted,#8d9aa9) !important}' +
     '#gtHost .goog-te-gadget-simple{background:transparent !important;border:none !important}' +
@@ -36,17 +60,43 @@
     '.goog-tooltip,.goog-te-balloon-frame{display:none !important;visibility:hidden !important}';
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
 
+  /* ---------- panel + widget ---------- */
   var panel = null, opened = false;
+
+  function hasGoogtrans() {
+    return /(?:^|;\s*)googtrans=/.test(document.cookie);
+  }
+  function showOriginal() {
+    if (!hasGoogtrans()) {
+      var b = document.getElementById('gtReset');
+      if (b) { b.textContent = 'Already original'; setTimeout(function(){ b.textContent = 'Show original'; }, 1500); }
+      return;
+    }
+    /* wipe the translation cookie on every domain/path variation, then reload */
+    var domains = ['', location.hostname, '.' + location.hostname];
+    var hostParts = location.hostname.split('.');
+    if (hostParts.length > 2) domains.push('.' + hostParts.slice(-2).join('.'));
+    domains.forEach(function (d) {
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;' + (d ? ' domain=' + d + ';' : '');
+    });
+    location.reload();
+  }
 
   function buildPanel() {
     panel = document.createElement('div'); panel.id = 'gtPanel';
     panel.innerHTML =
       '<div class="gt-head"><span class="gt-title"><i class="ph ph-translate"></i>Translate page</span>' +
       '<button class="gt-x" id="gtX" aria-label="Close">✕</button></div>' +
-      '<div class="gt-body"><div id="gtHost"><div style="padding:.5rem 0;color:var(--muted,#8d9aa9);font-size:12.5px;">Loading translator…</div></div>' +
-      '<div class="gt-note">Translates the whole page live via Google — including popups. Set the popup\'s language back to English to restore the original text.</div></div>';
+      '<div class="gt-body">' +
+        '<div class="gt-row">' +
+          '<div id="gtHost" style="flex:1;min-width:0"><div style="padding:.5rem 0;color:var(--muted,#8d9aa9);font-size:12.5px;">Loading translator…</div></div>' +
+          '<button class="gt-reset" id="gtReset" title="Restore the page to its original language">Show original</button>' +
+        '</div>' +
+        '<div class="gt-note">Translates the whole page live via Google — including popups. Timers &amp; stat numbers are protected and stay untranslated. “Show original” restores the page.</div>' +
+      '</div>';
     document.body.appendChild(panel);
     panel.querySelector('#gtX').addEventListener('click', toggle);
+    panel.querySelector('#gtReset').addEventListener('click', showOriginal);
     window.googleTranslateElementInit = function () {
       try {
         new google.translate.TranslateElement({
@@ -76,7 +126,7 @@
   function toggle() {
     if (!panel) buildPanel();
     opened = !opened;
-    if (opened) positionPanel();
+    if (opened) { positionPanel(); guard(); }
     panel.classList.toggle('open', opened);
   }
   document.addEventListener('click', function (e) {
@@ -88,7 +138,7 @@
   });
   addEventListener('resize', function () { if (opened) positionPanel(); });
 
-  /* inject the pill into .nav-right, in the old selector's slot */
+  /* ---------- navbar pill ---------- */
   var tries = 0;
   function inject() {
     if (document.getElementById('gtNavBtn')) return true;
@@ -105,7 +155,17 @@
     return true;
   }
   (function boot() {
-    if (inject() || ++tries > 12) return;
+    guard();
+    if (inject() || ++tries > 12) { guard(); return; }
     setTimeout(boot, 300);
   })();
+  /* guard again on load + whenever DOM changes (popups render new nodes) */
+  window.addEventListener('load', guard);
+  setTimeout(guard, 1500);
+  if (window.MutationObserver) {
+    var gT = null;
+    new MutationObserver(function () {
+      clearTimeout(gT); gT = setTimeout(guard, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();
