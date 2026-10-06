@@ -4552,10 +4552,13 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 // ================================================================
-// AI PLANNER v4 — full-day routines: study + LIFE
-// Life layer: wake · shower · meals · prayers (opt) · sports (opt)
-// · rest · wind-down · sleep. Grid extended to 5:00–23:00.
-// Provider AI first; deterministic routine engine offline.
+// AI PLANNER v4.5 — full-day routines: study + LIFE, logically placed
+// • Life layer: wake · shower · breakfast · lunch(+prayer) · rest ·
+//   Asr/Maghrib · sports · dinner(+Isha) · wind-down · sleep
+// • Collision-free placement (firstFree scanning), chronological study
+// • Slot-preference parsing ("study in the morning"), daily rotation
+// • TEST PREVIEW gate — planner grid untouched until Apply/Replace
+// • Timeline view · 5:00–23:00 grid · provider-AI + offline engine
 // ================================================================
 (function () {
   'use strict';
@@ -4580,11 +4583,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 
-  /* ---------- PARSER (with life activities) ---------- */
+  /* ---------- PARSER ---------- */
   function parseRequest(text) {
     var t = ' ' + String(text).toLowerCase().replace(/\s+/g, ' ') + ' ';
     var req = { mode:'balanced', scope:'all', bias:'all', hours:0, sessionMin:60,
-      subjects:[], pairs:[], focus:null, wake:null, sleep:null, prayers:null, sports:null, raw:text };
+      subjects:[], focus:null, wake:null, sleep:null, prayers:null, sports:null, raw:text };
     if (/\b(easy|light|chill|relaxed|casual|minimal|gentle)\b/.test(t)) req.mode = 'easy';
     else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|marathon)\b/.test(t)) req.mode = 'intense';
 
@@ -4595,8 +4598,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var dm = t.match(/\b(?:on|for|this)\s+(mon|tue|wed|thu|fri|sat|sun)(day)?\b/);
     if (dm) { req.scope = 'specific-day'; req.specificDay = DAY_NAMES[dm[1]]; }
 
-    if (/\b(morning|early)\b/.test(t)) req.bias = 'morning';
-    else if (/\b(evening|night|tonight)\b/.test(t)) req.bias = 'evening';
+    if (/\b(in the |at |during )?morning\b|\bearly\b/.test(t) && !/evening/.test(t)) req.bias = 'morning';
+    else if (/\b(in the |at |during )?evening\b|\bnight\b|\btonight\b/.test(t)) req.bias = 'evening';
 
     var mh = t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
     var mm = t.match(/(\d+)\s*(?:minutes?|mins?|m)\b/);
@@ -4621,7 +4624,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return req;
   }
 
-  /* ---------- LIFE LAYER ---------- */
+  /* ---------- LIFE LAYER — collision-free ---------- */
   function pickDays(req) {
     if (req.scope === 'weekend') return ['Sat','Sun'];
     if (req.scope === 'weekday') return ['Mon','Tue','Wed','Thu','Fri'];
@@ -4634,40 +4637,45 @@ document.addEventListener('DOMContentLoaded', function() {
     var k = day + '_' + hour;
     if (!life[k]) life[k] = label;
   }
+  function firstFree(life, day, start, end) {
+    var s = Math.max(5, start), e = (end === undefined) ? 23 : Math.min(end, 23);
+    for (var h = s; h <= e; h++) if (!life[day + '_' + h]) return h;
+    return -1;
+  }
   function buildLife(req, eff, days) {
     var life = {};
-    var wake = req.wake || eff.wake;                  /* number 5..9 */
-    var sleepH = req.sleep || eff.sleep;              /* number 20..23 */
+    var wake = req.wake || eff.wake;
+    var sleepH = req.sleep || eff.sleep;
     var prayers = req.prayers !== null ? req.prayers : eff.prayers;
     var sports = req.sports !== null ? req.sports : eff.sports;
     days.forEach(function (day) {
       put(life, day, wake, life('wake', prayers ? 'Fajr' : ''));
-      put(life, day, wake + 1, life('shower'));
-      put(life, day, wake + 2, life('breakfast'));
-      put(life, day, 12, prayers ? LIFE.lunch.i + ' Lunch · Dhuhr' : LIFE.lunch.i + ' Lunch');
-      if (eff.rest) put(life, day, 13, life('rest'));
-      if (prayers) put(life, day, 16, LIFE.prayer.i + ' Asr');
-      if (prayers) put(life, day, 18, LIFE.prayer.i + ' Maghrib');
-      if (sports) {
-        var sh = req.bias === 'morning' ? (wake + 3 <= 11 ? wake + 3 : 17) : 17;
-        while (life[day + '_' + sh] && sh <= 21) sh++;
-        if (!life[day + '_' + sh]) put(life, day, sh, life('sports'));
+      var sh = firstFree(life, day, wake + 1); if (sh > -1) put(life, day, sh, life('shower'));
+      var br = firstFree(life, day, sh + 1, 11); if (br > -1) put(life, day, br, life('breakfast'));
+      var lu = firstFree(life, day, 12); if (lu > -1) put(life, day, lu, prayers ? LIFE.lunch.i + ' Lunch · Dhuhr' : LIFE.lunch.i + ' Lunch');
+      if (eff.rest) { var rs = firstFree(life, day, 13, 15); if (rs > -1) put(life, day, rs, life('rest')); }
+      if (prayers) {
+        var as = firstFree(life, day, 15, 17); if (as > -1) put(life, day, as, LIFE.prayer.i + ' Asr');
+        var mg = firstFree(life, day, 18, 19); if (mg > -1) put(life, day, mg, LIFE.prayer.i + ' Maghrib');
       }
-      var dH = 19; while (life[day + '_' + dH] && dH <= 21) dH++;
-      put(life, day, dH, prayers ? LIFE.dinner.i + ' Dinner · Isha' : LIFE.dinner.i + ' Dinner');
-      put(life, day, sleepH - 1, life('wind'));
+      if (sports) {
+        var sp = firstFree(life, day, (req.bias === 'morning' ? wake + 3 : 16), 18);
+        if (sp > -1) put(life, day, sp, life('sports'));
+      }
+      var dn = firstFree(life, day, 19, 21); if (dn > -1) put(life, day, dn, prayers ? LIFE.dinner.i + ' Dinner · Isha' : LIFE.dinner.i + ' Dinner');
+      var wn = firstFree(life, day, sleepH - 1); if (wn > -1) put(life, day, wn, life('wind'));
       if (sleepH <= 23) put(life, day, sleepH, life('sleep'));
     });
     return life;
   }
 
-  /* ---------- STUDY layer ---------- */
+  /* ---------- STUDY LAYER ---------- */
   function shuffle(a, seed) { var x = a.slice(), s = seed || 1;
     for (var i = x.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280;
       var j = Math.floor((s / 233280) * (i + 1)); var t = x[i]; x[i] = x[j]; x[j] = t; } return x; }
   function interleave(pool) {
     if (pool.length <= 1) return pool.slice();
-    var byCat = {}; pool.forEach(function (s) { var c = s.length > 12 ? 'lang' : (DIFFICULTY[s] >= 3 ? 'hard' : 'soft');
+    var byCat = {}; pool.forEach(function (s) { var c = (DIFFICULTY[s] || 2) >= 3 ? 'hard' : 'soft';
       (byCat[c] = byCat[c] || []).push(s); });
     var cats = Object.keys(byCat), out = [], guard = 0;
     while (out.length < pool.length && guard++ < 400) {
@@ -4703,13 +4711,23 @@ document.addEventListener('DOMContentLoaded', function() {
     var plan = {}, dayOf = {}, perSubject = {};
     days.forEach(function (day, di) {
       var free = ALL_HOURS.filter(function (h) { return !life[day + '_' + h]; });
-      var dayHours = shuffle(free, seed + di * 37).slice(0, target).sort();
+      /* slot preferences: "study in the morning" → prioritize morning free hours */
+      var pref = null;
+      if (/\bstudy\s+(?:in\s+the\s+)?morning\b/.test(' ' + req.raw.toLowerCase()) ) pref = 'morning';
+      if (/\bstudy\s+(?:in\s+the\s+|at\s+)?(?:evening|night)\b/.test(' ' + req.raw.toLowerCase())) pref = req.bias === 'morning' ? 'morning' : 'evening';
+      var ordered_ = free.slice().sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
+      if (pref === 'morning') ordered_.sort(function (a, b) { return parseInt(a,10) - parseInt(b,10); });
+      if (pref === 'evening') ordered_.sort(function (a, b) { return parseInt(b,10) - parseInt(a,10); });
+      var dayHours = shuffle(ordered_, seed + di * 37).slice(0, target)
+        .sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
       var si = 0; dayOf[day] = { hours: [], subjects: [] };
       ALL_HOURS.forEach(function (h) {
         var lk = day + '_' + h, v = null;
         if (life[lk]) v = life[lk];
         else if (dayHours.indexOf(h) !== -1) {
-          v = ordered[si % ordered.length]; si++;
+          /* daily rotation: every subject appears each day when pool is small */
+          v = (pool.length <= target) ? ordered[(si + di) % ordered.length] : ordered[si % ordered.length];
+          si++;
           perSubject[v] = (perSubject[v] || 0) + 1;
           dayOf[day].hours.push(h); dayOf[day].subjects.push(v);
         }
@@ -4726,6 +4744,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var warnings = [];
     if (studySessions === 0) warnings.push('⚠️ No study hours fit — widen the window (earlier wake / later sleep).');
     if (studySessions > 0 && studySessions < 3) warnings.push('ℹ️ Light plan — good for recovery days.');
+    if (lifeCount === 0) warnings.push('⚠️ No life blocks placed — check wake/sleep settings.');
     return { studySessions: studySessions, studyHours: (studySessions * result.sessionMin / 60).toFixed(1),
              lifeCount: lifeCount, perSubject: result.perSubject, warnings: warnings };
   }
@@ -4773,8 +4792,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var style = '';
         if (v) {
           if (life) {
-            var e = v.split(' ')[0];
-            var meta = null;
+            var e = v.split(' ')[0], meta = null;
             Object.keys(LIFE).forEach(function (k) { if (LIFE[k].i === e && !meta) meta = LIFE[k]; });
             var c = meta ? meta.c : '#7fb3d9';
             style = 'background:' + c + '22;border-color:' + c + '66;color:' + c + ';';
@@ -4788,6 +4806,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     html += '</div>';
     return html;
+  }
+  function renderTimeline(result) {
+    var h = '<div style="margin-top:.9rem;">';
+    h += '<div style="font:700 10.5px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.14em;color:var(--accent,#3fd2b0);margin-bottom:.5rem;">📋 Routine timeline (Monday-style, per selected day)</div>';
+    result.days.slice(0, 7).forEach(function (day) {
+      var rows = ALL_HOURS.filter(function (h2) { return result.plan[day + '_' + h2]; });
+      if (!rows.length) return;
+      h += '<div style="margin-bottom:.55rem;"><b style="font:700 12px var(--font,sans-serif);color:var(--ink,#edf2f7)">' + day + '</b>' +
+           '<div style="font:500 12px/1.7 var(--font,sans-serif);color:var(--muted,#8d9aa9);margin-top:.15rem">' +
+           rows.map(function (h2) { return '<span style="white-space:nowrap;display:inline-block;margin-right:.6rem"><b style="color:var(--ink-2,#cfd9e3)">' + h2 + '</b> ' + escH(result.plan[day + '_' + h2]) + '</span>'; }).join('') +
+           '</div></div>';
+    });
+    h += '</div>';
+    return h;
   }
   function renderLegend(result) {
     var h = '<div class="planner-legend">';
@@ -4817,7 +4849,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   function renderOutput(req, eff, result, an) {
     var output = document.getElementById('plannerAiOutput');
-    var html = renderDescription(req, eff, result) + renderAnalytics(an) + renderPreview(result) + renderLegend(result);
+    var html = '<div style="border:1px solid rgba(240,180,106,.35);background:rgba(240,180,106,.07);color:var(--warn,#f0b46a);border-radius:10px;padding:.6rem .9rem;margin-bottom:.8rem;font:600 12.5px var(--font,sans-serif);">🧪 TEST PREVIEW — nothing applied yet. Review the routine, then <b>Apply to Planner</b> (merge) or <b>Replace Planner</b> (wipe &amp; apply).</div>';
+    html += renderDescription(req, eff, result) + renderAnalytics(an) + renderPreview(result) + renderLegend(result) + renderTimeline(result);
     html += '<div class="planner-variants"><div class="pv-label">Try another style:</div>' +
       '<button class="pv-btn" data-variant="balanced">⚖️ Balanced</button>' +
       '<button class="pv-btn" data-variant="intense">🔥 Intense</button>' +
@@ -4834,6 +4867,7 @@ document.addEventListener('DOMContentLoaded', function() {
     output.querySelectorAll('.pv-btn').forEach(function (b) {
       b.addEventListener('click', function () {
         var freshReq = parseRequest(lastRequest);
+        var eff = readEff();
         var nr = buildPlan(freshReq, eff, variantPreset(this.dataset.variant));
         lastResult = nr; lastThree.push(nr); if (lastThree.length > 3) lastThree.shift();
         renderOutput(freshReq, eff, nr, analyze(nr));
@@ -4854,7 +4888,7 @@ document.addEventListener('DOMContentLoaded', function() {
     lastResult = prev; renderOutput(req, eff, prev, analyze(prev));
   }
 
-  /* ---------- AI sanitize + provider path ---------- */
+  /* ---------- provider AI path ---------- */
   function sanitizeAiPlan(raw) {
     try {
       var src = raw && raw.plan ? raw.plan : null;
@@ -4903,7 +4937,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var text = inputEl.value.trim();
     var eff = readEff();
     if (!text) {
-      output.innerHTML = '<div class="planner-ai-summary"><i class="ph ph-note-pencil"></i> Type what you want to plan — or click a chip above.</div>';
+      output.innerHTML = '<div class="planner-ai-summary"><i class="ph ph-note-pencil"></i> Type what you want to plan — or click a chip above. Tip: try "make a full daily routine with prayers and gym, sleep at 11".</div>';
       return;
     }
     lastRequest = text;
@@ -4918,12 +4952,14 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!st.configured) { local(); return undefined; }
       btn.disabled = true;
       return StudyHubAI.chat([
-        { role: 'system', content: 'You build full-day student ROUTINES that mix study with daily life. Reply with ONLY a JSON object {"plan": {"Mon_6:00": "⏰ Wake up", ...}}. ' +
-          'Rules: day keys Mon Tue Wed Thu Fri Sat Sun; hour keys whole hours "5:00" to "23:00". ' +
-          'INCLUDE daily-life blocks with emoji labels: wake up, shower, breakfast, lunch, dinner, rest/nap, sports/exercise, wind-down, sleep — plus the 5 Islamic prayers (Fajr, Dhuhr, Asr, Maghrib, Isha) ONLY if the user mentions praying. ' +
-          'Never overlap two activities on the same day+hour. Study blocks use short subject names (1-3 words). No markdown, no prose.' },
+        { role: 'system', content: 'You build full-day student ROUTINES that mix study with daily life, placed logically and chronologically. Reply with ONLY a JSON object {"plan": {"Mon_6:00": "⏰ Wake up · Fajr", ...}}. ' +
+          'Rules: day keys Mon Tue Wed Thu Fri Sat Sun; hour keys whole hours "5:00" to "23:00"; one activity per slot; never overlap. ' +
+          'INCLUDE life blocks with these emoji labels: ⏰ wake, 🚿 shower, 🍳 breakfast, 🍽️ lunch, 😌 rest/nap, 🕌 prayers (Fajr with wake, Dhuhr with lunch, Asr 15-17, Maghrib 18-19, Isha with dinner), 🏃 sports, 🛏️ wind-down, 😴 sleep — ' +
+          'but include prayers ONLY if the user mentions praying, and sports ONLY if mentioned or requested. ' +
+          'Chronology: wake → shower → breakfast → study → lunch → study/rest → Asr → study → sports → Maghrib → dinner+Isha → study → wind-down → sleep. ' +
+          'Place the hardest subjects in morning slots. Study blocks use short subject names (1-3 words). No markdown, no prose.' },
         { role: 'user', content: text.slice(0, 600) }
-      ], { jsonMode: true, maxTokens: 1400, temperature: 0.4, timeoutMs: 30000
+      ], { jsonMode: true, maxTokens: 1600, temperature: 0.4, timeoutMs: 30000
       }).then(function (res) {
         btn.disabled = false;
         var result = sanitizeAiPlan(StudyHubAI.parseJsonReply(res.text));
@@ -4957,7 +4993,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function () { toast.classList.remove('show'); setTimeout(function () { toast.remove(); }, 400); }, 2200);
   }
 
-  /* ---------- ENHANCED GRID (5:00–23:00, life cells styled) ---------- */
+  /* ---------- ENHANCED GRID ---------- */
   setupPlanner = function () {
     var grid = document.getElementById('plannerGrid');
     if (!grid) return;
@@ -4992,7 +5028,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderPlanner();
   };
 
-  /* ---------- CSS + SETTINGS INJECTION ---------- */
+  /* ---------- CSS + SETTINGS ---------- */
   var CSS =
     '.pln-settings{display:flex;gap:.9rem;flex-wrap:wrap;align-items:center;background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.14));border-radius:12px;padding:.65rem .9rem;margin-bottom:.8rem;font-size:.8rem;color:var(--muted,#8d9aa9)}' +
     '.pln-settings b{font:700 .68rem var(--font,sans-serif);text-transform:uppercase;letter-spacing:.1em;color:var(--faint,#7a8a9e);margin-right:.1rem}' +
