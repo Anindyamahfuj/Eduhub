@@ -555,7 +555,7 @@ var __EH_EN = {
   blocker_on:'Blocker On', blocker_off:'Blocker Off',
   trash_label:'Trash', switch_analog:'Switch to Analog', switch_digital:'Switch to Digital',
   ai_planner_title:'StudyHub AI Planner',
-  ai_planner_desc:'Describe what you want: the AI will plan it for you. Try "make a routine by yourself", "easy weekend plan", "intense exam week", or "3 hours today".',
+    ai_planner_desc:'Describe what you want — full daily routines now include wake-up, shower, meals, prayers (optional), sports, rest, wind-down and sleep around your study blocks. Try "make a full daily routine with prayers and gym" or "intense exam week, sleep at 11".',
   ai_planner_placeholder:'Type your request here...',
   generate_plan_btn:'Generate Plan',
   chip_auto:'Auto routine', chip_easy:'Easy', chip_exam:'Exam week', chip_weekend:'Weekend',
