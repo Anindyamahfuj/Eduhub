@@ -1,11 +1,10 @@
 /* =====================================================================
-   EDUHUB · Text Translator v2 — fast, reliable, working Swap
-   • Racing relay pairs (first valid wins) → ~1–2.5s typical
-   • REAL per-request timeouts (fixed from v1's dead AbortController)
-   • First-party MyMemory fallback (no relay needed — ad-blocker proof)
-   • Fixed Swap: flips languages correctly, re-translates from input
-   • Watchdog: UI can never hang. Cache: studyHubTextTr.v2
-   Console: EduTextTranslate.clear() · EduTextTranslate.debug()
+   EDUHUB · Text Translator v2.1 — functional polish
+   • Smart Swap: translates first if needed, flips languages correctly
+   • Complete Clear: also purges the cache entry for the current text
+   • NEW ↻ Refresh button: force re-translate, bypass cache
+   • Ctrl+Enter = instant translate · engine badge on cached results
+   Cache: studyHubTextTr.v2. Console: EduTextTranslate.clear()/debug()
    ===================================================================== */
 (function () {
   'use strict';
@@ -39,6 +38,9 @@
     '.tt-mini{background:transparent;border:1px solid var(--line,#2a3648);color:var(--muted,#8d9aa9);border-radius:8px;padding:.3rem .55rem;font:600 11.5px var(--font,inherit);cursor:pointer;white-space:nowrap;transition:all .15s}' +
     '.tt-mini:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
     '.tt-mini.ok{color:var(--accent,#3fd2b0);border-color:var(--accent,#3fd2b0)}' +
+    '.tt-mini.busy{pointer-events:none;opacity:.6}' +
+    '.tt-mini.busy i{display:inline-block;animation:ttSpin .8s linear infinite}' +
+    '@keyframes ttSpin{to{transform:rotate(360deg)}}' +
     '#ttIn{flex:1;min-height:170px;resize:vertical;background:transparent;border:none;outline:none;color:var(--ink,#edf2f7);font:500 14px/1.6 var(--font,inherit);padding:.8rem .9rem}' +
     '#ttOut{flex:1;min-height:170px;margin:0;padding:.8rem .9rem;font:500 14px/1.6 var(--font,inherit);color:var(--ink,#edf2f7);white-space:pre-wrap;word-break:break-word;overflow-y:auto}' +
     '.tt-foot{display:flex;align-items:center;justify-content:space-between;padding:.4rem .75rem .55rem;border-top:1px solid var(--line,rgba(148,163,184,.1))}' +
@@ -47,7 +49,6 @@
     '.tt-status{font:600 11px var(--font,inherit);color:var(--muted,#8d9aa9)}' +
     '.tt-status.err{color:var(--danger,#f0938c)}' +
     '.tt-status.work i{display:inline-block;animation:ttSpin .8s linear infinite}' +
-    '@keyframes ttSpin{to{transform:rotate(360deg)}}' +
     '.tt-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--faint,#7a8a9e);font-size:.85rem;text-align:center;padding:1rem;line-height:1.6}' +
     '.tt-out[lang]{unicode-bidi:plaintext}' +
     '@media (max-width:760px){ #ttCard .tt-grid{grid-template-columns:1fr} }';
@@ -77,13 +78,13 @@
     });
   }
 
-  /* ---------- engine 1: Google translate_a/single via racing relays ---------- */
+  /* ---------- engine 1: Google via racing relays ---------- */
   function parseGoogle(j) {
     if (!j || !Array.isArray(j) || !Array.isArray(j[0])) throw new Error('bad shape');
     var out = '';
     j[0].forEach(function (seg) { if (seg && typeof seg[0] === 'string') out += seg[0]; });
     if (!out.trim()) throw new Error('empty');
-    return { text: out, detected: typeof j[2] === 'string' ? j[2] : '' };
+    return { text: out, detected: typeof j[2] === 'string' ? j[2] : '', engine: 'Google' };
   }
   function viaRelays(text, target) {
     var gurl = 'https://translate.google.com/translate_a/single?client=gtx&sl=auto&tl=' +
@@ -113,8 +114,6 @@
 
   /* ---------- engine 2: MyMemory (first-party CORS — no relay) ---------- */
   function viaMyMemory(text, target) {
-    /* API wants source language; we don't know it → 'autodetect' via empty slug
-       MyMemory supports "Autodetect|target" source format */
     var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text.slice(0, 500)) +
               '&langpair=Autodetect|' + target;
     return fetchT(url, 8000).then(function (x) {
@@ -122,7 +121,7 @@
       var t = j && j.responseData && j.responseData.translatedText;
       if (!t) throw new Error('empty');
       if (/MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(t)) throw new Error('quota');
-      return { text: String(t), detected: '' };
+      return { text: String(t), detected: '', engine: 'MyMemory' };
     });
   }
 
@@ -134,8 +133,9 @@
   /* ---------- UI ---------- */
   var busy = false, timer = null;
 
+  function el(id) { return document.getElementById(id); }
   function setStatus(msg, cls) {
-    var s = document.getElementById('ttStatus'); if (!s) return;
+    var s = el('ttStatus'); if (!s) return;
     s.className = 'tt-status' + (cls ? ' ' + cls : '');
     s.innerHTML = msg;
   }
@@ -144,48 +144,56 @@
   }
   function keyOf(txt, tl) { return 'k|' + tl + '|' + txt; }
 
-  function doTranslate(force) {
-    var box = document.getElementById('ttIn'), out = document.getElementById('ttOut');
-    if (!box || !out) return;
+  function doTranslate(force, doneCb) {
+    var box = el('ttIn'), out = el('ttOut');
+    if (!box || !out) { if (doneCb) doneCb(false); return; }
     var raw = box.value, txt = raw.trim();
-    var tl = document.getElementById('ttTo').value;
-    var cnt = document.getElementById('ttCount');
+    var tl = el('ttTo').value;
+    var cnt = el('ttCount');
     if (cnt) { cnt.textContent = raw.length + ' / ' + MAX_CHARS;
                cnt.classList.toggle('over', raw.length > MAX_CHARS); }
 
     if (!txt) {
       out.innerHTML = '<div class="tt-empty">Translation appears here.<br>Type or paste text on the left.</div>';
       out.removeAttribute('lang'); out.removeAttribute('dir');
-      setStatus(''); return;
+      setStatus(''); if (doneCb) doneCb(false); return;
     }
-    if (raw.length > MAX_CHARS) { setStatus('Text too long — trim to ' + MAX_CHARS + ' characters.', 'err'); return; }
+    if (raw.length > MAX_CHARS) { setStatus('Text too long — trim to ' + MAX_CHARS + ' characters.', 'err'); if (doneCb) doneCb(false); return; }
 
     var key = keyOf(txt, tl);
     var c = loadCache();
     if (!force && c[key]) {
       out.textContent = c[key].text;
       out.lang = tl; out.dir = detectDir(c[key].text);
-      setStatus('Translated (cached)'); return;
+      setStatus('Translated (cached · ' + (c[key].engine || 'Google') + ')');
+      if (doneCb) doneCb(true); return;
     }
 
-    if (busy) return;
+    if (busy) { if (doneCb) doneCb(false); return; }
     busy = true;
+    var rbtn = el('ttRefreshBtn');
+    if (rbtn) { rbtn.classList.add('busy'); rbtn.innerHTML = '<i class="ph ph-arrow-clockwise"></i>'; }
     setStatus('<i class="ph ph-circle-notch"></i> Translating…', 'work');
     var wd = setTimeout(function () {
-      busy = false; spinNone();
-      setStatus('Taking too long — click Retry or edit the text.', 'err');
+      busy = false;
+      if (rbtn) { rbtn.classList.remove('busy'); rbtn.innerHTML = '↻'; }
+      setStatus('Taking too long — try again.', 'err');
+      if (doneCb) doneCb(false);
     }, WATCHDOG);
-    function spinNone(){ /* watchdog release; spinner lives in status text */ }
 
     translate(txt.slice(0, MAX_CHARS), tl).then(function (r) {
       clearTimeout(wd); busy = false;
+      if (rbtn) { rbtn.classList.remove('busy'); rbtn.innerHTML = '↻'; }
       out.textContent = r.text;
       out.lang = tl; out.dir = detectDir(r.text);
-      var cc = loadCache(); cc[key] = { text: r.text, t: Date.now() }; saveCache(cc);
-      setStatus(r.detected ? ('Detected: ' + r.detected.toUpperCase()) : 'Translated');
+      var cc = loadCache(); cc[key] = { text: r.text, t: Date.now(), engine: r.engine }; saveCache(cc);
+      setStatus((r.detected ? ('Detected: ' + r.detected.toUpperCase() + ' · ') : '') + r.engine);
+      if (doneCb) doneCb(true);
     }).catch(function () {
       clearTimeout(wd); busy = false;
+      if (rbtn) { rbtn.classList.remove('busy'); rbtn.innerHTML = '↻'; }
       setStatus('Translation failed — try again in a moment.', 'err');
+      if (doneCb) doneCb(false);
     });
   }
   function schedule() {
@@ -193,44 +201,87 @@
     timer = setTimeout(function () { doTranslate(false); }, DEBOUNCE);
   }
 
-  /* ---------- Swap (fixed): input = previous output, languages flip ---------- */
+  /* ---------- Swap: translates first if needed, flips languages ---------- */
   function swap() {
-    var box = document.getElementById('ttIn'), out = document.getElementById('ttOut');
-    var from = document.getElementById('ttFrom'), to = document.getElementById('ttTo');
+    var box = el('ttIn'), out = el('ttOut');
+    var from = el('ttFrom'), to = el('ttTo');
     if (!box || !out) return;
-    var translated = out.textContent.trim();
-    if (!translated) { setStatus('Nothing to swap — translate something first.', 'err'); return; }
 
-    /* determine the source language of what we just translated */
+    var translated = out.textContent.trim();
+    var input = box.value.trim();
+
+    /* CASE 1: nothing at all → nothing to do */
+    if (!translated && !input) { setStatus('Type or paste something first.', 'err'); return; }
+
+    /* CASE 2: no translation yet but text exists → translate, then swap on completion */
+    if (!translated) {
+      setStatus('<i class="ph ph-circle-notch"></i> Translating, then swapping…', 'work');
+      doTranslate(false, function (ok) {
+        if (ok) swap();       /* now the output exists — run the real swap */
+        else setStatus('Swap aborted — translation failed.', 'err');
+      });
+      return;
+    }
+
+    /* CASE 3: real swap — input becomes the old output, languages flip */
     var srcLang = from.value;
     if (srcLang === 'auto') {
-      var fromStatus = document.getElementById('ttStatus').textContent || '';
-      var m = fromStatus.match(/Detected:\s*([A-Za-z-]+)/i);
+      var stTxt = el('ttStatus').textContent || '';
+      var m = stTxt.match(/Detected:\s*([A-Za-z]{2}(?:-[A-Za-z]+)?)/i);
       if (m) {
-        var code = m[1].toUpperCase();
+        var code = m[1].toLowerCase();
         for (var i = 0; i < LANGS.length; i++) {
-          if (LANGS[i][0].toUpperCase().indexOf(code) === 0 || LANGS[i][0].split('-')[0].toUpperCase() === code) {
+          if (LANGS[i][0].toLowerCase() === code || LANGS[i][0].split('-')[0].toLowerCase() === code) {
             srcLang = LANGS[i][0]; break;
           }
         }
       }
-      if (srcLang === 'auto') srcLang = 'en';   /* sensible default */
+      if (srcLang === 'auto') srcLang = 'en';
     }
 
-    /* flip: input gets the translated text, target becomes the original source */
     box.value = translated;
-    var oldTarget = to.value;
     from.value = srcLang;
-    to.value = (srcLang === oldTarget) ? 'en' : srcLang;
-    if (to.value === from.value) to.value = 'en';
+    var newTarget = (srcLang === 'en') ? 'es' : 'en';   /* sensible default flip */
+    /* if the previous target differs from the new source, prefer it */
+    if (to.value !== srcLang && to.value !== 'auto') newTarget = to.value;
+    to.value = newTarget;
 
+    out.innerHTML = '<div class="tt-empty">Translating back…</div>';
     doTranslate(true);
+  }
+
+  /* ---------- Clear: input, output, status, AND this text's cache entry ---------- */
+  function clearAll() {
+    var box = el('ttIn'), out = el('ttOut');
+    var txt = box.value.trim(), tl = el('ttTo').value;
+    if (txt) {
+      var c = loadCache();
+      delete c[keyOf(txt, tl)];          /* force a FRESH translation next time */
+      saveCache(c);
+    }
+    box.value = '';
+    el('ttFrom').value = 'auto';
+    el('ttTo').value = 'en';
+    out.innerHTML = '<div class="tt-empty">Translation appears here.<br>Type or paste text on the left.</div>';
+    out.removeAttribute('lang'); out.removeAttribute('dir');
+    setStatus('Cleared — next translation will be fresh.');
     box.focus();
   }
 
+  /* ---------- Refresh: force re-translate, bypass cache ---------- */
+  function refresh() {
+    var box = el('ttIn');
+    if (!box.value.trim()) { setStatus('Type or paste text first, then refresh.', 'err'); return; }
+    /* purge this pair from cache so we get a genuinely fresh result */
+    var c = loadCache();
+    delete c[keyOf(box.value.trim(), el('ttTo').value)];
+    saveCache(c);
+    doTranslate(true);
+  }
+
   function copyOut() {
-    var out = document.getElementById('ttOut'); if (!out || !out.textContent.trim()) return;
-    var btn = document.getElementById('ttCopy');
+    var out = el('ttOut'); if (!out || !out.textContent.trim()) return;
+    var btn = el('ttCopy');
     function done(ok) {
       btn.textContent = ok ? '✓ Copied' : '✕ Failed'; btn.classList.add('ok');
       setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1500);
@@ -244,17 +295,10 @@
       ta.remove(); done(ok);
     }
   }
-  function clearAll() {
-    document.getElementById('ttIn').value = '';
-    document.getElementById('ttFrom').value = 'auto';
-    document.getElementById('ttTo').value = 'en';
-    doTranslate(false);
-    document.getElementById('ttIn').focus();
-  }
 
   function build() {
-    if (document.getElementById('ttCard')) return true;
-    var anchor = document.getElementById('ehNewsCard') || document.querySelector('.overview-strip');
+    if (el('ttCard')) return true;
+    var anchor = el('ehNewsCard') || document.querySelector('.overview-strip');
     if (!anchor) return false;
     var optsFrom = LANGS.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     var optsTo = LANGS.slice(1).map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
@@ -263,15 +307,18 @@
     sec.innerHTML =
       '<div class="card-title" style="display:flex;align-items:center;gap:.55rem;">' +
         '<span style="color:var(--accent,#3fd2b0)"><i class="ph ph-chat-circle-text" aria-hidden="true"></i></span> Text Translator' +
-        '<button class="tt-mini" id="ttSwapBtn" style="margin-left:auto" title="Swap: put the result back into the input and flip languages">⇄ Swap</button>' +
+        '<span style="margin-left:auto;display:inline-flex;gap:.4rem;">' +
+          '<button class="tt-mini" id="ttRefreshBtn" title="Force a fresh translation (bypasses cache)">↻ Refresh</button>' +
+          '<button class="tt-mini" id="ttSwapBtn" title="Swap: result becomes the input, languages flip">⇄ Swap</button>' +
+        '</span>' +
       '</div>' +
       '<div class="tt-grid">' +
         '<div class="tt-pane">' +
           '<div class="tt-head">' +
             '<select id="ttFrom" class="tt-lang" aria-label="From language">' + optsFrom + '</select>' +
-            '<button class="tt-mini" id="ttClearBtn" title="Clear">Clear</button>' +
+            '<button class="tt-mini" id="ttClearBtn" title="Clear text, output and this entry\'s cache">Clear</button>' +
           '</div>' +
-          '<textarea id="ttIn" placeholder="Type or paste text to translate…"></textarea>' +
+          '<textarea id="ttIn" placeholder="Type or paste text to translate…  (Ctrl+Enter = translate now)"></textarea>' +
           '<div class="tt-foot"><span class="tt-count" id="ttCount">0 / ' + MAX_CHARS + '</span>' +
             '<span class="tt-status" id="ttStatus"></span></div>' +
         '</div>' +
@@ -287,12 +334,16 @@
       '</div>';
     anchor.insertAdjacentElement('afterend', sec);
 
-    document.getElementById('ttIn').addEventListener('input', schedule);
-    document.getElementById('ttTo').addEventListener('change', function () { doTranslate(true); });
-    document.getElementById('ttFrom').addEventListener('change', function () { doTranslate(true); });
-    document.getElementById('ttCopy').addEventListener('click', copyOut);
-    document.getElementById('ttClearBtn').addEventListener('click', clearAll);
-    document.getElementById('ttSwapBtn').addEventListener('click', swap);
+    el('ttIn').addEventListener('input', schedule);
+    el('ttIn').addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); doTranslate(true); }
+    });
+    el('ttTo').addEventListener('change', function () { doTranslate(true); });
+    el('ttFrom').addEventListener('change', function () { doTranslate(true); });
+    el('ttCopy').addEventListener('click', copyOut);
+    el('ttClearBtn').addEventListener('click', clearAll);
+    el('ttSwapBtn').addEventListener('click', swap);
+    el('ttRefreshBtn').addEventListener('click', refresh);
     return true;
   }
   var tries = 0;
@@ -301,17 +352,13 @@
     setTimeout(boot, 400);
   })();
 
-  try { localStorage.removeItem('studyHubTextTr.v1'); } catch (e) {}   /* purge old cache */
-
   window.EduTextTranslate = {
     clear: function () { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} },
-    /* health check: EduTextTranslate.debug() → shows which engines answer */
     debug: function () {
-      var probe = 'hello';
       console.log('— Google via relays —');
       ['https://api.allorigins.win/raw?url=', 'https://api.codetabs.com/v1/proxy?quest=', 'https://corsproxy.io/?url=']
         .forEach(function (w) {
-          var u = w + encodeURIComponent('https://translate.google.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=' + probe);
+          var u = w + encodeURIComponent('https://translate.google.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=hello');
           fetchT(u, 7000).then(function (x) { console.log('✅ relay', x.length + ' bytes'); })
             .catch(function (e) { console.log('❌ relay', String(e && e.message || e)); });
         });
