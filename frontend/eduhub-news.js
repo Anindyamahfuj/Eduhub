@@ -1,17 +1,15 @@
 /* =====================================================================
-   EDUHUB · Daily Briefing v4 — 5-source, deeply deduped, 10-per-batch
-   • 5 sources per category (RSS + native APIs + Wikipedia + GDELT)
-   • Triple-layer dedup: URL → normalized title → fuzzy title match
-   • Batches of 10 · batches never repeat across the whole day
-   • Racing relays + watchdog (UI can never lock)
-   Cache: studyHubNews.v3 (v2 purged). Console: EduNews.debug()/state()
+   EDUHUB · Daily Briefing v5 — 5-source, deeply deduped, 10-per-batch
+   • v5: sports hardening — ESPN native API + Guardian RSS + plain GDELT
+   • Tab clicks always respond; late responses can't clobber other tabs
+   Cache: studyHubNews.v4 (v3 purged). Console: EduNews.debug()/state()
    ===================================================================== */
 (function () {
   'use strict';
   if (window.__EH_NEWS__) return;
   window.__EH_NEWS__ = true;
 
-  var CACHE_KEY = 'studyHubNews.v3', TAB_KEY = 'studyHubNewsTab';
+  var CACHE_KEY = 'studyHubNews.v4', TAB_KEY = 'studyHubNewsTab'; /* CHANGED: v4 */
   var PER_CAT = 10, MAX_BATCHES = 6, POOL_MAX = 90, WATCHDOG_MS = 16000;
 
   var GN = function (q) { return 'https://news.google.com/rss/search?q=' + encodeURIComponent(q + ' when:2d') + '&hl=en-US&gl=US&ceid=US:en'; };
@@ -32,11 +30,13 @@
                  { u: 'https://www.sciencedaily.com/rss/all.xml',    s: 'ScienceDaily' },
                  { u: GN('science research discovery'),              s: 'Google News' },
                  { u: 'https://rss.app/feeds/tmre0VtNNvyPuJLhn.xml', s: 'Nature Briefing' } ] },
+    /* CHANGED: 5th feed (Guardian), kept BBC/Sky/ESPN/Google News */
     sports:  { label: 'Sports',  icon: '⚽', feeds: [
                  { u: 'https://feeds.bbci.co.uk/sport/rss.xml',      s: 'BBC Sport' },
                  { u: 'https://www.skysports.com/rss/12040',         s: 'Sky Sports' },
                  { u: 'https://www.espn.com/espn/rss/news',          s: 'ESPN' },
-                 { u: GN('football OR cricket OR tennis'),           s: 'Google News' } ] }
+                 { u: 'https://www.theguardian.com/sport/rss',       s: 'The Guardian' },
+                 { u: GN('football OR cricket OR tennis OR NBA'),    s: 'Google News' } ] }
   };
   var HUE = { world: 'var(--accent,#3fd2b0)', tech: 'var(--info,#7fb3d9)', science: 'var(--brand,#7fe3c8)', sports: 'var(--ok,#5fd6a4)' };
 
@@ -63,15 +63,13 @@
     else if (text.length > 150) cut = cut.slice(0, cut.lastIndexOf(' ')) + '…';
     return cut;
   }
-  /* title normalization for dedup: lowercase, strip source suffixes & punctuation */
   function normTitle(t) {
     return String(t||'').toLowerCase()
-      .replace(/\s*-\s*(bbc|cnn|reuters|ap|al jazeera|espn|sky sports|the verge|techcrunch|engadget|ars technica|phys\.org|sciencedaily|google news).*$/i, '')
+      .replace(/\s*-\s*(bbc|cnn|reuters|ap|al jazeera|espn|sky sports|the guardian|the verge|techcrunch|engadget|ars technica|phys\.org|sciencedaily|google news).*$/i, '') /* CHANGED: + guardian */
       .replace(/[^a-z0-9 ]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
   }
-  /* token-based fuzzy signature: 5+ shared significant words = same story */
   function titleSig(t) {
     var words = normTitle(t).split(' ').filter(function (w) { return w.length > 3; });
     return words.sort().slice(0, 6).join('|');
@@ -324,6 +322,22 @@
       return out;
     });
   }
+  /* CHANGED: new — ESPN's public JSON API (direct, CORS-friendly, no proxy needed).
+     This is the sports equivalent of Wikipedia/HN/Spaceflight in the other tabs. */
+  function espnNews() {
+    return fetchT('https://site.api.espn.com/apis/site/v2/sports/news', 8000).then(function (x) {
+      var j = JSON.parse(x), out = [];
+      ((j && j.articles) || []).forEach(function (a) {
+        var link = a && a.links && a.links.web && a.links.web.href;
+        if (!a || !a.headline || !link || out.length >= 20) return;
+        var img = (a.images && a.images.length && a.images[0] && a.images[0].url) || '';
+        out.push({ t: String(a.headline).slice(0, 200), l: link, s: 'ESPN',
+                   d: Date.parse(a.published || a.lastModified) || 0, img: img });
+      });
+      if (!out.length) throw new Error('empty');
+      return out;
+    });
+  }
   function mix() {
     var out = [];
     for (var i = 0; i < arguments.length; i++)
@@ -345,9 +359,12 @@
       return Promise.all([ spaceNews(), gdelt('(NASA OR research OR climate OR discovery OR telescope)').catch(function(){return[];}) ])
         .then(function (r) { return mix(r[0], r[1]); });
     },
+    /* CHANGED: ESPN API added; GDELT query uses plain single-word ORs
+       (quoted phrases like "champions league" trip up the DOC API far more often) */
     sports: function () {
-      return Promise.all([ gdelt('(football OR cricket OR "champions league" OR olympics OR tennis OR "world cup" OR NBA)').catch(function(){return[];}) ])
-        .then(function (r) { return mix(r[0]); });
+      return Promise.all([ espnNews().catch(function(){return[];}),
+                           gdelt('(football OR soccer OR cricket OR tennis OR NBA OR Olympics OR championship)').catch(function(){return[];}) ])
+        .then(function (r) { return mix(r[0], r[1]); });
     }
   };
 
@@ -361,7 +378,6 @@
     return Promise.all(jobs.concat([extra])).then(function (arrs) {
       var merged = recencyTrim(dedupeAll(arrs).sort(byDate));
       if (merged.length >= 15) return merged;
-      /* still thin — GDELT top-up by category */
       var q = { world:'international news', tech:'technology news', science:'science news', sports:'sports news' }[cat];
       return gdelt(q).catch(function(){return [];}).then(function (more) {
         return recencyTrim(dedupeAll([merged, more]).sort(byDate));
@@ -376,10 +392,11 @@
   }
   var inFlight = {};
   function ensureEntry(cat, force) {
+    /* CHANGED: join an in-flight build even on force — no duplicate fetch storms */
+    if (inFlight[cat]) return inFlight[cat];
     var c = loadCache();
     if (!force && c[cat] && c[cat].date === today() && c[cat].batches && c[cat].batches.length)
       return Promise.resolve(c[cat]);
-    if (!force && inFlight[cat]) return inFlight[cat];
     var p = buildPool(cat).then(function (pool) {
       if (!pool.length) return staleEntry(cat);
       c = loadCache();
@@ -463,7 +480,7 @@
     e.batchIdx = e.batches.length - 1;
     saveCache(c);
     busy = false; spin(false);
-    render(cat, e);
+    if (curTab === cat) render(cat, e); /* CHANGED: only render the active tab */
   }
   function nextBatch(cat) {
     if (busy) return;
@@ -492,15 +509,16 @@
       var batch = fresh.slice(0, PER_CAT);
       if (batch.length >= 4) pushBatch(cat, batch, 'More stories');
       else {
-        busy = false; spin(false); saveCache(c); render(cat, e);
-        setMeta('Encore edition — fresh ' + cat + ' stories exhausted today');
+        busy = false; spin(false); saveCache(c);
+        if (curTab === cat) { render(cat, e); setMeta('Encore edition — fresh ' + cat + ' stories exhausted today'); }
       }
     }).catch(function () { clearTimeout(wd); busy = false; spin(false); });
   }
 
   /* ---------- goto: cache-first, SWR, watchdog ---------- */
+  /* CHANGED: a tab click can never be silently swallowed while busy.
+     Late responses only render if their tab is still active. */
   function goto(cat, force) {
-    if (busy) return;
     curTab = cat;
     try { localStorage.setItem(TAB_KEY, cat); } catch (e) {}
     document.querySelectorAll('.eh-nw-tab').forEach(function (b) {
@@ -508,12 +526,13 @@
     });
     var c = loadCache();
     var e = (c[cat] && c[cat].date === today() && c[cat].batches && c[cat].batches.length) ? c[cat] : null;
-    if (e && !force) { render(cat, e); return; }
+    if (e && !force) { busy = false; spin(false); render(cat, e); return; }
     var grid = document.getElementById('ehNewsGrid');
     if (e) render(cat, e);
     else if (grid) grid.innerHTML = skeleton();
     busy = true; spin(true);
     var wd = setTimeout(function () {
+      if (curTab !== cat) return;
       busy = false; spin(false);
       var cur = loadCache()[cat];
       if (cur && cur.batches && cur.batches.length) render(cat, cur);
@@ -521,9 +540,16 @@
     }, WATCHDOG_MS);
     ensureEntry(cat, force).then(function (ne) {
       clearTimeout(wd);
+      if (curTab !== cat) return;
       busy = false; spin(false);
       if (ne) render(cat, ne);
       else if (!e) renderMsg();
+    }).catch(function (err) {
+      console.warn('[News] build failed:', cat, err && err.message);
+      clearTimeout(wd);
+      if (curTab !== cat) return;
+      busy = false; spin(false);
+      if (!e) renderMsg();
     });
   }
 
@@ -575,6 +601,7 @@
   }
   (function boot() {
     try { localStorage.removeItem('studyHubNews.v2'); } catch (e) {}
+    try { localStorage.removeItem('studyHubNews.v3'); } catch (e) {} /* CHANGED: purge old cache */
     if (build()) return;
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
     else setTimeout(build, 500);
@@ -585,7 +612,7 @@
     else warm();
   })();
 
-  console.log('[News] engine v4 — 5 sources, triple dedup, 10-per-batch');
+  console.log('[News] engine v5 — sports hardening, 5 sources, triple dedup, 10-per-batch');
   window.EduNews = {
     refresh: function () { if (curTab) goto(curTab, true); },
     goto: goto, next: function () { if (curTab) nextBatch(curTab); },
