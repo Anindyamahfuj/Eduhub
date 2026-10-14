@@ -1,14 +1,14 @@
 /* =====================================================================
-   EDUHUB · Daily Briefing v6.1 — sports hotfix
+   EDUHUB · Daily Briefing v6.2 — corner popup widget
    ---------------------------------------------------------------------
-   • FIX (sports): tab could come back empty when CORS relays choked,
-     because sports was the only category without direct-API backup.
-     Now: 5 direct ESPN endpoints (general/soccer/NBA/NFL/cricket),
-     a Google News "Sports" topic feed, simplified GDELT query, and a
-     guaranteed fallback floor — the sports pool can no longer be empty.
-   • DIAGNOSE: console → EduNews.debug('sports') pings every source.
-   • UI/DOM contract unchanged: .glass-card#ehNewsCard after
-     .overview-strip, same IDs, same cache key (studyHubNews.v4).
+   • CHANGE (layout): no longer an in-flow section after .overview-strip.
+     Now a compact popup pinned to the TOP-LEFT corner:
+       – Launcher button (fixed, top-left) with live pulse badge
+       – Popup panel (~420px) with tabs, batch nav, hero + cards
+       – Closes via ✕ button, Esc key, or clicking outside
+   • Tweak position/size via POP_* constants in §1.
+   • Data engine unchanged: 5 ESPN endpoints + relays + GDELT,
+     triple dedup, cache studyHubNews.v4. EduNews.debug()/state() OK.
    ===================================================================== */
 (() => {
   'use strict';
@@ -23,9 +23,15 @@
   const PER_CAT     = 10;
   const MAX_BATCHES = 6;
   const POOL_MAX    = 90;
-  const WATCHDOG_MS = 22000;   /* FIX: raised — sports floor needs headroom */
+  const WATCHDOG_MS = 22000;
   const RELAY_MS    = 7000;
   const NATIVE_MS   = 8000;
+
+  /* ---- POPUP GEOMETRY (tweak these to reposition/resize) ---- */
+  const POP_TOP     = 12;                                   // px from top
+  const POP_LEFT    = 12;                                   // px from left
+  const POP_WIDTH   = 420;                                  // panel width (px)
+  const POP_MAXH    = 620;                                  // panel max height (px)
 
   const GN = (q) =>
     'https://news.google.com/rss/search?q=' + encodeURIComponent(q + ' when:2d') +
@@ -57,7 +63,6 @@
       { u: 'https://www.skysports.com/rss/12040',    s: 'Sky Sports' },
       { u: 'https://www.espn.com/espn/rss/news',     s: 'ESPN' },
       { u: 'https://www.theguardian.com/sport/rss',  s: 'The Guardian' },
-      /* FIX: dedicated Sports topic feed — plain RSS, no boolean query to fail */
       { u: 'https://news.google.com/rss/headlines/section/topic/SPORTS?hl=en-US&gl=US&ceid=US:en', s: 'Google News' },
     ]},
   };
@@ -162,59 +167,143 @@
   };
 
   /* ================================================================
-     3 · STYLES  (scoped under #ehNewsCard — unchanged from v6)
+     3 · STYLES  (popup widget — scoped, nothing leaks)
      ================================================================ */
   const CSS = `
-    #ehNewsCard .eh-nw-head{display:flex;align-items:center;justify-content:space-between;gap:.8rem}
-    #ehNewsCard .eh-nw-title{display:flex;align-items:center;gap:.55rem;font:700 .95rem/1 var(--font,inherit);color:var(--ink,#edf2f7)}
-    #ehNewsCard .eh-nw-title i{color:var(--accent,#3fd2b0);font-size:1.05rem}
-    #ehNewsCard #ehNewsMeta{font:600 .72rem var(--mono,monospace);color:var(--faint,#7a8a9e)}
-    #ehNewsCard #ehNewsRefresh{background:transparent;border:1px solid var(--line,rgba(148,163,184,.2));color:var(--muted,#8d9aa9);width:30px;height:30px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:.9rem;transition:color .15s,border-color .15s,transform .25s}
-    #ehNewsCard #ehNewsRefresh:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);transform:rotate(40deg)}
+    /* ---- launcher button (always visible, top-left) ---- */
+    #ehNewsLauncher{position:fixed;top:${POP_TOP}px;left:${POP_LEFT}px;z-index:100000;
+      width:46px;height:46px;border-radius:14px;cursor:pointer;padding:0;
+      display:grid;place-items:center;font-size:1.25rem;color:var(--accent,#3fd2b0);
+      background:var(--surface-2,rgba(20,28,38,.85));border:1px solid var(--line,rgba(148,163,184,.22));
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      box-shadow:0 8px 24px -8px rgba(0,0,0,.5);transition:transform .18s,border-color .18s,box-shadow .18s}
+    #ehNewsLauncher:hover{transform:translateY(-2px);border-color:var(--accent,#3fd2b0);box-shadow:0 12px 28px -8px rgba(0,0,0,.6)}
+    #ehNewsLauncher:focus-visible{outline:2px solid var(--accent,#3fd2b0);outline-offset:2px}
+    #ehNewsLauncher .eh-nw-pulse{position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;
+      background:var(--accent,#3fd2b0);border:2px solid var(--bg,#0d1420);opacity:0;pointer-events:none}
+    #ehNewsLauncher .eh-nw-pulse.on{opacity:1;animation:ehNwPulse 2s ease-out infinite}
+    @keyframes ehNwPulse{0%{box-shadow:0 0 0 0 rgba(63,210,176,.55)}70%{box-shadow:0 0 0 9px rgba(63,210,176,0)}100%{box-shadow:0 0 0 0 rgba(63,210,176,0)}}
+
+    /* ---- popup panel ---- */
+    #ehNewsCard{position:fixed;top:${POP_TOP + 54}px;left:${POP_LEFT}px;z-index:99999;
+      width:min(${POP_WIDTH}px,calc(100vw - 24px));max-height:min(${POP_MAXH}px,calc(100vh - ${POP_TOP + 66}px));
+      display:none;flex-direction:column;overflow:hidden;
+      border-radius:18px;border:1px solid var(--line,rgba(148,163,184,.2));
+      background:var(--bg-2,#111823);color:var(--ink,#edf2f7);
+      box-shadow:0 24px 64px -16px rgba(0,0,0,.65);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    #ehNewsCard.open{display:flex;animation:ehNwPop .22s cubic-bezier(.22,.61,.36,1)}
+    @keyframes ehNwPop{from{opacity:0;transform:translateY(-8px) scale(.98)}}
+    #ehNewsCard::before{content:'';position:absolute;top:-7px;left:16px;width:14px;height:14px;
+      transform:rotate(45deg);background:inherit;border-left:1px solid var(--line,rgba(148,163,184,.2));
+      border-top:1px solid var(--line,rgba(148,163,184,.2));border-radius:3px 0 0 0}
+
+    /* ---- panel header (fixed inside panel) ---- */
+    #ehNewsCard .eh-nw-head{flex:none;display:flex;align-items:center;gap:.55rem;
+      padding:.7rem .8rem .7rem .95rem;border-bottom:1px solid var(--line,rgba(148,163,184,.14))}
+    #ehNewsCard .eh-nw-title{display:flex;align-items:center;gap:.45rem;font:700 .88rem/1 var(--font,inherit);color:var(--ink,#edf2f7)}
+    #ehNewsCard .eh-nw-title i{color:var(--accent,#3fd2b0)}
+    #ehNewsCard #ehNewsMeta{margin-left:auto;font:600 .66rem var(--mono,monospace);color:var(--faint,#7a8a9e);white-space:nowrap}
+    #ehNewsCard .eh-nw-iconbtn{flex:none;background:transparent;border:1px solid var(--line,rgba(148,163,184,.2));
+      color:var(--muted,#8d9aa9);width:28px;height:28px;border-radius:8px;cursor:pointer;
+      display:grid;place-items:center;font-size:.8rem;transition:color .15s,border-color .15s}
+    #ehNewsCard .eh-nw-iconbtn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}
+    #ehNewsCard .eh-nw-iconbtn:focus-visible{outline:2px solid var(--accent,#3fd2b0);outline-offset:2px}
     #ehNewsCard #ehNewsRefresh.spin i{animation:ehNwSpin .8s linear infinite}
     @keyframes ehNwSpin{to{transform:rotate(360deg)}}
-    #ehNewsCard .eh-nw-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.25rem 0 1rem}
-    #ehNewsCard .eh-nw-tab{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.36rem .95rem;font:600 .76rem var(--font,inherit);cursor:pointer;transition:color .18s,border-color .18s,background .18s,transform .18s}
-    #ehNewsCard .eh-nw-tab:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);transform:translateY(-1px)}
+
+    /* ---- scrollable body ---- */
+    #ehNewsCard .eh-nw-scroll{overflow-y:auto;overscroll-behavior:contain;padding:.75rem .8rem .9rem}
+    #ehNewsCard .eh-nw-scroll::-webkit-scrollbar{width:8px}
+    #ehNewsCard .eh-nw-scroll::-webkit-scrollbar-thumb{background:var(--line,rgba(148,163,184,.25));border-radius:8px}
+
+    /* ---- tabs ---- */
+    #ehNewsCard .eh-nw-tabs{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.75rem}
+    #ehNewsCard .eh-nw-tab{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));
+      color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.28rem .8rem;
+      font:600 .72rem var(--font,inherit);cursor:pointer;
+      transition:color .18s,border-color .18s,background .18s}
+    #ehNewsCard .eh-nw-tab:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}
     #ehNewsCard .eh-nw-tab.on{background:var(--accent-soft,rgba(63,210,176,.12));border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}
-    #ehNewsCard .eh-nw-batches{display:flex;align-items:center;gap:.5rem;margin:-.15rem 0 1rem;flex-wrap:wrap}
-    #ehNewsCard .eh-nw-nav{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.36rem 1rem;font:600 .76rem var(--font,inherit);cursor:pointer;transition:color .18s,border-color .18s}
+    #ehNewsCard .eh-nw-tab:focus-visible{outline:2px solid var(--accent,#3fd2b0);outline-offset:2px}
+
+    /* ---- batch nav ---- */
+    #ehNewsCard .eh-nw-batches{display:flex;align-items:center;gap:.4rem;margin-bottom:.75rem}
+    #ehNewsCard .eh-nw-nav{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));
+      color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.28rem .8rem;
+      font:600 .7rem var(--font,inherit);cursor:pointer;transition:color .18s,border-color .18s}
     #ehNewsCard .eh-nw-nav:hover:not(:disabled){border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}
     #ehNewsCard .eh-nw-nav:disabled{opacity:.35;cursor:not-allowed}
-    #ehNewsCard .eh-nw-blabel{flex:1;min-width:120px;text-align:center;font:700 .72rem var(--font,inherit);text-transform:uppercase;letter-spacing:.12em;color:var(--muted,#8d9aa9)}
-    #ehNewsCard .eh-nw-tab:focus-visible,#ehNewsCard .eh-nw-nav:focus-visible,#ehNewsCard #ehNewsRefresh:focus-visible{outline:2px solid var(--accent,#3fd2b0);outline-offset:2px}
-    #ehNewsCard #ehNewsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.9rem}
-    #ehNewsCard .eh-nw-card{position:relative;display:flex;flex-direction:column;background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.13));border-radius:16px;overflow:hidden;text-decoration:none;transition:border-color .18s,transform .18s,box-shadow .18s;animation:ehNwIn .45s cubic-bezier(.22,.61,.36,1) backwards}
-    #ehNewsCard .eh-nw-card:hover{border-color:var(--accent,#3fd2b0);transform:translateY(-3px);box-shadow:0 14px 30px -16px rgba(0,0,0,.6)}
-    @keyframes ehNwIn{from{opacity:0;transform:translateY(10px)}}
-    #ehNewsCard .eh-nw-thumb{position:relative;display:block;aspect-ratio:16/9;background:var(--surface-3,rgba(148,163,184,.09));overflow:hidden}
-    #ehNewsCard .eh-nw-thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transform:scale(1.04);transition:opacity .45s ease,transform .6s ease}
+    #ehNewsCard .eh-nw-blabel{flex:1;text-align:center;font:700 .66rem var(--font,inherit);
+      text-transform:uppercase;letter-spacing:.1em;color:var(--muted,#8d9aa9);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    /* ---- grid: 2 compact columns inside the popup ---- */
+    #ehNewsCard #ehNewsGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}
+    @media (max-width:420px){#ehNewsCard #ehNewsGrid{grid-template-columns:1fr}}
+
+    /* ---- cards ---- */
+    #ehNewsCard .eh-nw-card{position:relative;display:flex;flex-direction:column;
+      background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.13));
+      border-radius:13px;overflow:hidden;text-decoration:none;
+      transition:border-color .18s,transform .18s;animation:ehNwIn .4s cubic-bezier(.22,.61,.36,1) backwards}
+    #ehNewsCard .eh-nw-card:hover{border-color:var(--accent,#3fd2b0);transform:translateY(-2px)}
+    @keyframes ehNwIn{from{opacity:0;transform:translateY(8px)}}
+    #ehNewsCard .eh-nw-thumb{position:relative;display:block;aspect-ratio:16/9;
+      background:var(--surface-3,rgba(148,163,184,.09));overflow:hidden}
+    #ehNewsCard .eh-nw-thumb img{width:100%;height:100%;object-fit:cover;display:block;
+      opacity:0;transform:scale(1.04);transition:opacity .4s ease,transform .5s ease}
     #ehNewsCard .eh-nw-thumb img.eh-loaded{opacity:1;transform:scale(1)}
-    #ehNewsCard .eh-nw-card:hover .eh-nw-thumb img.eh-loaded{transform:scale(1.06)}
-    #ehNewsCard .eh-nw-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 1.6rem var(--display,serif);color:var(--muted,#8d9aa9);background:radial-gradient(circle at 30% 25%,var(--surface-3,rgba(148,163,184,.14)),transparent 72%)}
+    #ehNewsCard .eh-nw-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font:700 1.3rem var(--display,serif);color:var(--muted,#8d9aa9);
+      background:radial-gradient(circle at 30% 25%,var(--surface-3,rgba(148,163,184,.14)),transparent 72%)}
+
+    /* ---- hero card ---- */
     #ehNewsCard .eh-nw-card.eh-hero{grid-column:1/-1;background:var(--surface-3,rgba(148,163,184,.08))}
-    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-thumb{aspect-ratio:16/7}
-    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,18,0) 38%,rgba(5,10,18,.82) 100%)}
-    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-body{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:1rem 1.15rem 1.05rem;gap:.35rem}
-    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-t{font-size:1.04rem;line-height:1.35;color:#fff;-webkit-line-clamp:2}
+    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-thumb{aspect-ratio:16/8}
+    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-thumb::after{content:'';position:absolute;inset:0;
+      background:linear-gradient(180deg,rgba(5,10,18,0) 35%,rgba(5,10,18,.85) 100%)}
+    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-body{position:absolute;left:0;right:0;bottom:0;z-index:2;
+      padding:.7rem .85rem .8rem;gap:.25rem}
+    #ehNewsCard .eh-nw-card.eh-hero .eh-nw-t{font-size:.9rem;line-height:1.35;color:#fff;-webkit-line-clamp:2}
     #ehNewsCard .eh-nw-card.eh-hero .eh-nw-src{color:rgba(255,255,255,.85)}
     #ehNewsCard .eh-nw-card.eh-hero .eh-nw-src em{color:rgba(255,255,255,.6)}
-    #ehNewsCard .eh-nw-chip{position:absolute;top:.75rem;left:.75rem;z-index:2;display:inline-flex;align-items:center;gap:.3rem;background:rgba(5,10,18,.55);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px);color:#fff;border-radius:var(--r-pill,999px);padding:.26rem .65rem;font:700 .6rem/1 var(--font,inherit);text-transform:uppercase;letter-spacing:.09em}
-    #ehNewsCard .eh-nw-chip i{font-size:.72rem;color:var(--accent,#3fd2b0)}
-    #ehNewsCard .eh-nw-body{display:flex;flex-direction:column;gap:.5rem;padding:.8rem .9rem .9rem;flex:1}
-    #ehNewsCard .eh-nw-src{display:flex;align-items:center;gap:.4rem;min-width:0;font:700 .66rem/1.2 var(--font,inherit);text-transform:uppercase;letter-spacing:.08em;color:var(--muted,#8d9aa9)}
-    #ehNewsCard .eh-nw-fav{width:15px;height:15px;border-radius:4px;flex:none;object-fit:cover;background:var(--surface-3,rgba(148,163,184,.14))}
+    #ehNewsCard .eh-nw-chip{position:absolute;top:.55rem;left:.55rem;z-index:2;display:inline-flex;align-items:center;gap:.25rem;
+      background:rgba(5,10,18,.55);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px);
+      color:#fff;border-radius:var(--r-pill,999px);padding:.2rem .55rem;
+      font:700 .56rem/1 var(--font,inherit);text-transform:uppercase;letter-spacing:.08em}
+    #ehNewsCard .eh-nw-chip i{font-size:.65rem;color:var(--accent,#3fd2b0)}
+
+    /* ---- card body ---- */
+    #ehNewsCard .eh-nw-body{display:flex;flex-direction:column;gap:.4rem;padding:.6rem .7rem .7rem;flex:1}
+    #ehNewsCard .eh-nw-src{display:flex;align-items:center;gap:.35rem;min-width:0;
+      font:700 .6rem/1.2 var(--font,inherit);text-transform:uppercase;letter-spacing:.07em;color:var(--muted,#8d9aa9)}
+    #ehNewsCard .eh-nw-fav{width:14px;height:14px;border-radius:4px;flex:none;object-fit:cover;
+      background:var(--surface-3,rgba(148,163,184,.14))}
     #ehNewsCard .eh-nw-dot{width:6px;height:6px;border-radius:50%;flex:none}
     #ehNewsCard .eh-nw-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    #ehNewsCard .eh-nw-src em{font-style:normal;flex:none;font:600 .66rem var(--mono,monospace);text-transform:none;letter-spacing:0;color:var(--faint,#7a8a9e)}
-    #ehNewsCard .eh-nw-t{font:600 .85rem/1.45 var(--font,inherit);color:var(--ink,#edf2f7);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-    #ehNewsCard .eh-nw-skel{border-radius:16px;border:1px solid var(--line,rgba(148,163,184,.1));overflow:hidden}
-    #ehNewsCard .eh-nw-skel i{display:block;aspect-ratio:16/9;background:linear-gradient(100deg,rgba(148,163,184,.06) 40%,rgba(148,163,184,.14) 50%,rgba(148,163,184,.06) 60%);background-size:200% 100%;animation:ehNwSh 1.1s linear infinite}
-    #ehNewsCard .eh-nw-skel b{display:block;height:.7rem;margin:.7rem .8rem;border-radius:6px;background:linear-gradient(100deg,rgba(148,163,184,.07) 40%,rgba(148,163,184,.15) 50%,rgba(148,163,184,.07) 60%);background-size:200% 100%;animation:ehNwSh 1.1s linear infinite}
-    #ehNewsCard .eh-nw-skel b+i{aspect-ratio:auto;height:.7rem;margin:0 .8rem .9rem;width:55%}
+    #ehNewsCard .eh-nw-src em{font-style:normal;flex:none;font:600 .6rem var(--mono,monospace);
+      text-transform:none;letter-spacing:0;color:var(--faint,#7a8a9e)}
+    #ehNewsCard .eh-nw-t{font:600 .78rem/1.4 var(--font,inherit);color:var(--ink,#edf2f7);
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+    /* ---- skeleton ---- */
+    #ehNewsCard .eh-nw-skel{border-radius:13px;border:1px solid var(--line,rgba(148,163,184,.1));overflow:hidden}
+    #ehNewsCard .eh-nw-skel i{display:block;aspect-ratio:16/9;
+      background:linear-gradient(100deg,rgba(148,163,184,.06) 40%,rgba(148,163,184,.14) 50%,rgba(148,163,184,.06) 60%);
+      background-size:200% 100%;animation:ehNwSh 1.1s linear infinite}
+    #ehNewsCard .eh-nw-skel b{display:block;height:.6rem;margin:.55rem .65rem;border-radius:5px;
+      background:linear-gradient(100deg,rgba(148,163,184,.07) 40%,rgba(148,163,184,.15) 50%,rgba(148,163,184,.07) 60%);
+      background-size:200% 100%;animation:ehNwSh 1.1s linear infinite}
+    #ehNewsCard .eh-nw-skel b+i{height:.6rem;margin:0 .65rem .7rem;width:55%}
     @keyframes ehNwSh{to{background-position:-200% 0}}
-    #ehNewsCard .eh-nw-msg{grid-column:1/-1;border:1px dashed var(--line-2,rgba(148,163,184,.25));border-radius:14px;padding:1.5rem;text-align:center;color:var(--muted,#8d9aa9);font-size:.85rem;line-height:1.6}
-    #ehNewsCard .eh-nw-msg button{margin-left:.5rem;background:transparent;border:1px solid var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);border-radius:8px;padding:.32rem .85rem;font:600 .78rem var(--font,inherit);cursor:pointer;transition:background .15s}
+
+    /* ---- messages ---- */
+    #ehNewsCard .eh-nw-msg{grid-column:1/-1;border:1px dashed var(--line-2,rgba(148,163,184,.25));
+      border-radius:12px;padding:1.1rem;text-align:center;color:var(--muted,#8d9aa9);font-size:.78rem;line-height:1.6}
+    #ehNewsCard .eh-nw-msg button{margin-left:.4rem;background:transparent;border:1px solid var(--accent,#3fd2b0);
+      color:var(--accent,#3fd2b0);border-radius:8px;padding:.25rem .7rem;
+      font:600 .72rem var(--font,inherit);cursor:pointer}
     #ehNewsCard .eh-nw-msg button:hover{background:var(--accent-soft,rgba(63,210,176,.12))}
   `;
   const style = document.createElement('style');
@@ -222,7 +311,7 @@
   document.head.appendChild(style);
 
   /* ================================================================
-     4 · FETCH LAYER
+     4 · FETCH LAYER  (unchanged)
      ================================================================ */
   function fetchT(url, ms) {
     return new Promise((resolve, reject) => {
@@ -330,7 +419,7 @@
   }
 
   /* ================================================================
-     5 · NATIVE SOURCES (direct CORS APIs — no proxy needed)
+     5 · NATIVE SOURCES  (unchanged, incl. sports ESPN chain)
      ================================================================ */
   function wikiITN() {
     const tryDay = (i) => {
@@ -437,10 +526,6 @@
     });
   }
 
-  /* ---- FIX: ESPN multi-endpoint chain — 5 direct, CORS-friendly APIs.
-     This is sports' relay-free safety net (like Wikipedia/HN/Spaceflight
-     for the other tabs). Even if every CORS relay dies, sports still
-     gets general + soccer + NBA + NFL + cricket stories. ---- */
   const ESPN_FEEDS = [
     ['news',                'ESPN'],
     ['soccer/eng.1/news',   'ESPN FC'],
@@ -480,7 +565,6 @@
     return out;
   };
 
-  /* FIX: per-category native endpoints for EduNews.debug() diagnostics */
   const NATIVE_PINGS = {
     world:   [['wikipedia', 'https://api.wikimedia.org/feed/v1/wikipedia/en/featured/' + utcDay(0)]],
     tech:    [['hn', 'https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20'],
@@ -491,7 +575,7 @@
   };
 
   /* ================================================================
-     6 · PER-CATEGORY DEEP BUILDS
+     6 · PER-CATEGORY DEEP BUILDS  (unchanged)
      ================================================================ */
   const EXTRA = {
     world: () =>
@@ -504,15 +588,12 @@
       Promise.all([spaceNews(), gdelt('(NASA OR research OR climate OR discovery OR telescope)').catch(() => [])])
         .then((r) => mix(r[0], r[1])),
     sports: () =>
-      /* FIX: full ESPN chain + simplified GDELT (4 OR terms max — the
-         old 7-term query was the most likely DOC-API rejection) */
       Promise.all([
         espnChain().catch(() => []),
         gdelt('(football OR soccer OR cricket OR tennis)').catch(() => []),
       ]).then((r) => mix(r[0], r[1])),
   };
 
-  /** Pool builder: relayed RSS + native extras → triple dedup → floor. */
   function buildPool(cat) {
     const conf = FEEDS[cat];
     const jobs = conf.feeds.map((f) =>
@@ -521,8 +602,6 @@
     return Promise.all(jobs.concat([extra])).then((arrs) => {
       const merged = recencyTrim(dedupeAll(arrs).sort(byDate));
       if (merged.length >= 15) return merged;
-      /* FIX: fallback floor — GDELT for everyone, PLUS the direct ESPN
-         chain again for sports, so a relay blackout can't empty it */
       return Promise.all([
         gdelt(FALLBACK_QUERIES[cat]).catch(() => []),
         (cat === 'sports' ? espnChain() : Promise.resolve([])).catch(() => []),
@@ -531,7 +610,7 @@
   }
 
   /* ================================================================
-     7 · CACHE MODEL
+     7 · CACHE MODEL  (unchanged)
      ================================================================ */
   function staleEntry(cat) {
     const c = loadCache();
@@ -563,13 +642,13 @@
   }
 
   /* ================================================================
-     8 · UI RENDERING  (unchanged from v6)
+     8 · UI RENDERING  (same logic, popup-aware)
      ================================================================ */
-  let curTab = null, busy = false;
+  let curTab = null, busy = false, isOpen = false, seenTs = 0;
 
   const skeleton = () => {
     let h = '';
-    for (let i = 0; i < 8; i++) h += '<div class="eh-nw-skel"><i></i><b></b><i></i></div>';
+    for (let i = 0; i < 6; i++) h += '<div class="eh-nw-skel"><i></i><b></b><i></i></div>';
     return h;
   };
 
@@ -577,7 +656,7 @@
     const hue = HUE[cat] || 'var(--accent,#3fd2b0)';
     return items.map((it, i) => {
       const hero = i === 0 && !!it.img;
-      const delay = Math.min(i, 8) * 40;
+      const delay = Math.min(i, 8) * 35;
       const host = hostOf(it.l);
       const favSrc = host ? FAVICON(host) : '';
       const fav = favSrc
@@ -626,8 +705,33 @@
     grid.innerHTML = items.length ? cardsHTML(items, cat) : '<div class="eh-nw-msg">📡 Nothing here yet.</div>';
   }
 
+  /* ---- popup open/close ---- */
+  function setOpen(open) {
+    isOpen = open;
+    const card = el('ehNewsCard'), pulse = el('ehNewsPulse');
+    if (card) {
+      card.classList.toggle('open', open);
+      card.setAttribute('aria-hidden', open ? 'false' : 'true');
+    }
+    if (pulse) pulse.classList.toggle('on', !open && !!freshBadge());
+    if (open) {
+      seenTs = Date.now();
+      try { localStorage.setItem('studyHubNewsSeen', String(seenTs)); } catch (e) {}
+      if (curTab) goto(curTab, false);
+      const closeBtn = el('ehNewsClose');
+      if (closeBtn) closeBtn.focus({ preventScroll: true });
+    }
+  }
+
+  const freshBadge = () => {
+    const c = loadCache();
+    let newest = 0;
+    Object.keys(c).forEach((k) => { if (c[k] && c[k].ts > newest) newest = c[k].ts; });
+    return newest > seenTs ? newest : 0;
+  };
+
   /* ================================================================
-     9 · NAVIGATION
+     9 · NAVIGATION  (unchanged)
      ================================================================ */
   function showIdx(cat, idx) {
     const c = loadCache(), e = c[cat];
@@ -647,7 +751,7 @@
     e.batchIdx = e.batches.length - 1;
     saveCache(c);
     busy = false; spin(false);
-    if (curTab === cat) render(cat, e);
+    if (curTab === cat && isOpen) render(cat, e);
   }
 
   function nextBatch(cat) {
@@ -663,7 +767,6 @@
 
     busy = true; spin(true);
     const wd = setTimeout(() => { busy = false; spin(false); }, WATCHDOG_MS);
-    /* FIX: encore also pulls the direct ESPN chain for sports */
     Promise.all([
       gdelt(FALLBACK_QUERIES[cat]).catch(() => []),
       (cat === 'sports' ? espnChain() : Promise.resolve([])).catch(() => []),
@@ -681,7 +784,7 @@
       if (batch.length >= 4) pushBatch(cat, batch, 'More stories');
       else {
         busy = false; spin(false); saveCache(c);
-        if (curTab === cat) { render(cat, e); setMeta('Encore edition — fresh ' + cat + ' stories exhausted today'); }
+        if (curTab === cat && isOpen) { render(cat, e); setMeta('Encore — fresh ' + cat + ' stories exhausted'); }
       }
     }).catch(() => { clearTimeout(wd); busy = false; spin(false); });
   }
@@ -692,8 +795,10 @@
     document.querySelectorAll('.eh-nw-tab').forEach((b) => {
       const on = b.dataset.cat === cat;
       b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
+
+    if (!isOpen) return;               /* popup closed → data still warms via ensureEntry below */
 
     const c = loadCache();
     const e = (c[cat] && c[cat].date === today() && c[cat].batches && c[cat].batches.length) ? c[cat] : null;
@@ -705,7 +810,7 @@
 
     busy = true; spin(true);
     const wd = setTimeout(() => {
-      if (curTab !== cat) return;
+      if (curTab !== cat || !isOpen) return;
       busy = false; spin(false);
       const cur = loadCache()[cat];
       if (cur && cur.batches && cur.batches.length) render(cat, cur);
@@ -714,65 +819,107 @@
 
     ensureEntry(cat, force).then((ne) => {
       clearTimeout(wd);
-      if (curTab !== cat) return;
+      if (curTab !== cat || !isOpen) return;
       busy = false; spin(false);
       if (ne) render(cat, ne);
       else if (!e) renderMsg();
     }).catch((err) => {
       console.warn('[News] build failed:', cat, err && err.message);
       clearTimeout(wd);
-      if (curTab !== cat) return;
+      if (curTab !== cat || !isOpen) return;
       busy = false; spin(false);
       if (!e) renderMsg();
     });
   }
 
   /* ================================================================
-     10 · BUILD + BOOT  (position unchanged)
+     10 · BUILD + BOOT  — popup widget appended to <body>
      ================================================================ */
   function build() {
     if (el('ehNewsCard')) return true;
-    const strip = document.querySelector('.overview-strip');
-    if (!strip) return false;
 
+    /* launcher */
+    const launch = document.createElement('button');
+    launch.id = 'ehNewsLauncher';
+    launch.type = 'button';
+    launch.title = 'Daily Briefing';
+    launch.setAttribute('aria-label', 'Open Daily Briefing');
+    launch.setAttribute('aria-expanded', 'false');
+    launch.innerHTML = '<i class="ph ph-newspaper" aria-hidden="true"></i>' +
+                       '<span class="eh-nw-pulse" id="ehNewsPulse"></span>';
+
+    /* popup panel */
     const sec = document.createElement('section');
-    sec.className = 'glass-card';
     sec.id = 'ehNewsCard';
+    sec.setAttribute('role', 'dialog');
+    sec.setAttribute('aria-label', 'Daily Briefing');
+    sec.setAttribute('aria-hidden', 'true');
     sec.innerHTML =
-      '<div class="card-title eh-nw-head">' +
+      '<div class="eh-nw-head">' +
         '<span class="eh-nw-title"><i class="ph ph-newspaper" aria-hidden="true"></i>Daily Briefing</span>' +
         '<span id="ehNewsMeta"></span>' +
-        '<button id="ehNewsRefresh" title="Refresh briefing" aria-label="Refresh briefing"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i></button>' +
+        '<button class="eh-nw-iconbtn" id="ehNewsRefresh" title="Refresh" aria-label="Refresh briefing"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i></button>' +
+        '<button class="eh-nw-iconbtn" id="ehNewsClose" title="Close" aria-label="Close briefing"><i class="ph ph-x" aria-hidden="true"></i></button>' +
       '</div>' +
-      '<div class="eh-nw-tabs" id="ehNewsTabs" role="tablist"></div>' +
-      '<div class="eh-nw-batches">' +
-        '<button class="eh-nw-nav" id="ehPrevBtn" type="button">‹ Prev</button>' +
-        '<span class="eh-nw-blabel" id="ehBatchLabel">Top stories</span>' +
-        '<button class="eh-nw-nav" id="ehNextBtn" type="button">Next batch ›</button>' +
-      '</div>' +
-      '<div id="ehNewsGrid" aria-live="polite"></div>';
-    strip.insertAdjacentElement('afterend', sec);
+      '<div class="eh-nw-scroll">' +
+        '<div class="eh-nw-tabs" id="ehNewsTabs" role="tablist"></div>' +
+        '<div class="eh-nw-batches">' +
+          '<button class="eh-nw-nav" id="ehPrevBtn" type="button">‹ Prev</button>' +
+          '<span class="eh-nw-blabel" id="ehBatchLabel">Top stories</span>' +
+          '<button class="eh-nw-nav" id="ehNextBtn" type="button">Next ›</button>' +
+        '</div>' +
+        '<div id="ehNewsGrid" aria-live="polite"></div>' +
+      '</div>';
 
+    document.body.appendChild(launch);
+    document.body.appendChild(sec);
+
+    /* tabs */
     const tabs = sec.querySelector('#ehNewsTabs');
     Object.keys(FEEDS).forEach((c) => {
       const b = document.createElement('button');
       b.className = 'eh-nw-tab'; b.type = 'button'; b.dataset.cat = c;
-      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false');
       b.textContent = FEEDS[c].icon + ' ' + FEEDS[c].label;
       b.addEventListener('click', () => goto(c, false));
       tabs.appendChild(b);
     });
 
+    /* wiring */
+    launch.addEventListener('click', () => {
+      setOpen(!isOpen);
+      launch.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+    el('ehNewsClose').addEventListener('click', () => setOpen(false));
     el('ehNewsRefresh').addEventListener('click', () => { if (curTab) goto(curTab, true); });
     el('ehPrevBtn').addEventListener('click', () => { if (curTab) prevBatch(curTab); });
     el('ehNextBtn').addEventListener('click', () => { if (curTab) nextBatch(curTab); });
+
+    /* close on Esc + outside click */
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && isOpen) setOpen(false);
+    });
+    document.addEventListener('click', (ev) => {
+      if (!isOpen) return;
+      if (ev.target.closest && (ev.target.closest('#ehNewsCard') || ev.target.closest('#ehNewsLauncher'))) return;
+      setOpen(false);
+    });
     document.addEventListener('click', (ev) => {
       if (ev.target.closest && ev.target.closest('[data-ehnw-retry]') && curTab) goto(curTab, true);
     });
 
+    /* restore seen-timestamp for the badge */
+    try { seenTs = parseInt(localStorage.getItem('studyHubNewsSeen') || '0', 10) || 0; } catch (e) {}
+
+    /* warm last-used tab in background (popup starts closed) */
     let saved = 'world';
     try { saved = localStorage.getItem(TAB_KEY) || 'world'; } catch (e) {}
-    goto(FEEDS[saved] ? saved : 'world', false);
+    curTab = FEEDS[saved] ? saved : 'world';
+    ensureEntry(curTab, false);
+    if (freshBadge()) {
+      const p = el('ehNewsPulse');
+      if (p) p.classList.add('on');
+    }
     return true;
   }
 
@@ -784,19 +931,14 @@
     else setTimeout(build, 500);
   })();
 
-  (function prefetch() {
-    const warm = () => {
-      try { const s = localStorage.getItem(TAB_KEY) || 'world'; ensureEntry(FEEDS[s] ? s : 'world', false); } catch (e) {}
-    };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', warm);
-    else warm();
-  })();
-
   /* ================================================================
-     11 · PUBLIC API
+     11 · PUBLIC API  (+ open/close helpers)
      ================================================================ */
-  console.log('[News] engine v6.1 — sports hotfix: 5 direct ESPN endpoints, Sports topic feed, floor retry');
+  console.log('[News] engine v6.2 — corner popup widget, ESPN×5 chain, triple dedup');
   window.EduNews = {
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+    toggle: () => setOpen(!isOpen),
     refresh: () => { if (curTab) goto(curTab, true); },
     goto: goto,
     next: () => { if (curTab) nextBatch(curTab); },
