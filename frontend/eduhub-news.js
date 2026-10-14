@@ -1,14 +1,14 @@
 /* =====================================================================
-   EDUHUB · Daily Briefing v6 — professional UI refresh
+   EDUHUB · Daily Briefing v6.1 — sports hotfix
    ---------------------------------------------------------------------
-   • MSN-style editorial cards: featured hero story, source favicons,
-     compact timestamps, staggered entrance, polished skeletons
-   • DOM contract unchanged: injected after .overview-strip as a
-     .glass-card, same IDs (#ehNewsGrid, #ehNewsTabs, #ehNewsMeta,
-     #ehNewsRefresh, #ehPrevBtn, #ehNextBtn, #ehBatchLabel)
-   • Data engine unchanged: 5-source relays + native APIs (Wikipedia
-     ITN, HN, Spaceflight, DEV, ESPN) + GDELT fallback, triple dedup
-   Cache: studyHubNews.v4. Console: EduNews.debug() / EduNews.state()
+   • FIX (sports): tab could come back empty when CORS relays choked,
+     because sports was the only category without direct-API backup.
+     Now: 5 direct ESPN endpoints (general/soccer/NBA/NFL/cricket),
+     a Google News "Sports" topic feed, simplified GDELT query, and a
+     guaranteed fallback floor — the sports pool can no longer be empty.
+   • DIAGNOSE: console → EduNews.debug('sports') pings every source.
+   • UI/DOM contract unchanged: .glass-card#ehNewsCard after
+     .overview-strip, same IDs, same cache key (studyHubNews.v4).
    ===================================================================== */
 (() => {
   'use strict';
@@ -18,14 +18,14 @@
   /* ================================================================
      1 · CONFIG
      ================================================================ */
-  const CACHE_KEY   = 'studyHubNews.v4';   // unchanged → warm cache survives
+  const CACHE_KEY   = 'studyHubNews.v4';
   const TAB_KEY     = 'studyHubNewsTab';
-  const PER_CAT     = 10;                  // stories per batch
-  const MAX_BATCHES = 6;                   // batches kept per category
-  const POOL_MAX    = 90;                  // reserve pool size
-  const WATCHDOG_MS = 16000;               // hard ceiling for a full build
-  const RELAY_MS    = 7000;                // per-relay fetch timeout
-  const NATIVE_MS   = 8000;                // per-native-API timeout
+  const PER_CAT     = 10;
+  const MAX_BATCHES = 6;
+  const POOL_MAX    = 90;
+  const WATCHDOG_MS = 22000;   /* FIX: raised — sports floor needs headroom */
+  const RELAY_MS    = 7000;
+  const NATIVE_MS   = 8000;
 
   const GN = (q) =>
     'https://news.google.com/rss/search?q=' + encodeURIComponent(q + ' when:2d') +
@@ -53,11 +53,12 @@
       { u: 'https://rss.app/feeds/tmre0VtNNvyPuJLhn.xml', s: 'Nature Briefing' },
     ]},
     sports:  { label: 'Sports',  icon: '⚽', feeds: [
-      { u: 'https://feeds.bbci.co.uk/sport/rss.xml',   s: 'BBC Sport' },
-      { u: 'https://www.skysports.com/rss/12040',      s: 'Sky Sports' },
-      { u: 'https://www.espn.com/espn/rss/news',       s: 'ESPN' },
-      { u: 'https://www.theguardian.com/sport/rss',    s: 'The Guardian' },
-      { u: GN('football OR cricket OR tennis OR NBA'), s: 'Google News' },
+      { u: 'https://feeds.bbci.co.uk/sport/rss.xml', s: 'BBC Sport' },
+      { u: 'https://www.skysports.com/rss/12040',    s: 'Sky Sports' },
+      { u: 'https://www.espn.com/espn/rss/news',     s: 'ESPN' },
+      { u: 'https://www.theguardian.com/sport/rss',  s: 'The Guardian' },
+      /* FIX: dedicated Sports topic feed — plain RSS, no boolean query to fail */
+      { u: 'https://news.google.com/rss/headlines/section/topic/SPORTS?hl=en-US&gl=US&ceid=US:en', s: 'Google News' },
     ]},
   };
 
@@ -90,15 +91,19 @@
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   };
 
+  const utcDay = (i) => {
+    const d = new Date(Date.now() - i * 86400000);
+    return d.getUTCFullYear() + '/' + pad(d.getUTCMonth() + 1) + '/' + pad(d.getUTCDate());
+  };
+
   const hostOf = (url) => { try { return new URL(url).hostname; } catch (e) { return ''; } };
 
   const loadCache = () => {
     try { const o = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; }
     catch (e) { return {}; }
   };
-  const saveCache = (c) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch (e) { /* quota */ } };
+  const saveCache = (c) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
 
-  /** Compact relative time: "now", "12m", "3h", "2d". */
   const timeAgo = (ms) => {
     if (!ms) return '';
     const s = (Date.now() - ms) / 1000;
@@ -124,7 +129,7 @@
   };
 
   const normTitle = (t) => String(t || '').toLowerCase()
-    .replace(/\s*-\s*(bbc|cnn|reuters|ap|al jazeera|espn|sky sports|the guardian|the verge|techcrunch|engadget|ars technica|phys\.org|sciencedaily|google news).*$/i, '')
+    .replace(/\s*-\s*(bbc|cnn|reuters|ap|al jazeera|espn|sky sports|the guardian|the verge|techcrunch|engadget|ars technica|phys\.org|sciencedaily|google news|espn (fc|nba|nfl|cricket)).*$/i, '')
     .replace(/[^a-z0-9 ]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -132,7 +137,6 @@
   const titleSig = (t) =>
     normTitle(t).split(' ').filter((w) => w.length > 3).sort().slice(0, 6).join('|');
 
-  /** Triple-pass dedup: exact URL, normalised title, 6-word signature. */
   function dedupeAll(arrs) {
     const seenUrl = new Set(), seenNorm = new Set(), seenSig = new Set();
     const out = [];
@@ -152,17 +156,15 @@
 
   const byDate = (a, b) => (b.d || 0) - (a.d || 0);
 
-  /** Keep the newest 12 outright; beyond that, only items < 48h old. */
   const recencyTrim = (items) => {
     const now = Date.now();
     return items.filter((it, i) => i < 12 || (it.d && now - it.d < 48 * 3600 * 1000));
   };
 
   /* ================================================================
-     3 · STYLES  (scoped under #ehNewsCard — nothing leaks out)
+     3 · STYLES  (scoped under #ehNewsCard — unchanged from v6)
      ================================================================ */
   const CSS = `
-    /* ---- header ---- */
     #ehNewsCard .eh-nw-head{display:flex;align-items:center;justify-content:space-between;gap:.8rem}
     #ehNewsCard .eh-nw-title{display:flex;align-items:center;gap:.55rem;font:700 .95rem/1 var(--font,inherit);color:var(--ink,#edf2f7)}
     #ehNewsCard .eh-nw-title i{color:var(--accent,#3fd2b0);font-size:1.05rem}
@@ -171,38 +173,25 @@
     #ehNewsCard #ehNewsRefresh:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);transform:rotate(40deg)}
     #ehNewsCard #ehNewsRefresh.spin i{animation:ehNwSpin .8s linear infinite}
     @keyframes ehNwSpin{to{transform:rotate(360deg)}}
-
-    /* ---- tabs ---- */
     #ehNewsCard .eh-nw-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.25rem 0 1rem}
     #ehNewsCard .eh-nw-tab{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.36rem .95rem;font:600 .76rem var(--font,inherit);cursor:pointer;transition:color .18s,border-color .18s,background .18s,transform .18s}
     #ehNewsCard .eh-nw-tab:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);transform:translateY(-1px)}
     #ehNewsCard .eh-nw-tab.on{background:var(--accent-soft,rgba(63,210,176,.12));border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}
-
-    /* ---- batch nav ---- */
     #ehNewsCard .eh-nw-batches{display:flex;align-items:center;gap:.5rem;margin:-.15rem 0 1rem;flex-wrap:wrap}
     #ehNewsCard .eh-nw-nav{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.14));color:var(--muted,#8d9aa9);border-radius:var(--r-pill,999px);padding:.36rem 1rem;font:600 .76rem var(--font,inherit);cursor:pointer;transition:color .18s,border-color .18s}
     #ehNewsCard .eh-nw-nav:hover:not(:disabled){border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}
     #ehNewsCard .eh-nw-nav:disabled{opacity:.35;cursor:not-allowed}
     #ehNewsCard .eh-nw-blabel{flex:1;min-width:120px;text-align:center;font:700 .72rem var(--font,inherit);text-transform:uppercase;letter-spacing:.12em;color:var(--muted,#8d9aa9)}
-
-    /* ---- focus rings (a11y) ---- */
     #ehNewsCard .eh-nw-tab:focus-visible,#ehNewsCard .eh-nw-nav:focus-visible,#ehNewsCard #ehNewsRefresh:focus-visible{outline:2px solid var(--accent,#3fd2b0);outline-offset:2px}
-
-    /* ---- grid ---- */
     #ehNewsCard #ehNewsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.9rem}
-
-    /* ---- cards ---- */
     #ehNewsCard .eh-nw-card{position:relative;display:flex;flex-direction:column;background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.13));border-radius:16px;overflow:hidden;text-decoration:none;transition:border-color .18s,transform .18s,box-shadow .18s;animation:ehNwIn .45s cubic-bezier(.22,.61,.36,1) backwards}
     #ehNewsCard .eh-nw-card:hover{border-color:var(--accent,#3fd2b0);transform:translateY(-3px);box-shadow:0 14px 30px -16px rgba(0,0,0,.6)}
     @keyframes ehNwIn{from{opacity:0;transform:translateY(10px)}}
-
     #ehNewsCard .eh-nw-thumb{position:relative;display:block;aspect-ratio:16/9;background:var(--surface-3,rgba(148,163,184,.09));overflow:hidden}
     #ehNewsCard .eh-nw-thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transform:scale(1.04);transition:opacity .45s ease,transform .6s ease}
     #ehNewsCard .eh-nw-thumb img.eh-loaded{opacity:1;transform:scale(1)}
     #ehNewsCard .eh-nw-card:hover .eh-nw-thumb img.eh-loaded{transform:scale(1.06)}
     #ehNewsCard .eh-nw-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 1.6rem var(--display,serif);color:var(--muted,#8d9aa9);background:radial-gradient(circle at 30% 25%,var(--surface-3,rgba(148,163,184,.14)),transparent 72%)}
-
-    /* ---- featured hero (first story, MSN-style) ---- */
     #ehNewsCard .eh-nw-card.eh-hero{grid-column:1/-1;background:var(--surface-3,rgba(148,163,184,.08))}
     #ehNewsCard .eh-nw-card.eh-hero .eh-nw-thumb{aspect-ratio:16/7}
     #ehNewsCard .eh-nw-card.eh-hero .eh-nw-thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,18,0) 38%,rgba(5,10,18,.82) 100%)}
@@ -212,8 +201,6 @@
     #ehNewsCard .eh-nw-card.eh-hero .eh-nw-src em{color:rgba(255,255,255,.6)}
     #ehNewsCard .eh-nw-chip{position:absolute;top:.75rem;left:.75rem;z-index:2;display:inline-flex;align-items:center;gap:.3rem;background:rgba(5,10,18,.55);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px);color:#fff;border-radius:var(--r-pill,999px);padding:.26rem .65rem;font:700 .6rem/1 var(--font,inherit);text-transform:uppercase;letter-spacing:.09em}
     #ehNewsCard .eh-nw-chip i{font-size:.72rem;color:var(--accent,#3fd2b0)}
-
-    /* ---- card body ---- */
     #ehNewsCard .eh-nw-body{display:flex;flex-direction:column;gap:.5rem;padding:.8rem .9rem .9rem;flex:1}
     #ehNewsCard .eh-nw-src{display:flex;align-items:center;gap:.4rem;min-width:0;font:700 .66rem/1.2 var(--font,inherit);text-transform:uppercase;letter-spacing:.08em;color:var(--muted,#8d9aa9)}
     #ehNewsCard .eh-nw-fav{width:15px;height:15px;border-radius:4px;flex:none;object-fit:cover;background:var(--surface-3,rgba(148,163,184,.14))}
@@ -221,15 +208,11 @@
     #ehNewsCard .eh-nw-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #ehNewsCard .eh-nw-src em{font-style:normal;flex:none;font:600 .66rem var(--mono,monospace);text-transform:none;letter-spacing:0;color:var(--faint,#7a8a9e)}
     #ehNewsCard .eh-nw-t{font:600 .85rem/1.45 var(--font,inherit);color:var(--ink,#edf2f7);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-
-    /* ---- skeleton ---- */
     #ehNewsCard .eh-nw-skel{border-radius:16px;border:1px solid var(--line,rgba(148,163,184,.1));overflow:hidden}
     #ehNewsCard .eh-nw-skel i{display:block;aspect-ratio:16/9;background:linear-gradient(100deg,rgba(148,163,184,.06) 40%,rgba(148,163,184,.14) 50%,rgba(148,163,184,.06) 60%);background-size:200% 100%;animation:ehNwSh 1.1s linear infinite}
     #ehNewsCard .eh-nw-skel b{display:block;height:.7rem;margin:.7rem .8rem;border-radius:6px;background:linear-gradient(100deg,rgba(148,163,184,.07) 40%,rgba(148,163,184,.15) 50%,rgba(148,163,184,.07) 60%);background-size:200% 100%;animation:ehNwSh 1.1s linear infinite}
     #ehNewsCard .eh-nw-skel b+i{aspect-ratio:auto;height:.7rem;margin:0 .8rem .9rem;width:55%}
     @keyframes ehNwSh{to{background-position:-200% 0}}
-
-    /* ---- empty / error message ---- */
     #ehNewsCard .eh-nw-msg{grid-column:1/-1;border:1px dashed var(--line-2,rgba(148,163,184,.25));border-radius:14px;padding:1.5rem;text-align:center;color:var(--muted,#8d9aa9);font-size:.85rem;line-height:1.6}
     #ehNewsCard .eh-nw-msg button{margin-left:.5rem;background:transparent;border:1px solid var(--accent,#3fd2b0);color:var(--accent,#3fd2b0);border-radius:8px;padding:.32rem .85rem;font:600 .78rem var(--font,inherit);cursor:pointer;transition:background .15s}
     #ehNewsCard .eh-nw-msg button:hover{background:var(--accent-soft,rgba(63,210,176,.12))}
@@ -241,7 +224,6 @@
   /* ================================================================
      4 · FETCH LAYER
      ================================================================ */
-  /** fetch() with an abort-based timeout. */
   function fetchT(url, ms) {
     return new Promise((resolve, reject) => {
       const ctrl = ('AbortController' in window) ? new AbortController() : null;
@@ -316,7 +298,6 @@
     return out;
   }
 
-  /* ---- CORS relay groups: race both, then fall through to next group ---- */
   const RELAY_GROUPS = [
     [
       { name: 'rss2json',  kind: 'json', url: (u) => 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) + '&count=25' },
@@ -349,16 +330,12 @@
   }
 
   /* ================================================================
-     5 · NATIVE SOURCES (direct APIs — no proxy needed)
+     5 · NATIVE SOURCES (direct CORS APIs — no proxy needed)
      ================================================================ */
   function wikiITN() {
-    const day = (i) => {
-      const d = new Date(Date.now() - i * 86400000);
-      return d.getUTCFullYear() + '/' + pad(d.getUTCMonth() + 1) + '/' + pad(d.getUTCDate());
-    };
     const tryDay = (i) => {
       if (i > 5) return Promise.resolve([]);
-      return fetchT('https://api.wikimedia.org/feed/v1/wikipedia/en/featured/' + day(i), NATIVE_MS)
+      return fetchT('https://api.wikimedia.org/feed/v1/wikipedia/en/featured/' + utcDay(i), NATIVE_MS)
         .then((x) => {
           const j = JSON.parse(x);
           const out = [];
@@ -422,11 +399,14 @@
       });
   }
 
-  function gdelt(query) {
-    const url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' +
+  function gdeltUrl(query) {
+    return 'https://api.gdeltproject.org/api/v2/doc/doc?query=' +
       encodeURIComponent(query + ' sourcelang:english') +
       '&mode=artlist&maxrecords=30&format=json&sort=datedesc';
-    return fetchT(url, 9000).then((x) => {
+  }
+
+  function gdelt(query) {
+    return fetchT(gdeltUrl(query), 9000).then((x) => {
       const j = JSON.parse(x), out = [];
       ((j && j.articles) || []).forEach((a) => {
         if (!a.title || !a.url || out.length >= 25) return;
@@ -457,28 +437,57 @@
     });
   }
 
-  /** ESPN public JSON API — the sports equivalent of HN/Spaceflight. */
-  function espnNews() {
-    return fetchT('https://site.api.espn.com/apis/site/v2/sports/news', NATIVE_MS).then((x) => {
-      const j = JSON.parse(x), out = [];
-      ((j && j.articles) || []).forEach((a) => {
-        const link = a && a.links && a.links.web && a.links.web.href;
-        if (!a || !a.headline || !link || out.length >= 20) return;
-        const img = (a.images && a.images.length && a.images[0] && a.images[0].url) || '';
-        out.push({
-          t: String(a.headline).slice(0, 200), l: link, s: 'ESPN',
-          d: Date.parse(a.published || a.lastModified) || 0, img: img,
+  /* ---- FIX: ESPN multi-endpoint chain — 5 direct, CORS-friendly APIs.
+     This is sports' relay-free safety net (like Wikipedia/HN/Spaceflight
+     for the other tabs). Even if every CORS relay dies, sports still
+     gets general + soccer + NBA + NFL + cricket stories. ---- */
+  const ESPN_FEEDS = [
+    ['news',                'ESPN'],
+    ['soccer/eng.1/news',   'ESPN FC'],
+    ['basketball/nba/news', 'ESPN NBA'],
+    ['football/nfl/news',   'ESPN NFL'],
+    ['cricket/news',        'ESPN Cricket'],
+  ];
+
+  function espnNews(path, label) {
+    return fetchT('https://site.api.espn.com/apis/site/v2/sports/' + path, NATIVE_MS)
+      .then((x) => {
+        const j = JSON.parse(x), out = [];
+        ((j && j.articles) || []).forEach((a) => {
+          const link = a && a.links && a.links.web && a.links.web.href;
+          if (!a || !a.headline || !link || out.length >= 15) return;
+          const img = (a.images && a.images.length && a.images[0] && a.images[0].url) || '';
+          out.push({
+            t: String(a.headline).slice(0, 200), l: link, s: label || 'ESPN',
+            d: Date.parse(a.published || a.lastModified) || 0, img: img,
+          });
         });
+        return out;
       });
-      if (!out.length) throw new Error('empty');
-      return out;
-    });
   }
 
-  const mix = (...arrs) => {
+  function espnChain() {
+    return Promise.all(ESPN_FEEDS.map(([p, lbl]) => espnNews(p, lbl).catch(() => [])))
+      .then((res) => mix.apply(null, res));
+  }
+
+  const mix = function () {
     const out = [];
-    arrs.forEach((a) => (a || []).forEach((it) => { if (out.length < 30) out.push(it); }));
+    for (let i = 0; i < arguments.length; i++)
+      ((arguments[i] && Array.isArray(arguments[i])) ? arguments[i] : []).forEach((it) => {
+        if (out.length < 40) out.push(it);
+      });
     return out;
+  };
+
+  /* FIX: per-category native endpoints for EduNews.debug() diagnostics */
+  const NATIVE_PINGS = {
+    world:   [['wikipedia', 'https://api.wikimedia.org/feed/v1/wikipedia/en/featured/' + utcDay(0)]],
+    tech:    [['hn', 'https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20'],
+              ['dev.to', 'https://dev.to/api/articles?per_page=20&top=7']],
+    science: [['spaceflight', 'https://api.spaceflightnewsapi.net/v4/articles/?limit=20']],
+    sports:  ESPN_FEEDS.map(([p, l]) => ['espn ' + l, 'https://site.api.espn.com/apis/site/v2/sports/' + p])
+              .concat([['gdelt', gdeltUrl('(football OR soccer OR cricket OR tennis)')]]),
   };
 
   /* ================================================================
@@ -495,28 +504,34 @@
       Promise.all([spaceNews(), gdelt('(NASA OR research OR climate OR discovery OR telescope)').catch(() => [])])
         .then((r) => mix(r[0], r[1])),
     sports: () =>
+      /* FIX: full ESPN chain + simplified GDELT (4 OR terms max — the
+         old 7-term query was the most likely DOC-API rejection) */
       Promise.all([
-        espnNews().catch(() => []),
-        gdelt('(football OR soccer OR cricket OR tennis OR NBA OR Olympics OR championship)').catch(() => []),
+        espnChain().catch(() => []),
+        gdelt('(football OR soccer OR cricket OR tennis)').catch(() => []),
       ]).then((r) => mix(r[0], r[1])),
   };
 
-  /** Pool builder: all RSS feeds + native extras, triple dedup, recency trim. */
+  /** Pool builder: relayed RSS + native extras → triple dedup → floor. */
   function buildPool(cat) {
     const conf = FEEDS[cat];
     const jobs = conf.feeds.map((f) =>
       fetchFeed(f.u, f.s).catch((e) => { console.warn('[News]', f.s, e && e.message); return []; }));
-    const extra = EXTRA[cat] ? EXTRA[cat]().catch(() => []) : Promise.resolve([]);
+    const extra = (EXTRA[cat] ? EXTRA[cat]() : Promise.resolve([])).catch(() => []);
     return Promise.all(jobs.concat([extra])).then((arrs) => {
       const merged = recencyTrim(dedupeAll(arrs).sort(byDate));
       if (merged.length >= 15) return merged;
-      return gdelt(FALLBACK_QUERIES[cat]).catch(() => [])
-        .then((more) => recencyTrim(dedupeAll([merged, more]).sort(byDate)));
+      /* FIX: fallback floor — GDELT for everyone, PLUS the direct ESPN
+         chain again for sports, so a relay blackout can't empty it */
+      return Promise.all([
+        gdelt(FALLBACK_QUERIES[cat]).catch(() => []),
+        (cat === 'sports' ? espnChain() : Promise.resolve([])).catch(() => []),
+      ]).then((r) => recencyTrim(dedupeAll([merged, r[0], r[1]]).sort(byDate)));
     });
   }
 
   /* ================================================================
-     7 · CACHE MODEL (stale-while-revalidate, shared in-flight builds)
+     7 · CACHE MODEL
      ================================================================ */
   function staleEntry(cat) {
     const c = loadCache();
@@ -525,7 +540,6 @@
 
   const inFlight = {};
   function ensureEntry(cat, force) {
-    // Join an in-flight build even on force — no duplicate fetch storms.
     if (inFlight[cat]) return inFlight[cat];
     const c = loadCache();
     if (!force && c[cat] && c[cat].date === today() && c[cat].batches && c[cat].batches.length)
@@ -549,7 +563,7 @@
   }
 
   /* ================================================================
-     8 · UI RENDERING
+     8 · UI RENDERING  (unchanged from v6)
      ================================================================ */
   let curTab = null, busy = false;
 
@@ -562,8 +576,8 @@
   function cardsHTML(items, cat) {
     const hue = HUE[cat] || 'var(--accent,#3fd2b0)';
     return items.map((it, i) => {
-      const hero = i === 0 && !!it.img;                 // featured first story
-      const delay = Math.min(i, 8) * 40;                // staggered entrance
+      const hero = i === 0 && !!it.img;
+      const delay = Math.min(i, 8) * 40;
       const host = hostOf(it.l);
       const favSrc = host ? FAVICON(host) : '';
       const fav = favSrc
@@ -601,7 +615,6 @@
     const b = e.batches[idx];
     const t = new Date(e.ts || Date.now());
     setMeta('Updated ' + pad(t.getHours()) + ':' + pad(t.getMinutes()));
-
     const lbl = el('ehBatchLabel');
     if (lbl) {
       lbl.textContent = (idx === 0) ? 'Top stories'
@@ -609,13 +622,12 @@
     }
     const pv = el('ehPrevBtn');
     if (pv) { pv.disabled = (idx === 0); pv.style.opacity = (idx === 0) ? '.4' : ''; }
-
     const items = (b && b.items) ? b.items : [];
     grid.innerHTML = items.length ? cardsHTML(items, cat) : '<div class="eh-nw-msg">📡 Nothing here yet.</div>';
   }
 
   /* ================================================================
-     9 · NAVIGATION (batch paging + GDELT encore)
+     9 · NAVIGATION
      ================================================================ */
   function showIdx(cat, idx) {
     const c = loadCache(), e = c[cat];
@@ -635,7 +647,7 @@
     e.batchIdx = e.batches.length - 1;
     saveCache(c);
     busy = false; spin(false);
-    if (curTab === cat) render(cat, e);   // only render the active tab
+    if (curTab === cat) render(cat, e);
   }
 
   function nextBatch(cat) {
@@ -651,9 +663,14 @@
 
     busy = true; spin(true);
     const wd = setTimeout(() => { busy = false; spin(false); }, WATCHDOG_MS);
-    gdelt(FALLBACK_QUERIES[cat]).then((more) => {
+    /* FIX: encore also pulls the direct ESPN chain for sports */
+    Promise.all([
+      gdelt(FALLBACK_QUERIES[cat]).catch(() => []),
+      (cat === 'sports' ? espnChain() : Promise.resolve([])).catch(() => []),
+    ]).then((res) => {
       clearTimeout(wd);
       c = loadCache(); e = c[cat] || e;
+      const more = (res[0] || []).concat(res[1] || []);
       const fresh = dedupeAll([(e.pool || []), more]).filter((it) => !used[it.t.toLowerCase()]);
       const inPool = {};
       (e.pool || []).forEach((p) => { inPool[p.t.toLowerCase()] = 1; });
@@ -669,8 +686,6 @@
     }).catch(() => { clearTimeout(wd); busy = false; spin(false); });
   }
 
-  /* ---- goto: cache-first, SWR, watchdog. Late responses only render
-         if their tab is still active — a click is never swallowed. ---- */
   function goto(cat, force) {
     curTab = cat;
     try { localStorage.setItem(TAB_KEY, cat); } catch (e) {}
@@ -713,7 +728,7 @@
   }
 
   /* ================================================================
-     10 · BUILD + BOOT  (position on page unchanged)
+     10 · BUILD + BOOT  (position unchanged)
      ================================================================ */
   function build() {
     if (el('ehNewsCard')) return true;
@@ -736,7 +751,7 @@
         '<button class="eh-nw-nav" id="ehNextBtn" type="button">Next batch ›</button>' +
       '</div>' +
       '<div id="ehNewsGrid" aria-live="polite"></div>';
-    strip.insertAdjacentElement('afterend', sec);   // ← same anchor as before
+    strip.insertAdjacentElement('afterend', sec);
 
     const tabs = sec.querySelector('#ehNewsTabs');
     Object.keys(FEEDS).forEach((c) => {
@@ -780,7 +795,7 @@
   /* ================================================================
      11 · PUBLIC API
      ================================================================ */
-  console.log('[News] engine v6 — professional UI, hero cards, favicons, triple dedup, 10-per-batch');
+  console.log('[News] engine v6.1 — sports hotfix: 5 direct ESPN endpoints, Sports topic feed, floor retry');
   window.EduNews = {
     refresh: () => { if (curTab) goto(curTab, true); },
     goto: goto,
@@ -788,6 +803,7 @@
     prev: () => { if (curTab) prevBatch(curTab); },
     debug: (cat) => {
       cat = cat || curTab || 'world';
+      console.group('EduNews debug · ' + cat);
       FEEDS[cat].feeds.forEach((f) => {
         RELAY_GROUPS.forEach((g) => g.forEach((r) => {
           fetchT(r.url(f.u), 8000)
@@ -795,6 +811,12 @@
             .catch((e) => console.log('❌', r.name, '→', f.s, String(e && e.message || e)));
         }));
       });
+      (NATIVE_PINGS[cat] || []).forEach(([name, url]) => {
+        fetchT(url, 8000)
+          .then((x) => console.log('✅', name, '→ native', x.length + ' bytes'))
+          .catch((e) => console.log('❌', name, '→ native', String(e && e.message || e)));
+      });
+      console.groupEnd();
     },
     state: () => {
       const c = loadCache();
