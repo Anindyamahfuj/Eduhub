@@ -1,121 +1,125 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StudyHub · Flashcards</title>
-    <meta name="description" content="Create and review flashcards with spaced repetition.">
-    <meta property="og:title" content="Flashcards — StudyHub">
-    <meta property="og:type" content="website">
-       <link rel="stylesheet" href="style.css" />
-<link rel="stylesheet" href="eduhub-ai.css">
-<link rel="stylesheet" href="eduhub-shortcuts.css">
-<link rel="stylesheet" href="eduhub-theme.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
-      <link rel="icon" type="image/x-icon" href="logoedu.png">
-    <style>.skip-link{position:absolute;top:-100%;left:0;background:var(--accent,#3fd2b0);color:#000;padding:.5rem 1rem;z-index:10000;font-weight:600;text-decoration:none;border-radius:0 0 var(--r-sm,6px) 0}.skip-link:focus{top:0}</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards - StudyHub</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-        <a href="#main-content" class="skip-link">Skip to content</a>
-        <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="nav-brand"><i class="ph ph-graduation-cap" aria-hidden="true"></i> <span class="brand-highlight">Study</span>Hub</a>
-            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu"><i class="ph ph-list" aria-hidden="true"></i></button>
-            <ul class="nav-links">
-                <li><a href="index.html" class="active"><i class="ph ph-squares-four" aria-hidden="true"></i> <span data-i18n="dash_title">Dashboard</span></a></li>
-                <li><a href="ai-tools.html"><i class="ph ph-robot" aria-hidden="true"></i> <span data-i18n="ai_tools">AI Tools</span></a></li>
-                <li><a href="calculator.html"><i class="ph ph-calculator" aria-hidden="true"></i> Calculator</a></li>
-                <li><a href="files.html"><i class="ph ph-folder-open" aria-hidden="true"></i> <span data-i18n="files">Files</span></a></li>
-                <li><a href="habits.html"><i class="ph ph-fire" aria-hidden="true"></i> <span data-i18n="habits">Habits</span></a></li>
-                <li><a href="notice.html"><i class="ph ph-megaphone" aria-hidden="true"></i> <span data-i18n="notice">Notice</span></a></li>
-                <li><a href="notes.html"><i class="ph ph-note-pencil" aria-hidden="true"></i> <span data-i18n="notes">Notes</span></a></li>
-                <li><a href="assignments.html"><i class="ph ph-clipboard-text" aria-hidden="true"></i> <span data-i18n="assignments">Assignments</span></a></li>
-                <li><a href="planner.html"><i class="ph ph-calendar-blank" aria-hidden="true"></i> <span data-i18n="planner">Planner</span></a></li>
-                <li><a href="flashcards.html"><i class="ph ph-cards" aria-hidden="true"></i> <span data-i18n="flashcards">Flashcards</span></a></li>
-                <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
-            </ul>
-            <div class="nav-right">
-               
-                <button id="trashBtn" class="focus-toggle"><i class="ph ph-trash" aria-hidden="true"></i> Trash (0)</button>
-               
-                <button id="focusToggle" class="focus-toggle"><i class="ph ph-lock-open" aria-hidden="true"></i> <span data-i18n="focus_off">Focus Off</span></button>
-            </div>
-        </div>
+  <header class="topbar">
+    <div class="brand">📚 StudyHub</div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="planner.html">Planner</a>
+      <a href="notes.html">Notes</a>
+      <a href="flashcards.html" class="active">Flashcards</a>
+      <a href="assignments.html">Assignments</a>
+      <a href="reading.html">Reading</a>
+      <a href="notice.html">Notice</a>
     </nav>
+    <button id="trashBtn" class="trash-btn" onclick="openTrash()">🗑️ Trash <span id="trashCount">0</span></button>
+  </header>
 
-    <main class="container" id="main-content">
-        <section class="clock-section mini-clock">
-            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle"><i class="ph ph-alarm" aria-hidden="true"></i> <span data-i18n="switch_analog">Switch to Analog</span></button></div>
-            <div class="clock-container">
-                <div id="digitalClock" class="digital-clock active">00:00:00</div>
-                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
-            </div>
-            <div class="clock-date" id="clockDate"></div>
+  <main class="container">
+    <h1>🃏 Flashcards</h1>
+    <p class="subtitle">Create decks, study with spaced repetition, and auto-generate from notes.</p>
 
-            <div class="calendar-widget">
-                <div class="calendar-compact">
-                    <div class="cal-day" id="calCompactDay">-</div>
-                    <div class="cal-date" id="calCompactDate">-</div>
-                    <div class="cal-month" id="calCompactMonth">-</div>
-                </div>
-                <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar"><i class="ph ph-calendar-blank" aria-hidden="true"></i></button>
-            </div>
-        </section>
-
-        <div class="calendar-modal" id="calendarModal" style="display:none;">
-            <div class="calendar-modal-content">
-                <div class="calendar-modal-header">
-                    <button id="calPrevYear" title="Previous year">«</button>
-                    <button id="calPrevMonth" title="Previous month">‹</button>
-                    <span id="calModalTitle">-</span>
-                    <button id="calNextMonth" title="Next month">›</button>
-                    <button id="calNextYear" title="Next year">»</button>
-                    <button id="calendarCloseBtn" class="cal-close-btn" title="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
-                </div>
-                <div class="calendar-grid" id="calendarGrid"></div>
-            </div>
+    <!-- Create Deck -->
+    <section class="card">
+      <h2>📂 Create New Deck</h2>
+      <form id="deckForm" onsubmit="return createDeck(event)">
+        <div class="form-row">
+          <input type="text" id="deckName" placeholder="Deck name (e.g., Biology Chapter 5) *" required>
+          <input type="text" id="deckSubject" placeholder="Subject (optional)">
+          <button type="submit" class="btn primary">➕ Create Deck</button>
         </div>
+      </form>
+    </section>
 
-        <header class="page-header">
-            <h1><span class="hl-orange"><i class="ph ph-cards" aria-hidden="true"></i></span> <span class="neon-text" data-i18n="flashcards">Flashcards</span></h1>
-            <p data-i18n="flashcards_subtitle">Spaced repetition, review due cards regularly.</p>
-        </header>
+    <!-- Auto-generate from Notes -->
+    <section class="card ai-card">
+      <h2>🤖 Auto-Generate Cards from Notes</h2>
+      <p class="hint">Paste your notes and let AI build flashcards for you:</p>
+      <textarea id="notesInput" placeholder="Paste your notes here..." rows="5"></textarea>
+      <div class="form-row">
+        <select id="targetDeck">
+          <option value="">— Select target deck —</option>
+        </select>
+        <button class="btn primary" onclick="autoGenerateFlashcards()">✨ Generate Cards</button>
+      </div>
+    </section>
 
-        <section class="glass-card">
-            <button id="addDeckBtn" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="new_deck">New Deck</span></button>
-            <button id="autoGenFlashcardsBtn" class="btn-primary ml-sm"><i class="ph ph-lightning" aria-hidden="true"></i> Auto‑Generate from Notes</button>
-        </section>
+    <!-- Add Card Manually -->
+    <section class="card">
+      <h2>➕ Add Card Manually</h2>
+      <form id="cardForm" onsubmit="return addFlashcard(event)">
+        <div class="form-row">
+          <select id="cardDeck" required>
+            <option value="">— Select deck —</option>
+          </select>
+        </div>
+        <textarea id="cardFront" placeholder="Front (question) *" rows="2" required></textarea>
+        <textarea id="cardBack" placeholder="Back (answer) *" rows="2" required></textarea>
+        <button type="submit" class="btn primary">➕ Add Card</button>
+      </form>
+    </section>
 
-        <section class="glass-card" id="flashcardList">
-            <div class="empty-state" id="flashcardEmpty">
-              <p>No flashcards yet. Create a deck or auto-generate from your notes.</p>
-            </div>
-        </section>
+    <!-- Decks List -->
+    <section class="card">
+      <h2>📚 Your Decks</h2>
+      <div id="deckList" class="deck-list">
+        <p class="empty-state">No decks yet. Create one above to get started!</p>
+      </div>
+    </section>
 
-        <section class="glass-card hidden" id="flashcardReview">
-            <div class="flashcard-review">
-                <div class="card-front" id="reviewFront"></div>
-                <div class="card-back" id="reviewBack"></div>
-                <p class="text-muted-sm mt-md"><span data-i18n="click_to_flip">Click card to flip.</span> <span data-i18n="rate_difficulty">Rate difficulty:</span></p>
-                <div class="flashcard-difficulty">
-                    <button data-diff="1"><span data-i18n="hard">Hard</span></button>
-                    <button data-diff="2"><span data-i18n="medium">Medium</span></button>
-                    <button data-diff="3"><span data-i18n="easy">Easy</span></button>
-                </div>
-            </div>
-        </section>
-    </main>
+    <!-- Review Mode -->
+    <section class="card review-card" id="reviewSection" style="display:none;">
+      <div class="card-header-row">
+        <h2>🔄 Review Mode</h2>
+        <button class="btn" onclick="exitReview()">✕ Exit</button>
+      </div>
+      <div class="review-info">
+        <span id="reviewDeckName"></span> · Card <span id="reviewCardNum">0</span> of <span id="reviewTotal">0</span>
+      </div>
+      <div id="flashcardReview" class="flashcard-review" onclick="flipCard()">
+        <div class="flashcard-face front" id="cardFront">Click "Start Review" to begin</div>
+        <div class="flashcard-face back" id="cardBack" style="display:none;"></div>
+      </div>
+      <div class="review-controls">
+        <button class="btn" onclick="prevCard()">⬅️ Previous</button>
+        <button class="btn primary" onclick="flipCard()">🔄 Flip</button>
+        <button class="btn" onclick="nextCard()">Next ➡️</button>
+      </div>
+      <div class="difficulty-row">
+        <p class="hint">How hard was this card? (Spaced repetition uses this)</p>
+        <button class="btn easy" data-diff="1" onclick="rateDifficulty(1)">🟢 Easy (1)</button>
+        <button class="btn medium" data-diff="2" onclick="rateDifficulty(2)">🟡 Medium (2)</button>
+        <button class="btn hard" data-diff="3" onclick="rateDifficulty(3)">🔴 Hard (3)</button>
+      </div>
+    </section>
+  </main>
 
-    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
-<script src="script.js"></script>
-<script src="eduhub-shortcuts.js"></script>
-<script src="eduhub-translate.js"></script>
-<script src="eduhub-ai.js"></script>
-<script src="eduhub-dock.js"></script>
-    <script src="eduhub-cinema.js"></script>
+  <!-- Trash Modal -->
+  <div id="trashModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🗑️ Trash</h2>
+        <button class="close-btn" onclick="closeTrash()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="trashList" class="trash-list">
+          <p class="empty-state">Trash is empty.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn danger" onclick="emptyTrash()">⚠️ Empty All Trash</button>
+        <button class="btn" onclick="closeTrash()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="eduhub-ai.js"></script>
 </body>
 </html>
