@@ -120,7 +120,9 @@ function getDefaultData() {
         deepWorkLogs: [],
         blockerOn: false,
         trash: [],
-        fileAnnotations: {}
+        fileAnnotations: {},
+        lists: [],
+        plannerUndoStack: []
     };
 }
 function loadData() {
@@ -834,16 +836,25 @@ function initPomodoro() {
     resetTimer();
 }
 
+
 // ================================================================
-// AI SUMMARIZER v2 — modes · length control · paragraph-aware
-// Brief / Standard / Detailed · bullet or paragraph output
-// chunked scoring for long docs · download · provider-first
+// AI SUMMARIZER v3 — real summarization, not word-picking
+//   • TextRank (sentence-similarity graph + PageRank) blended with
+//     TF weighting → picks sentences that REPRESENT the whole text
+//   • MMR redundancy removal → no two near-identical sentences
+//   • Smart TL;DR (best cental sentence, cleaned + compressed)
+//   • Clean keywords: real surface words + multi-word topics
+//     (no more broken stems like "#photosynthesi")
+//   • Modes Brief/Standard/Detailed · length slider · bullets/paragraph
+//   • Provider-AI path with strict JSON, offline engine always ready
 // ================================================================
 function setupSummarizer() {
   var btn = document.getElementById('summarizeBtn');
-  if (!btn) return;
+  if (!btn || btn.dataset.sumx3) return;
+  btn.dataset.sumx3 = '1';
   var input = document.getElementById('summarizeInput');
   var output = document.getElementById('summarizeOutput');
+  if (!input || !output) return;
 
   /* ---------- styles ---------- */
   if (!document.getElementById('sumxStyles')) {
@@ -880,11 +891,11 @@ function setupSummarizer() {
   var controls = document.createElement('div');
   controls.className = 'sumx-controls';
   controls.innerHTML =
-    '<button type="button" class="sumx-chip on" data-mode="brief">✦ Brief</button>' +
-    '<button type="button" class="sumx-chip" data-mode="standard">☰ Standard</button>' +
+    '<button type="button" class="sumx-chip" data-mode="brief">✦ Brief</button>' +
+    '<button type="button" class="sumx-chip on" data-mode="standard">☰ Standard</button>' +
     '<button type="button" class="sumx-chip" data-mode="detailed">≣ Detailed</button>' +
     '<span class="sumx-len">Length <input type="range" id="sumxLen" min="10" max="40" step="5" value="25"> <span id="sumxLenV">25%</span></span>' +
-    '<button type="button" class="sumx-chip" id="sumxFormat">¶ Paragraph</button>';
+    '<button type="button" class="sumx-chip" id="sumxFormat">• Bullets</button>';
   input.parentNode.insertBefore(controls, input.nextSibling);
   controls.querySelectorAll('.sumx-chip[data-mode]').forEach(function (c) {
     c.addEventListener('click', function () {
@@ -905,15 +916,32 @@ function setupSummarizer() {
 
   /* ---------- NLP engine ---------- */
   var STOP = {};
-  ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my no nor not of off on once only or other ought our out over own same she should so some such than that the their them then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your also may might must upon among within without across along etc via per'.split(' ')).forEach(function (w) { STOP[w] = 1; });
-  var CUE = /\b(in conclusion|in summary|the main|the key|important|significant|therefore|thus|hence|overall|essential|crucial|the point is|we (found|conclude|show)|this (shows|means|demonstrates))\b/i;
+  ('a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my no nor not of off on once only or other ought our out over own same she should so some such than that the their them then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your also may might must upon among within without across along etc via per often however although though yet still even much many one two three first second third new like get make made use used using'.split(' ')).forEach(function (w) { STOP[w] = 1; });
+  var CUE = /\b(in conclusion|in summary|the main|the key|important|significant|therefore|thus|hence|overall|essential|crucial|the point is|we (found|conclude|show)|this (shows|means|demonstrates)|research shows|studies show|plays a (key|critical|vital) role|is essential|is important)\b/i;
+
   function words(s) { return (String(s).toLowerCase().match(/[a-z][a-z'\-]*/g) || []); }
   function cw(s) { return words(s).filter(function (w) { return w.length > 2 && !STOP[w]; }); }
-  function stem(w) { return w.replace(/(ations?|itions?)$/, 'ate').replace(/(ing|ed|ly|es|s)$/, ''); }
-  function splitSentences(p) {
-    var x = p.replace(/\b(Mr|Mrs|Dr|vs|etc|e\.g|i\.e)\./gi, '$1\u0001');
-    return x.split(/(?<=[.!?])\s+/).map(function (s) { return s.replace(/\u0001/g, '.').trim(); }).filter(function (s) { return s.length > 2; });
+  /* light normalization for MATCHING only — displayed words stay intact */
+  function norm(w) {
+    if (/(ss|us|is|sis)$/.test(w)) return w;   /* never strip these endings */
+    return w
+      .replace(/ies$/, 'y')
+      .replace(/ves$/, 'f')
+      .replace(/s$/, '');
   }
+  function splitSentences(p) {
+    var x = p.replace(/\b(Mr|Mrs|Dr|Prof|vs|etc|e\.g|i\.e|Fig|No)\./gi, '$1\u0001');
+    x = x.replace(/(\d)\.(\d)/g, '$1\u0002$2');           /* decimals */
+    return x.split(/(?<=[.!?])\s+/).map(function (s) { return s.replace(/\u0001/g, '.').replace(/\u0002/g, '.').trim(); }).filter(function (s) { return s.length > 2; });
+  }
+  function tokenizeSet(s) { var m = {}; cw(s).forEach(function (w) { m[norm(w)] = 1; }); return m; }
+  function simTokens(a, b) {
+    var A = tokenizeSet(a), B = tokenizeSet(b), n = 0;
+    for (var k in A) if (B[k]) n++;
+    var la = Object.keys(A).length, lb = Object.keys(B).length;
+    return (la && lb) ? n / Math.sqrt(la * lb) : 0;       /* cosine-ish */
+  }
+
   function summarizeText(text) {
     var paras = String(text).replace(/\r/g, '').split(/\n{2,}/).map(function (p) { return p.trim(); }).filter(Boolean);
     if (!paras.length) paras = [String(text).trim()];
@@ -922,40 +950,134 @@ function setupSummarizer() {
       splitSentences(p).forEach(function (s, si) { sents.push({ s: s, p: pi, i: si }); });
     });
     if (!sents.length) return null;
-    var freq = {};
-    sents.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); freq[k] = (freq[k] || 0) + 1; }); });
-    var maxF = 1; Object.keys(freq).forEach(function (k) { if (freq[k] > maxF) maxF = freq[k]; });
-    sents.forEach(function (en, idx) {
-      var toks = cw(en.s).map(stem), wc = toks.length || 1, score = 0;
-      toks.forEach(function (w) { score += (freq[w] || 0) / maxF; });
-      score /= Math.sqrt(wc);
-      if (en.i === 0) score *= 1.35;                       /* paragraph-leading */
-      if (en.p === 0 && en.i === 0) score *= 1.2;          /* doc-leading */
-      if (CUE.test(en.s)) score *= 1.25;
-      var nums = (en.s.match(/\b\d+(\.\d+)?%?\b/g) || []).length;
-      score *= 1 + Math.min(0.25, nums * 0.05);
-      if (wc < 5) score *= 0.6; else if (wc > 45) score *= 0.85;
-      en.score = score; en.idx = idx;
+    if (sents.length === 1) return { sents: sents, top: sents.slice(), kws: cw(sents[0].s).slice(0, 4) };
+
+    /* word frequencies (normalized) + surface-form memory */
+    var freq = {}, surface = {};
+    sents.forEach(function (en) {
+      cw(en.s).forEach(function (w) {
+        var k = norm(w);
+        freq[k] = (freq[k] || 0) + 1;
+        if (!surface[k] || w.length > surface[k].length) surface[k] = w;
+      });
     });
+    var maxF = 1; Object.keys(freq).forEach(function (k) { if (freq[k] > maxF) maxF = freq[k]; });
+
+    /* TF score per sentence */
+    sents.forEach(function (en) {
+      var toks = cw(en.s).map(norm), wc = toks.length || 1, tf = 0;
+      toks.forEach(function (w) { tf += (freq[w] || 0) / maxF; });
+      en.tf = tf / Math.sqrt(wc);
+      en.set = tokenizeSet(en.s);
+      en.wc = wc;
+    });
+
+    /* TextRank: similarity graph + power iteration */
+    var N = sents.length, M = [];
+    for (var i = 0; i < N; i++) { M.push(new Array(N).fill(0)); }
+    for (i = 0; i < N; i++) {
+      for (var j = i + 1; j < N; j++) {
+        var ov = 0;
+        for (var k in sents[i].set) if (sents[j].set[k]) ov++;
+        if (ov) { var sc = ov / (Math.log(sents[i].wc + 1) + Math.log(sents[j].wc + 1)); M[i][j] = sc; M[j][i] = sc; }
+      }
+    }
+    var rank = [], base = 1 / N, D = 0.85;
+    for (i = 0; i < N; i++) rank.push(base);
+    for (var it = 0; it < 25; it++) {
+      var next = [], drip = 0;
+      for (i = 0; i < N; i++) {
+        var sum = 0;
+        for (j = 0; j < N; j++) if (M[j][i]) { var rowSum = 0; for (var k2 = 0; k2 < N; k2++) rowSum += M[j][k2]; sum += M[j][i] / rowSum * rank[j]; }
+        next.push((1 - D) * base + D * sum);
+      }
+      for (i = 0; i < N; i++) drip += Math.abs(next[i] - rank[i]);
+      rank = next;
+      if (drip < 1e-6) break;
+    }
+    var maxR = 1; rank.forEach(function (r) { if (r > maxR) maxR = r; });
+
+    /* combined score + bonuses */
+    sents.forEach(function (en, idx) {
+      var s = 0.6 * (rank[idx] / maxR) + 0.4 * en.tf;
+      if (en.i === 0) s *= 1.3;                                   /* paragraph lead */
+      if (en.p === 0 && en.i === 0) s *= 1.15;                    /* doc lead */
+      if (CUE.test(en.s)) s *= 1.2;
+      var nums = (en.s.match(/\b\d+(\.\d+)?%?\b/g) || []).length;
+      s *= 1 + Math.min(0.2, nums * 0.04);
+      if (en.wc < 5) s *= 0.5; else if (en.wc > 45) s *= 0.8;     /* too short / too long */
+      en.score = s; en.idx = idx;
+    });
+
+    /* target count per mode + slider */
     var target = Math.max(1, Math.min(14, Math.round(sents.length * (pct / 100))));
     if (mode === 'brief') target = Math.min(target, 2);
     if (mode === 'standard') target = Math.max(2, Math.min(target, 6));
     if (mode === 'detailed') target = Math.max(3, Math.min(target, 12));
-    var top = sents.slice().sort(function (a, b) { return b.score - a.score; }).slice(0, target);
-    top.sort(function (a, b) { return a.idx - b.idx; });
+    target = Math.min(target, sents.length);
+
+    /* MMR selection — relevance vs redundancy */
+    var selected = [], candidates = sents.slice().sort(function (a, b) { return b.score - a.score; });
+    var lambda = 0.72;
+    while (selected.length < target && candidates.length) {
+      var best = null, bestV = -Infinity;
+      candidates.forEach(function (c) {
+        var maxRed = 0;
+        selected.forEach(function (s) { var r = simTokens(c.s, s.s); if (r > maxRed) maxRed = r; });
+        var v = lambda * c.score - (1 - lambda) * maxRed;
+        if (v > bestV) { bestV = v; best = c; }
+      });
+      selected.push(best);
+      candidates.splice(candidates.indexOf(best), 1);
+    }
+    selected.sort(function (a, b) { return a.idx - b.idx; });
+
+    /* keywords: surface words + bigrams (never broken stems) */
     var kws = (function () {
-      var m = {};
-      sents.forEach(function (en) { cw(en.s).forEach(function (w) { var k = stem(w); m[k] = (m[k] || 0) + 1; }); });
-      return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).slice(0, 6);
+      var uni = {};
+      sents.forEach(function (en) {
+        var ws = cw(en.s);
+        ws.forEach(function (w) { var k = norm(w); uni[k] = (uni[k] || 0) + 1; });
+      });
+      var scored = Object.keys(uni).filter(function (k) { return uni[k] > 1; })
+        .map(function (k) { return { w: surface[k] || k, n: uni[k] }; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var big = {};
+      sents.forEach(function (en) {
+        var ws = cw(en.s), ns = ws.map(norm);
+        for (var q = 0; q < ns.length - 1; q++) {
+          if (STOP[ws[q]] || STOP[ws[q + 1]]) continue;
+          var key = ns[q] + ' ' + ns[q + 1];
+          big[key] = (big[key] || 0) + 1;
+          if (!surface[key]) surface[key] = ws[q] + ' ' + ws[q + 1];
+        }
+      });
+      var bigScored = Object.keys(big).filter(function (k) { return big[k] >= 2; })
+        .map(function (k) { return { w: surface[k] || k, n: big[k] * 2 }; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var out = [], seen = {};
+      bigScored.slice(0, 3).concat(scored).forEach(function (x) {
+        var lw = x.w.toLowerCase();
+        if (seen[lw]) return;
+        /* skip unigram already covered by a chosen bigram */
+        if (out.some(function (o) { return o.indexOf(lw) !== -1; })) return;
+        seen[lw] = 1; out.push(x.w);
+      });
+      return out.slice(0, 6);
     })();
-    return { sents: sents, top: top, kws: kws };
+
+    return { sents: sents, top: selected, kws: kws };
   }
+
+  /* sentence compression: strip lead-ins, fillers, parentheticals */
   function compress(s) {
     var out = String(s).trim()
-      .replace(/^(as (we|you|one) (can |could )?see,?\s*(that)?\s*|it (is|'s) (important|worth) (to note|noting) (that)?\s*|needless to say,?\s*|in other words,?\s*)/i, '')
-      .replace(/^(and|but|so|then|also|well|okay|basically|actually|literally|just)\b[,\s]+/i, '')
-      .replace(/\b(basically|actually|honestly|literally|really|very|quite|definitely|obviously|essentially)\s+/gi, '')
-      .replace(/\s{2,}/g, ' ').replace(/^[,;:\-\s]+/, '');
+      .replace(/\s*\([^)]{0,60}\)/g, function (m) { return m.length > 12 ? '' : m; })
+      .replace(/^(as (we|you|one) (can |could )?see,?\s*(that)?\s*|it (is|'s) (important|worth) (to note|noting) (that)?\s*|it should be noted that\s*|needless to say,?\s*|in other words,?\s*|in fact,?\s*|for example,?\s*)/i, '')
+      .replace(/^(and|but|so|then|also|well|okay|basically|actually|literally|just|moreover|furthermore|additionally|however)\b[,\s]+/i, '')
+      .replace(/\b(basically|actually|honestly|literally|really|very|quite|definitely|obviously|essentially|simply|truly)\s+/gi, '')
+      .replace(/\bthere (is|are)\b\s+/i, '')
+      .replace(/\s{2,}/g, ' ').replace(/^[,;:\-\s]+/, '').trim();
     if (!out) return '';
     if (!/[.!?…]$/.test(out)) out += '.';
     return out.charAt(0).toUpperCase() + out.slice(1);
@@ -1006,7 +1128,7 @@ function setupSummarizer() {
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
     });
   }
-  function escHtmlS(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  function escHtmlS(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
 
   btn.addEventListener('click', function () {
     var text = input.value.trim();
@@ -1035,7 +1157,7 @@ function setupSummarizer() {
     function offline() {
       var r = summarizeText(text);
       if (!r) return finish({ error: true }, '');
-      var tldr = compress(r.top.length ? r.top[0].s : text.slice(0, 140));
+      var tldr = compress(r.top.length ? r.top.reduce(function (a, b) { return (a.score > b.score ? a : b); }).s : text.slice(0, 140));
       var points = r.top.map(function (t) { return compress(t.s); })
         .filter(function (p) { return p && p.toLowerCase() !== tldr.toLowerCase(); });
       if (mode === 'brief') { tldr = compress((r.top[0] || { s: text.slice(0, 140) }).s); points = []; }
@@ -1048,8 +1170,8 @@ function setupSummarizer() {
       var modeSpec = mode === 'brief' ? 'a 1-2 sentence TL;DR only' :
         mode === 'detailed' ? 'a TL;DR plus 6 to 10 key points' : 'a TL;DR plus 3 to 5 key points';
       return StudyHubAI.chat([
-        { role: 'system', content: 'You summarize study material like an expert. Give ' + modeSpec +
-          '. Reply with ONLY a JSON object: {"tldr": string, "points": [short key-point strings], "keywords": [3 to 8 lowercase topic words]}. No markdown, no prose outside the JSON.' },
+        { role: 'system', content: 'You summarize study material like an expert. Rewrite ideas concisely in your own words instead of copying sentences. Give ' + modeSpec +
+          '. Reply with ONLY a JSON object: {"tldr": string, "points": [short key-point strings], "keywords": [3 to 8 lowercase topic words or short phrases]}. No markdown, no prose outside the JSON.' },
         { role: 'user', content: text.slice(0, 12000) }
       ], { jsonMode: true, maxTokens: mode === 'detailed' ? 1000 : 600, temperature: 0.3 }).then(function (res) {
         var j = StudyHubAI.parseJsonReply(res.text);
@@ -1063,7 +1185,6 @@ function setupSummarizer() {
     }).catch(function () { offline(); });
   });
 }
-
 // ================================================================
 // HABITS  (event-delegation — delete + complete work on every render)
 // ================================================================
@@ -1913,334 +2034,1681 @@ function setupSearch() {
     }
 }
 
+
 // ================================================================
-// ASSIGNMENTS
+// ASSIGNMENTS v2 — professional assignment tracker
+//   • Add / edit / complete / delete (delete → Trash, restorable)
+//   • "Delete forever" option (permanent, with confirm)
+//   • Filters: All · Pending · Done · overdue highlighting
+//   • Days-left badges · counts · clear-completed → Trash
+//   • Dashboard "upcoming" list stays in sync
 // ================================================================
 function setupAssignments() {
     var form = document.getElementById('assignmentForm');
     if (!form) return;
+
+    if (!document.getElementById('asV2Styles')) {
+        var stl = document.createElement('style');
+        stl.id = 'asV2Styles';
+        stl.textContent =
+            '.as-toolbar{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin-bottom:.9rem}' +
+            '.as-filter{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,#2a3648);color:var(--muted,#8d9aa9);border-radius:999px;padding:.32rem .85rem;font:600 12px var(--font,sans-serif);cursor:pointer;transition:all .15s}' +
+            '.as-filter b{color:var(--ink,#edf2f7)}' +
+            '.as-filter:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
+            '.as-filter.on{background:var(--accent-soft,rgba(63,210,176,.12));border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
+            '.as-mini{margin-left:auto;background:transparent;border:1px dashed var(--line,#2a3648);color:var(--muted,#8d9aa9);border-radius:8px;padding:.3rem .7rem;font:600 11.5px var(--font,sans-serif);cursor:pointer}' +
+            '.as-mini:hover{border-color:var(--warn,#f0b46a);color:var(--warn,#f0b46a)}' +
+            '.as-overdue-pill{background:rgba(252,165,165,.12);border:1px solid rgba(252,165,165,.4);color:#fca5a5;border-radius:999px;padding:.3rem .8rem;font:700 12px var(--font,sans-serif)}' +
+            '.assignment-item{display:flex;align-items:center;justify-content:space-between;gap:.7rem;flex-wrap:wrap;padding:.7rem .8rem;border-radius:12px;border:1px solid var(--line,rgba(148,163,184,.15));background:var(--surface-2,rgba(148,163,184,.04));margin-bottom:.55rem}' +
+            '.as-main{display:flex;align-items:center;gap:.55rem;min-width:0;flex-wrap:wrap}' +
+            '.as-check{display:flex;align-items:center;cursor:pointer}' +
+            '.as-check input{accent-color:var(--accent,#3fd2b0);width:16px;height:16px;cursor:pointer}' +
+            '.as-title{font:600 14px var(--font,sans-serif);color:var(--ink,#edf2f7)}' +
+            '.as-completed .as-title{opacity:.55;text-decoration:line-through}' +
+            '.as-editing{border-color:var(--accent,#3fd2b0)!important;box-shadow:0 0 0 2px var(--accent-soft,rgba(63,210,176,.15))}' +
+            '.as-due{font:700 11px var(--font,sans-serif);border-radius:999px;padding:.14rem .55rem;border:1px solid var(--line,rgba(148,163,184,.25));color:var(--muted,#8d9aa9);white-space:nowrap}' +
+            '.as-due.as-overdue{background:rgba(252,165,165,.12);border-color:rgba(252,165,165,.45);color:#fca5a5}' +
+            '.as-due.as-today{background:rgba(240,180,106,.12);border-color:rgba(240,180,106,.45);color:var(--warn,#f0b46a)}' +
+            '.as-due.as-soon{background:rgba(240,180,106,.08);border-color:rgba(240,180,106,.3);color:var(--warn,#f0b46a)}' +
+            '.as-due.as-done{background:rgba(99,230,190,.1);border-color:rgba(99,230,190,.35);color:#6ee7b7}' +
+            '.as-actions{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}' +
+            '.as-forever{background:transparent;border:1px solid transparent;color:var(--faint,#7a8a9e);border-radius:8px;padding:.35rem .5rem;font:600 11px var(--font,sans-serif);cursor:pointer;transition:all .15s}' +
+            '.as-forever:hover{color:var(--danger,#f0938c);border-color:rgba(240,147,140,.35)}';
+        document.head.appendChild(stl);
+    }
     var list = document.getElementById('assignmentList');
+    var editingId = null, filter = 'all';
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+    function todayStr() { return new Date().toISOString().slice(0, 10); }
+    function daysUntil(due) {
+        var d = new Date(due + 'T23:59:59'), now = new Date();
+        return Math.ceil((d - now) / 86400000);
+    }
+    function dueBadge(a) {
+        var n = daysUntil(a.due);
+        if (a.completed) return '<span class="as-due as-done">Done</span>';
+        if (n < 0) return '<span class="as-due as-overdue">Overdue ' + Math.abs(n) + 'd</span>';
+        if (n === 0) return '<span class="as-due as-today">Due today</span>';
+        if (n === 1) return '<span class="as-due as-soon">Due tomorrow</span>';
+        if (n <= 3) return '<span class="as-due as-soon">' + n + ' days left</span>';
+        return '<span class="as-due">' + a.due + '</span>';
+    }
 
     function renderAssignments() {
         var data = loadData();
-        if (data.assignments.length === 0) {
-            list.innerHTML = '<p class="empty-state">' + getTranslation('no_assignments') + '</p>';
-            return;
+        data.assignments = data.assignments || [];
+        if (editingId && !data.assignments.some(function (a) { return a.id === editingId; })) editingId = null;
+
+        var all = data.assignments.slice().sort(function (a, b) {
+            if (a.completed !== b.completed) return a.completed ? 1 : -1;
+            return new Date(a.due) - new Date(b.due);
+        });
+        var shown = all.filter(function (a) {
+            if (filter === 'pending') return !a.completed;
+            if (filter === 'done') return a.completed;
+            return true;
+        });
+
+        var pending = all.filter(function (a) { return !a.completed; }).length;
+        var overdue = all.filter(function (a) { return !a.completed && daysUntil(a.due) < 0; }).length;
+
+        /* toolbar */
+        var toolbar = '<div class="as-toolbar">' +
+            '<button class="as-filter' + (filter === 'all' ? ' on' : '') + '" data-filter="all">All <b>' + all.length + '</b></button>' +
+            '<button class="as-filter' + (filter === 'pending' ? ' on' : '') + '" data-filter="pending">Pending <b>' + pending + '</b></button>' +
+            '<button class="as-filter' + (filter === 'done' ? ' on' : '') + '" data-filter="done">Done <b>' + (all.length - pending) + '</b></button>' +
+            (overdue ? '<span class="as-overdue-pill">⚠ ' + overdue + ' overdue</span>' : '') +
+            (pending ? '<button id="asClearDone" class="as-mini">Clear completed → Trash</button>' : '') +
+            '</div>';
+
+        if (!shown.length) {
+            list.innerHTML = toolbar + '<p class="empty-state">' + (filter === 'all' ? getTranslation('no_assignments') : 'Nothing here — switch the filter.') + '</p>';
+        } else {
+            list.innerHTML = toolbar + shown.map(function (a) {
+                var tags = (a.tags && a.tags.length) ? '<span class="tags">#' + esc(a.subject) + a.tags.map(function (t) { return ' #' + esc(t); }).join('') + '</span>'
+                    : '<span class="tags">#' + esc(a.subject) + '</span>';
+                return '<div class="assignment-item priority-' + esc(a.priority) + (a.completed ? ' as-completed' : '') + (editingId === a.id ? ' as-editing' : '') + '">' +
+                    '<div class="as-main">' +
+                        '<label class="as-check"><input type="checkbox" data-toggle="' + a.id + '"' + (a.completed ? ' checked' : '') + '></label>' +
+                        '<span class="as-title">' + esc(a.title) + (a.completed ? ' <i class="ph ph-check-circle" aria-hidden="true"></i>' : '') + '</span>' +
+                        tags + dueBadge(a) +
+                    '</div>' +
+                    '<div class="as-actions">' +
+                        '<button class="btn-primary-sm" data-edit="' + a.id + '">✎ Edit</button>' +
+                        '<button class="btn-danger-sm" data-del="' + a.id + '">🗑 Trash</button>' +
+                        '<button class="as-forever" data-purge="' + a.id + '" title="Delete permanently">⌫ Forever</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
         }
 
-        list.innerHTML = data.assignments.sort(function(a, b) {
-            return new Date(a.due) - new Date(b.due);
-        }).map(function(a) {
-            return '<div class="assignment-item priority-' + a.priority + '"><div><span>' + escapeUserHtml(a.title) + '</span> <span class="tags">#' + escapeUserHtml(a.subject) + (a.tags ? a.tags.map(function(t) { return ' #' + escapeUserHtml(t); }).join('') : '') + '</span> ' + (a.completed ? '<i class="ph ph-check-circle" aria-hidden="true"></i>' : '') + '</div><div>' + a.due + ' <button class="btn-danger-sm" data-id="' + a.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + a.id + '" data-action="toggle">' + (a.completed ? 'Undo' : getTranslation('done')) + '</button></div></div>';
-        }).join('');
-
-        list.querySelectorAll('[data-id]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.dataset.id;
-                var action = this.dataset.action;
-                var data = loadData();
-                var idx = data.assignments.findIndex(function(a) { return a.id === id; });
-                if (idx === -1) return;
-                if (action === 'toggle') {
-                    data.assignments[idx].completed = !data.assignments[idx].completed;
-                } else {
-                    data.assignments.splice(idx, 1);
+        /* delegated events (survive every re-render) */
+        if (!list.dataset.asHooked) {
+            list.dataset.asHooked = '1';
+            list.addEventListener('click', function (e) {
+                var t = e.target;
+                var f = t.closest('[data-filter]');
+                if (f) { filter = f.dataset.filter; renderAssignments(); return; }
+                var cd = t.closest('#asClearDone');
+                if (cd) {
+                    var d1 = loadData();
+                    var done = d1.assignments.filter(function (a) { return a.completed; });
+                    if (!done.length) return;
+                    if (!confirm('Move ' + done.length + ' completed assignment(s) to the Trash?')) return;
+                    done.forEach(function (a) { if (typeof pushToTrash === 'function') pushToTrash(d1, 'assignment', a, a.title); });
+                    d1.assignments = d1.assignments.filter(function (a) { return !a.completed; });
+                    if (typeof addActivity === 'function') addActivity(d1, 'assignment', 'Moved ' + done.length + ' completed assignment(s) to Trash');
+                    saveData(d1); updateTrashCount(); renderAssignments();
+                    if (typeof renderDashboard === 'function' && document.getElementById('upcomingAssignments')) renderDashboard();
+                    if (typeof window.__ehToast === 'function') window.__ehToast(done.length + ' assignment(s) moved to Trash');
+                    return;
                 }
-                addActivity(data, 'assignment', 'Updated assignment');
+                var ed = t.closest('[data-edit]');
+                if (ed) {
+                    var d2 = loadData();
+                    var a2 = d2.assignments.find(function (x) { return x.id === ed.dataset.edit; });
+                    if (!a2) return;
+                    editingId = (editingId === a2.id) ? null : a2.id;
+                    if (editingId) {
+                        document.getElementById('assignTitle').value = a2.title;
+                        document.getElementById('assignSubject').value = a2.subject;
+                        document.getElementById('assignDue').value = a2.due;
+                        document.getElementById('assignPriority').value = a2.priority || 'medium';
+                        document.getElementById('assignTags').value = (a2.tags || []).join(', ');
+                        var sub = form.querySelector('button[type=submit]');
+                        if (sub) sub.textContent = '💾 Update';
+                        if (document.getElementById('assignTitle').scrollIntoView) document.getElementById('assignTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        form.reset();
+                        var sub2 = form.querySelector('button[type=submit]');
+                        if (sub2) sub2.textContent = '➕ Add';
+                    }
+                    renderAssignments();
+                    return;
+                }
+                var del = t.closest('[data-del]');
+                if (del) {
+                    var d3 = loadData();
+                    var a3 = d3.assignments.find(function (x) { return x.id === del.dataset.del; });
+                    if (!a3) return;
+                    if (!confirm('Move "' + a3.title + '" to the Trash?')) return;
+                    if (typeof pushToTrash === 'function') pushToTrash(d3, 'assignment', a3, a3.title);
+                    d3.assignments = d3.assignments.filter(function (x) { return x.id !== a3.id; });
+                    if (typeof addActivity === 'function') addActivity(d3, 'delete', 'Moved assignment "' + a3.title + '" to Trash');
+                    saveData(d3); updateTrashCount(); renderAssignments();
+                    if (typeof renderDashboard === 'function' && document.getElementById('upcomingAssignments')) renderDashboard();
+                    if (typeof window.__ehToast === 'function') window.__ehToast('Assignment moved to Trash');
+                    return;
+                }
+                var pur = t.closest('[data-purge]');
+                if (pur) {
+                    var d4 = loadData();
+                    var a4 = d4.assignments.find(function (x) { return x.id === pur.dataset.purge; });
+                    if (!a4) return;
+                    if (!confirm('Permanently delete "' + a4.title + '"?\nThis cannot be undone.')) return;
+                    window.__TRASH_BYPASS__ = true;
+                    try {
+                        d4.assignments = d4.assignments.filter(function (x) { return x.id !== a4.id; });
+                        if (typeof addActivity === 'function') addActivity(d4, 'delete', 'Permanently deleted assignment "' + a4.title + '"');
+                        saveData(d4);
+                    } finally { window.__TRASH_BYPASS__ = false; }
+                    renderAssignments();
+                    if (typeof renderDashboard === 'function' && document.getElementById('upcomingAssignments')) renderDashboard();
+                    return;
+                }
+            });
+            list.addEventListener('change', function (e) {
+                var tg = e.target.closest('[data-toggle]');
+                if (!tg) return;
+                var d5 = loadData();
+                var a5 = d5.assignments.find(function (x) { return x.id === tg.dataset.toggle; });
+                if (!a5) return;
+                a5.completed = tg.checked;
+                if (typeof addActivity === 'function') addActivity(d5, 'assignment', (a5.completed ? 'Completed' : 'Reopened') + ' assignment "' + a5.title + '"');
+                saveData(d5); renderAssignments();
+                if (typeof renderDashboard === 'function' && document.getElementById('upcomingAssignments')) renderDashboard();
+            });
+        }
+
+        if (!form.dataset.asFormHooked) {
+            form.dataset.asFormHooked = '1';
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var title = document.getElementById('assignTitle').value.trim();
+                var subject = document.getElementById('assignSubject').value;
+                var due = document.getElementById('assignDue').value;
+                var priority = document.getElementById('assignPriority').value;
+                var tags = document.getElementById('assignTags').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                if (!title || !due) return;
+                var data = loadData();
+                if (editingId) {
+                    var a = data.assignments.find(function (x) { return x.id === editingId; });
+                    if (a) { a.title = title; a.subject = subject; a.due = due; a.priority = priority; a.tags = tags; }
+                    editingId = null;
+                    var sub = form.querySelector('button[type=submit]');
+                    if (sub) sub.textContent = '➕ Add';
+                    if (typeof addActivity === 'function') addActivity(data, 'assignment_add', 'Updated assignment: "' + title + '"');
+                } else {
+                    data.assignments.push({
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        title: title, subject: subject, due: due, priority: priority, tags: tags,
+                        completed: false, createdAt: new Date().toISOString()
+                    });
+                    if (typeof addActivity === 'function') addActivity(data, 'assignment_add', 'Added assignment: "' + title + '"');
+                }
                 saveData(data);
                 renderAssignments();
-                if (document.getElementById('upcomingAssignments')) renderDashboard();
+                form.reset();
+                if (typeof renderDashboard === 'function' && document.getElementById('upcomingAssignments')) renderDashboard();
             });
-        });
+        }
     }
 
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        var title = document.getElementById('assignTitle').value.trim();
-        var subject = document.getElementById('assignSubject').value;
-        var due = document.getElementById('assignDue').value;
-        var priority = document.getElementById('assignPriority').value;
-        var tags = document.getElementById('assignTags').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    /* populate subject select from the user's subjects (keep selection) */
+    function fillSubjects() {
+        var sel = document.getElementById('assignSubject');
+        if (!sel) return;
+        var subs = loadData().subjects || ['General'];
+        var cur = sel.value;
+        sel.innerHTML = subs.map(function (s) {
+            return '<option value="' + String(s).replace(/"/g, '&quot;') + '">' + String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</option>';
+        }).join('');
+        if (cur && subs.indexOf(cur) !== -1) sel.value = cur;
+    }
+    fillSubjects();
 
-        if (!title || !due) return;
-        var data = loadData();
-        data.assignments.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            title: title,
-            subject: subject,
-            due: due,
-            priority: priority,
-            tags: tags,
-            completed: false
-        });
-        addActivity(data, 'assignment_add', 'Added assignment: "' + title + '"');
-        saveData(data);
-        renderAssignments();
-        form.reset();
-        if (document.getElementById('upcomingAssignments')) renderDashboard();
-    });
-
+    window.renderAssignments = renderAssignments;
     renderAssignments();
 }
 
+
 // ================================================================
-// PLANNER
+// PLANNER + AI PLANNER v5 — one unified block (replaces the old
+// "PLANNER" section, the old "AI PLANNER v4.5" IIFE and the old
+// "RESET PLANNER" IIFE all at once)
+//   • Weekly grid 5:00–23:00 · click to edit · right-click to clear
+//   • Clearing a cell / resetting / replacing → items go to TRASH
+//   • Realistic offline schedule engine:
+//       – life layer (wake → shower → breakfast → … → sleep) that
+//         respects wake/sleep, prayers & sports settings
+//       – NO study before wake or after wind-down
+//       – hardest subjects early (circadian deep-work logic)
+//       – 2-hour blocks for hard subjects, 1h for light ones
+//       – ☕ breaks after every 2 consecutive study hours
+//       – daily subject rotation, no accidental cramming
+//   • Natural-language parsing: modes (easy/balanced/intense/exam),
+//     scopes (today/tomorrow/weekend/weekdays/specific day),
+//     "3 hours today", per-subject time bias ("math in the morning"),
+//     "surprise me", wake/sleep times, prayers/sports on/off
+//   • TEST-PREVIEW gate → Apply (merge) / Replace (old plan → Trash)
+//   • Provider-AI path with strict JSON contract, offline fallback
 // ================================================================
 function setupPlanner() {
     var grid = document.getElementById('plannerGrid');
     if (!grid) return;
-    var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    var hours = ['8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 
+    /* ---------------- constants ---------------- */
+    var ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    var ALL_HOURS = (function () { var a = []; for (var h = 5; h <= 23; h++) a.push(h + ':00'); return a; })();
+    var DAY_NAMES = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
+        monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+
+    var LIFE = {
+        wake:    { i: '⏰', c: '#7dd3fc' }, shower: { i: '🚿', c: '#7fb3d9' },
+        breakfast:{ i: '🍳', c: '#f0b46a' }, lunch:  { i: '🍽️', c: '#f0b46a' },
+        rest:    { i: '😌', c: '#a78bfa' }, prayer: { i: '🕌', c: '#5fd6a4' },
+        sports:  { i: '🏃', c: '#f472b6' }, dinner: { i: '🍽️', c: '#f0b46a' },
+        wind:    { i: '🛏️', c: '#8d9aa9' }, sleep:  { i: '😴', c: '#5a6b7d' },
+        break_:  { i: '☕', c: '#94a3b8' }
+    };
+    var LIFE_EMOJIS = ['⏰', '🚿', '🍳', '🍽️', '😌', '🕌', '🏃', '🛏️', '😴', '☕'];
+    function isLife(v) { v = String(v || ''); for (var i = 0; i < LIFE_EMOJIS.length; i++) if (v.indexOf(LIFE_EMOJIS[i]) === 0) return true; return false; }
+    function lifeLabel(k, extra) { return LIFE[k].i + ' ' + k.replace('_', ' ').charAt(0).toUpperCase() + k.replace('_', ' ').slice(1) + (extra ? ' · ' + extra : ''); }
+
+    var SUBJECT_MAP = { math: 'Math', maths: 'Math', mathematics: 'Math', algebra: 'Math', calculus: 'Math', geometry: 'Math', trig: 'Math', trigonometry: 'Math',
+        statistics: 'Stats', stats: 'Stats', probability: 'Stats', physics: 'Physics', phy: 'Physics', chemistry: 'Chemistry', chem: 'Chemistry',
+        biology: 'Biology', bio: 'Biology', science: 'Science', sci: 'Science', coding: 'Coding', code: 'Coding', programming: 'Coding',
+        cs: 'Computer Science', 'computer science': 'Computer Science', dsa: 'Data Structures', algorithms: 'Algorithms', algo: 'Algorithms',
+        'machine learning': 'ML', ml: 'ML', ai: 'AI', 'artificial intelligence': 'AI', 'web dev': 'Web Dev', web: 'Web Dev',
+        python: 'Python', java: 'Java', cpp: 'C++', 'c++': 'C++', english: 'English', eng: 'English', bangla: 'Bangla', bengali: 'Bangla',
+        spanish: 'Spanish', french: 'French', german: 'German', arabic: 'Arabic', hindi: 'Hindi', chinese: 'Chinese', japanese: 'Japanese',
+        history: 'History', geography: 'Geography', economics: 'Economics', econ: 'Economics', literature: 'Literature',
+        philosophy: 'Philosophy', psychology: 'Psychology', accounting: 'Accounting', finance: 'Finance', marketing: 'Marketing',
+        revision: 'Revision', revise: 'Revision', review: 'Revision', homework: 'Homework', hw: 'Homework', practice: 'Practice',
+        problems: 'Practice', project: 'Project', writing: 'Writing', essay: 'Writing', exam: 'Exam' };
+    var DIFFICULTY = { Math: 3, Physics: 3, Chemistry: 3, 'Computer Science': 3, Algorithms: 3, 'Data Structures': 3, ML: 3, 'C++': 3, Java: 3, Coding: 3,
+        Stats: 2, Biology: 2, Python: 2, 'Web Dev': 2, English: 2, Spanish: 2, French: 2, German: 3, Arabic: 3, Hindi: 2, Chinese: 3, Japanese: 3,
+        History: 2, Geography: 2, Economics: 3, Literature: 2, Philosophy: 3, Psychology: 2, Accounting: 2, Finance: 3, Marketing: 1,
+        Exam: 3, Practice: 2, Homework: 2, Project: 2, Writing: 2, Revision: 1, Science: 2, Reading: 1 };
+    var ACTIVITIES = {
+        hard: ['concepts', 'practice problems', 'past papers', 'deep work'],
+        medium: ['reading', 'exercises', 'notes review'],
+        light: ['revision', 'flashcards', 'summary notes']
+    };
+    var SUBJ_COLORS = ['#5eead4', '#7dd3fc', '#c4b5fd', '#f472b6', '#fdba74', '#6ee7b7', '#f9a8d4', '#a78bfa', '#22d3ee', '#fbbf24'];
+
+    function escH(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function hourNum(h) { return parseInt(h, 10); }
+
+    /* ---------------- request parser ---------------- */
+    function userSubjects() {
+        var d = loadData();
+        return (d.subjects || []).filter(function (s) { return s && s !== 'General'; });
+    }
+    function parseRequest(text) {
+        var t = ' ' + String(text).toLowerCase().replace(/\s+/g, ' ') + ' ';
+        var req = { mode: 'balanced', scope: 'all', bias: 'all', hours: 0, subjects: [], subjectBias: {},
+            wake: null, sleep: null, prayers: null, sports: null, surprise: false, raw: text };
+
+        if (/surprise|random|anything|you (choose|decide)/.test(t)) { req.surprise = true; }
+        if (/\b(easy|light|chill|relaxed|casual|minimal|gentle)\b/.test(t)) req.mode = 'easy';
+        else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|marathon)\b/.test(t)) req.mode = 'intense';
+
+        if (/\b(weekend|sat(urday)?|sun(day)?)\b/.test(t)) req.scope = 'weekend';
+        else if (/\b(weekdays|work\s?week|school\s?week)\b/.test(t)) req.scope = 'weekday';
+        else if (/\b(today|tonight)\b/.test(t)) req.scope = 'today';
+        else if (/\btomorrow\b/.test(t)) req.scope = 'tomorrow';
+        var dm = t.match(/\b(?:on|for|this)\s+(mon|tue|wed|thu|fri|sat|sun)(day)?\b/);
+        if (dm) { req.scope = 'specific-day'; req.specificDay = DAY_NAMES[dm[1]]; }
+
+        /* per-subject time bias: "math in the morning, physics in the evening" */
+        var biasRe = /([a-z+#]+(?:\s[a-z+#]+)?)\s+(?:in\s+the\s+)?(morning|evening|night|afternoon)/g;
+        var bm, foundAny = false;
+        while ((bm = biasRe.exec(t)) !== null) {
+            var word = bm[1].trim().split(' ').pop();
+            var subj = SUBJECT_MAP[word];
+            if (subj) {
+                req.subjectBias[subj] = bm[2] === 'night' ? 'evening' : bm[2];
+                foundAny = true;
+            }
+        }
+        if (foundAny) {
+            Object.keys(req.subjectBias).forEach(function (s) {
+                if (req.subjects.indexOf(s) === -1) req.subjects.push(s);
+            });
+            if (req.subjectBias.Math === 'morning') req.bias = 'morning';
+            if (Object.keys(req.subjectBias).some(function (s) { return req.subjectBias[s] === 'evening'; })) req.bias = 'evening';
+        } else if (/\b(?:in the |at |during )?morning\b|\bearly\b/.test(t) && !/evening|night/.test(t)) req.bias = 'morning';
+        else if (/\b(?:in the |at |during )?evening\b|\bnight\b|\btonight\b/.test(t)) req.bias = 'evening';
+
+        var mh = t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
+        var mm = t.match(/(\d+)\s*(?:minutes?|mins?|m)\b/);
+        if (mh) req.hours = parseFloat(mh[1]); else if (mm) req.hours = parseFloat(mm[1]) / 60;
+
+        Object.keys(SUBJECT_MAP).forEach(function (k) {
+            var re = new RegExp('(?:^|[\\s|,])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[\\s|,])');
+            if (re.test(t) && req.subjects.indexOf(SUBJECT_MAP[k]) === -1) req.subjects.push(SUBJECT_MAP[k]);
+        });
+        var fm = t.match(/(?:focus on|concentrate on|mainly|mostly|priority on)\s+([a-z ]+)/);
+        if (fm) { Object.keys(SUBJECT_MAP).forEach(function (k) { if (fm[1].indexOf(k) !== -1 && !req.focus) req.focus = SUBJECT_MAP[k]; }); }
+
+        var w = t.match(/\bwake(?:\s*up)?(?:\s*at)?\s+(\d{1,2})/);
+        if (w) req.wake = Math.max(4, Math.min(10, +w[1]));
+        var s = t.match(/\bsleep(?:\s*at)?\s+(\d{1,2})/);
+        if (s) { var n = +s[1]; if (n >= 7 && n <= 11) n += 12; req.sleep = Math.min(23, Math.max(20, n)); }
+
+        if (/no (prayer|prayers|namaz|salah)|without (prayer|prayers|namaz)/.test(t)) req.prayers = false;
+        else if (/pray|prayers|namaz|salah|salat|fajr|dhuhr|asr|maghrib|isha/.test(t)) req.prayers = true;
+        if (/no (gym|sports|exercise|workout)|without (gym|sports|exercise)/.test(t)) req.sports = false;
+        else if (/gym|workout|exercis|\bsports?\b|\btraining\b|running|football|cricket/.test(t)) req.sports = true;
+        return req;
+    }
+
+    /* ---------------- days + life layer ---------------- */
+    function pickDays(req) {
+        var wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        if (req.scope === 'weekend') return ['Sat', 'Sun'];
+        if (req.scope === 'weekday') return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        if (req.scope === 'today') return [wd[new Date().getDay()]];
+        if (req.scope === 'tomorrow') return [wd[(new Date().getDay() + 1) % 7]];
+        if (req.scope === 'specific-day') return [req.specificDay];
+        return ALL_DAYS.slice();
+    }
+    function put(obj, day, hour, label) {
+        var k = day + '_' + (typeof hour === 'number' ? hour + ':00' : hour);   /* ALWAYS "H:00" format */
+        if (!obj[k]) obj[k] = label;
+    }
+    function firstFree(obj, day, start, end) {
+        var s = Math.max(5, start), e = (end === undefined) ? 23 : Math.min(end, 23);
+        for (var h = s; h <= e; h++) if (!obj[day + '_' + h + ':00']) return h;
+        return -1;
+    }
+    function buildLife(req, eff, days) {
+        var cells = {};                                  /* NOTE: renamed — never shadow lifeLabel() */
+        days.forEach(function (day) {
+            var isWeekendDay = (day === 'Sat' || day === 'Sun');
+            var wake = req.wake || (isWeekendDay && !req.wake ? Math.min(10, eff.wake + 1) : eff.wake);
+            var sleepH = req.sleep || eff.sleep;
+            var prayers = req.prayers !== null ? req.prayers : eff.prayers;
+            var sports = req.sports !== null ? req.sports : eff.sports;
+
+            put(cells, day, wake, lifeLabel('wake', prayers ? 'Fajr' : ''));
+            var sh = firstFree(cells, day, wake + 1);
+            if (sh > -1) put(cells, day, sh, lifeLabel('shower'));
+            var br = firstFree(cells, day, sh + 1, 11);
+            if (br > -1) put(cells, day, br, lifeLabel('breakfast'));
+            var lu = firstFree(cells, day, 12);
+            if (lu > -1) put(cells, day, lu, prayers ? LIFE.lunch.i + ' Lunch · Dhuhr' : LIFE.lunch.i + ' Lunch');
+            if (eff.rest) { var rs = firstFree(cells, day, 13, 15); if (rs > -1) put(cells, day, rs, lifeLabel('rest')); }
+            if (prayers) {
+                var as = firstFree(cells, day, 15, 17); if (as > -1) put(cells, day, as, LIFE.prayer.i + ' Asr');
+                var mg = firstFree(cells, day, 18, 19); if (mg > -1) put(cells, day, mg, LIFE.prayer.i + ' Maghrib');
+            }
+            if (sports) {
+                var sp = firstFree(cells, day, 16, 19);
+                if (sp > -1) put(cells, day, sp, lifeLabel('sports'));
+            }
+            var dn = firstFree(cells, day, 19, 21);
+            if (dn > -1) put(cells, day, dn, prayers ? LIFE.dinner.i + ' Dinner · Isha' : LIFE.dinner.i + ' Dinner');
+            var wn = firstFree(cells, day, Math.max(dn + 1, sleepH - 1), sleepH - 1);
+            if (wn > -1) put(cells, day, wn, lifeLabel('wind'));
+            if (sleepH <= 23) put(cells, day, sleepH, lifeLabel('sleep'));
+        });
+        return cells;
+    }
+
+    /* ---------------- study layer ---------------- */
+    function shuffle(a, seed) {
+        var x = a.slice(), s = seed || 1;
+        for (var i = x.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280;
+            var j = Math.floor((s / 233280) * (i + 1)); var t = x[i]; x[i] = x[j]; x[j] = t; }
+        return x;
+    }
+    function diffOf(s) { return DIFFICULTY[s] || 2; }
+    function activityFor(s, k, mode) {
+        var d = diffOf(s), list;
+        if (s === 'Revision' || d === 1) list = ACTIVITIES.light;
+        else if (d >= 3) list = ACTIVITIES.hard;
+        else list = ACTIVITIES.medium;
+        if (mode === 'intense' && d >= 3 && k % 3 === 0) list = ['past papers', 'mock exam', 'timed practice'];
+        return list[k % list.length];
+    }
+    function buildPlan(req, eff, variant) {
+        variant = variant || { name: 'Balanced', intensity: 'balanced', seedMult: 1 };
+        var days = pickDays(req);
+        var life = buildLife(req, eff, days);
+        var seed = variant.seedMult * 7919 + req.raw.length + (req.surprise ? Math.floor(Math.random() * 9999) : 0);
+
+        /* subject pool */
+        var pool = req.subjects.slice();
+        if (req.focus && pool.indexOf(req.focus) === -1) pool.unshift(req.focus);
+        if (!pool.length) {
+            var mine = userSubjects();
+            if (mine.length >= 2) pool = mine.slice(0, 6);
+            else if (req.mode === 'intense') pool = ['Math', 'Physics', 'Revision', 'Practice', 'Reading'];
+            else if (req.mode === 'easy') pool = ['Reading', 'Revision', 'Homework'];
+            else pool = ['Math', 'Science', 'English', 'Reading', 'Revision', 'Practice'];
+        }
+        /* daily rotation: hardest first in the pool = hardest first in the day */
+        var ordered = pool.slice().sort(function (a, b) { return diffOf(b) - diffOf(a); });
+
+        var target;   /* study hours per day */
+        if (req.hours > 0) target = Math.max(1, Math.round(req.hours));
+        else if (variant.intensity === 'intense' || req.mode === 'intense') target = 7;
+        else if (variant.intensity === 'relaxed' || req.mode === 'easy') target = 3;
+        else target = 5;
+        if ((req.scope === 'today' || req.scope === 'tomorrow' || req.scope === 'specific-day') && req.hours > 0) target = Math.max(1, Math.round(req.hours));
+
+        var plan = {}, dayOf = {}, perSubject = {}, perDayMeta = {};
+        days.forEach(function (day, di) {
+            var isWeekendDay = (day === 'Sat' || day === 'Sun');
+            var wakeH = req.wake || (isWeekendDay ? Math.min(10, eff.wake + 1) : eff.wake);
+            var sleepH = req.sleep || eff.sleep;
+            var windowStart = wakeH + 1, windowEnd = sleepH - 2;   /* realistic study window */
+
+            var free = ALL_HOURS.filter(function (h) {
+                var hn = hourNum(h);
+                return !life[day + '_' + h] && hn >= windowStart && hn <= windowEnd;
+            });
+            var morningFree = free.filter(function (h) { return hourNum(h) < 15; });
+            var eveningFree = free.filter(function (h) { return hourNum(h) >= 15; });
+
+            /* decide which subjects study today (rotation) */
+            var todaySubjects = [];
+            var take = Math.min(ordered.length, Math.max(2, target - 1));
+            for (var i = 0; i < take; i++) todaySubjects.push(ordered[(i + di) % ordered.length]);
+            /* biased subject first when the request names a bias */
+            todaySubjects.sort(function (a, b) {
+                var ba = req.subjectBias[a] === 'morning' ? -1 : req.subjectBias[a] === 'evening' ? 1 : 0;
+                var bb = req.subjectBias[b] === 'morning' ? -1 : req.subjectBias[b] === 'evening' ? 1 : 0;
+                return ba - bb;
+            });
+
+            var slots = {};          /* hour -> subject */
+            var si = 0, k = 0;
+            function place(subject, hourList) {
+                for (var j = 0; j < hourList.length; j++) {
+                    if (si >= target) return;
+                    var h = hourList[j];
+                    if (slots[h]) continue;
+                    slots[h] = subject;
+                    si++;
+                    /* hard subjects earn a 2-hour block */
+                    if (diffOf(subject) >= 3 && si < target) {
+                        var h2 = hourList[j + 1];
+                        if (h2 && !slots[h2] && hourNum(h2) === hourNum(h) + 1) { slots[h2] = subject; si++; j++; }
+                    }
+                }
+            }
+
+            /* 1) per-subject bias placement (e.g. Math → morning, Physics → evening) */
+            Object.keys(req.subjectBias).forEach(function (subj) {
+                if (todaySubjects.indexOf(subj) === -1) return;
+                place(subj, req.subjectBias[subj] === 'evening' ? eveningFree : morningFree);
+            });
+            /* 2) hardest subjects into the earliest morning hours */
+            var hardFirst = todaySubjects.slice().sort(function (a, b) { return diffOf(b) - diffOf(a); });
+            hardFirst.forEach(function (subj) { if (!Object.keys(slots).some(function (h) { return slots[h] === subj; })) place(subj, morningFree); });
+            /* 3) remaining hours chronologically, light subjects in the evening */
+            var restSubjects = todaySubjects.filter(function (s) { return !Object.keys(slots).some(function (h) { return slots[h] === s; }); });
+            place(restSubjects.shift(), eveningFree);
+            var chronological = free.slice().sort(function (a, b) { return hourNum(a) - hourNum(b); });
+            var rs;
+            while ((rs = restSubjects.shift()) !== undefined) place(rs, chronological);
+            /* 4) fill any free hours chronologically */
+            chronological.forEach(function (h) {
+                if (si >= target) return;
+                if (slots[h]) return;
+                slots[h] = todaySubjects[k % todaySubjects.length];
+                k++; si++;
+            });
+
+            /* 5) realism pass: never more than 2 consecutive study hours —
+                  the 3rd becomes a ☕ Break and FREES the study budget */
+            ALL_HOURS.forEach(function (h) {
+                if (!slots[h] || isLife(slots[h])) return;
+                var hn = hourNum(h);
+                var p1 = slots[(hn - 1) + ':00'], p2 = slots[(hn - 2) + ':00'];
+                if (p1 && !isLife(p1) && p2 && !isLife(p2)) { slots[h] = LIFE.break_.i + ' Break'; si = Math.max(0, si - 1); }
+            });
+
+            /* 6) final top-up with the freed budget — never recreating 3-in-a-row */
+            chronological.forEach(function (h) {
+                if (si >= target) return;
+                if (slots[h]) return;
+                var hn = hourNum(h);
+                var p1 = slots[(hn - 1) + ':00'], p2 = slots[(hn - 2) + ':00'];
+                if (p1 && !isLife(p1) && p2 && !isLife(p2)) return;   /* would be a 3rd consecutive */
+                slots[h] = todaySubjects[k % todaySubjects.length];
+                k++; si++;
+            });
+
+            /* commit cells */
+            var daySubjects = [];
+            ALL_HOURS.forEach(function (h) {
+                var lk = day + '_' + h, v = null;
+                if (life[lk]) v = life[lk];
+                else if (slots[h]) {
+                    var subj = slots[h];
+                    if (isLife(subj)) v = subj;
+                    else {
+                        v = subj + ' · ' + activityFor(subj, k++, req.mode);
+                        if (v.length > 42) v = subj;
+                        perSubject[subj] = (perSubject[subj] || 0) + 1;
+                        daySubjects.push(h);
+                    }
+                }
+                if (v) plan[lk] = v;
+            });
+            dayOf[day] = { hours: daySubjects, subjects: daySubjects.map(function (h) { return slots[h]; }) };
+            perDayMeta[day] = daySubjects.length;
+        });
+        return { plan: plan, days: days, dayOf: dayOf, pool: ordered, perSubject: perSubject,
+            variant: variant, sessionMin: 60, perDay: perDayMeta };
+    }
+
+    /* ---------------- analytics ---------------- */
+    function analyze(result) {
+        var studySessions = Object.keys(result.dayOf).reduce(function (a, d) { return a + result.dayOf[d].hours.length; }, 0);
+        var lifeCount = Object.keys(result.plan).filter(function (k) { return isLife(result.plan[k]); }).length;
+        var warnings = [];
+        if (studySessions === 0) warnings.push('⚠️ No study hours fit — widen the window (earlier wake / later sleep).');
+        if (studySessions > 0 && studySessions < 3) warnings.push('ℹ️ Light plan — good for recovery days.');
+        if (lifeCount === 0) warnings.push('⚠️ No life blocks placed — check wake/sleep settings.');
+        return { studySessions: studySessions, studyHours: (studySessions * (result.sessionMin || 60) / 60).toFixed(1),
+            lifeCount: lifeCount, perSubject: result.perSubject, warnings: warnings };
+    }
+    function colorFor(v, pool) {
+        var idx = pool.indexOf(v);
+        if (idx < 0) idx = v.charCodeAt(0) % SUBJ_COLORS.length;
+        return SUBJ_COLORS[idx % SUBJ_COLORS.length];
+    }
+
+    /* ---------------- render: preview ---------------- */
+    var lastResult = null, lastRequest = null, lastThree = [];
+    function renderAnalytics(an) {
+        var h = '<div class="planner-analytics">';
+        h += '<div class="pa-stat"><span class="pa-label">Study</span><span class="pa-val">' + an.studySessions + '</span></div>';
+        h += '<div class="pa-stat"><span class="pa-label">Hours</span><span class="pa-val">' + an.studyHours + 'h</span></div>';
+        h += '<div class="pa-stat"><span class="pa-label">Subjects</span><span class="pa-val">' + Object.keys(an.perSubject).length + '</span></div>';
+        h += '<div class="pa-stat"><span class="pa-label">Life blocks</span><span class="pa-val">' + an.lifeCount + '</span></div>';
+        h += '</div>';
+        if (an.warnings.length) {
+            h += '<div class="planner-warnings">';
+            an.warnings.forEach(function (w) { h += '<div class="pw-item">' + w + '</div>'; });
+            h += '</div>';
+        }
+        return h;
+    }
+    function renderPreview(result) {
+        var days = result.days, used = {};
+        Object.keys(result.plan).forEach(function (k) { used[k.split('_')[1]] = true; });
+        var showHours = ALL_HOURS.filter(function (h) { return used[h]; });
+        if (!showHours.length) showHours = ALL_HOURS.slice();
+        var from = ALL_HOURS.indexOf(showHours[0]), to = ALL_HOURS.indexOf(showHours[showHours.length - 1]);
+        showHours = ALL_HOURS.slice(Math.max(0, from - 1), Math.min(ALL_HOURS.length, to + 2));
+
+        var html = '<div class="planner-ai-preview" style="grid-template-columns:60px repeat(' + days.length + ', minmax(80px,1fr));">';
+        html += '<div class="ai-label"></div>';
+        days.forEach(function (d) { html += '<div class="ai-label">' + d + '</div>'; });
+        showHours.forEach(function (h) {
+            html += '<div class="ai-label">' + h + '</div>';
+            days.forEach(function (d) {
+                var v = result.plan[d + '_' + h] || '';
+                var life = isLife(v);
+                var style = '';
+                if (v) {
+                    if (life) {
+                        var e = v.split(' ')[0], meta = null;
+                        Object.keys(LIFE).forEach(function (k) { if (LIFE[k].i === e && !meta) meta = LIFE[k]; });
+                        var c = meta ? meta.c : '#7fb3d9';
+                        style = 'background:' + c + '22;border-color:' + c + '66;color:' + c + ';';
+                    } else {
+                        var c2 = colorFor(v.split(' · ')[0], result.pool);
+                        style = 'background:' + c2 + '20;border-color:' + c2 + '60;color:' + c2 + ';';
+                    }
+                }
+                html += '<div class="ai-cell' + (v ? '' : ' empty') + (life ? ' ai-life' : '') + '" style="' + style + '">' + escH(v) + '</div>';
+            });
+        });
+        html += '</div>';
+        return html;
+    }
+    function renderTimeline(result) {
+        var h = '<div style="margin-top:.9rem;">';
+        h += '<div style="font:700 10.5px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.14em;color:var(--accent,#3fd2b0);margin-bottom:.5rem;">📋 Routine timeline (per selected day)</div>';
+        result.days.slice(0, 7).forEach(function (day) {
+            var rows = ALL_HOURS.filter(function (h2) { return result.plan[day + '_' + h2]; });
+            if (!rows.length) return;
+            h += '<div style="margin-bottom:.55rem;"><b style="font:700 12px var(--font,sans-serif);color:var(--ink,#edf2f7)">' + day + '</b>' +
+                '<div style="font:500 12px/1.7 var(--font,sans-serif);color:var(--muted,#8d9aa9);margin-top:.15rem">' +
+                rows.map(function (h2) { return '<span style="white-space:nowrap;display:inline-block;margin-right:.6rem"><b style="color:var(--ink-2,#cfd9e3)">' + h2 + '</b> ' + escH(result.plan[day + '_' + h2]) + '</span>'; }).join('') +
+                '</div></div>';
+        });
+        h += '</div>';
+        return h;
+    }
+    function renderLegend(result) {
+        var h = '<div class="planner-legend">';
+        Object.keys(result.perSubject).forEach(function (s) {
+            var c = colorFor(s, result.pool);
+            h += '<span class="legend-pill" style="background:' + c + '20;border-color:' + c + '60;color:' + c + '">' + escH(s) + ' × ' + result.perSubject[s] + '</span>';
+        });
+        h += '</div>';
+        h += '<div class="planner-legend" style="margin-top:.4rem;">';
+        h += '<span class="legend-pill" style="background:rgba(125,211,252,.12);border-color:rgba(125,211,252,.4);color:#7dd3fc">⏰ Life blocks auto-placed</span>';
+        h += '</div>';
+        return h;
+    }
+    function renderDescription(req, eff, result) {
+        var modeLabel = { easy: 'Easy / light', balanced: 'Balanced', intense: 'Intense' }[req.mode];
+        var scopeLabel = { all: 'Full week', weekend: 'Weekend only', weekday: 'Weekdays only', today: 'Today only', tomorrow: 'Tomorrow only', 'specific-day': (req.specificDay || 'One day') }[req.scope];
+        var wakeShow = req.wake || eff.wake, sleepShow = req.sleep || eff.sleep;
+        var h = '<div class="planner-ai-summary"><strong>🧠 Here\'s your routine:</strong> ';
+        h += '<span class="tag">' + modeLabel + '</span> · <span class="tag">' + scopeLabel + '</span>';
+        h += ' · <span class="tag">Study ' + result.sessionMin + 'min blocks</span>';
+        h += ' · <span class="tag">Wake ' + wakeShow + ':00</span> · <span class="tag">Sleep ' + sleepShow + ':00</span>';
+        h += (req.prayers !== false && eff.prayers) ? ' · <span class="tag">🕌 Prayers ×5</span>' : '';
+        h += (req.sports !== false && eff.sports) ? ' · <span class="tag">🏃 Sports</span>' : '';
+        h += ' · <span class="tag">😌 Rest</span>';
+        h += '<br><strong>📚 Subjects:</strong> ' + (result.pool.slice(0, 8).join(', ') || '—') + '.';
+        if (req.focus) h += ' <em>Focus on ' + escH(req.focus) + '.</em>';
+        h += '</div>';
+        return h;
+    }
+    function renderOutput(req, eff, result, an) {
+        var output = document.getElementById('plannerAiOutput');
+        var html = '<div style="border:1px solid rgba(240,180,106,.35);background:rgba(240,180,106,.07);color:var(--warn,#f0b46a);border-radius:10px;padding:.6rem .9rem;margin-bottom:.8rem;font:600 12.5px var(--font,sans-serif);">🧪 TEST PREVIEW — nothing applied yet. Review the routine, then <b>Apply to Planner</b> (merge) or <b>Replace Planner</b> (current plan → Trash).</div>';
+        html += renderDescription(req, eff, result) + renderAnalytics(an) + renderPreview(result) + renderLegend(result) + renderTimeline(result);
+        html += '<div class="planner-variants"><div class="pv-label">Try another style:</div>' +
+            '<button class="pv-btn" data-variant="balanced">⚖️ Balanced</button>' +
+            '<button class="pv-btn" data-variant="intense">🔥 Intense</button>' +
+            '<button class="pv-btn" data-variant="relaxed">🌿 Relaxed</button></div>';
+        html += '<div class="planner-ai-actions">' +
+            '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner</button>' +
+            '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,.15);color:#fca5a5;border-color:rgba(252,165,165,.3);">🔁 Replace Planner</button>' +
+            '<button id="aiUndoBtn" class="btn-danger"' + (lastThree.length > 1 ? '' : ' disabled style="opacity:.4;cursor:not-allowed;"') + '>↩ Undo</button></div>';
+        output.innerHTML = html;
+        document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
+        document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
+        var undo = document.getElementById('aiUndoBtn');
+        if (undo && lastThree.length > 1) undo.addEventListener('click', undoLast);
+        output.querySelectorAll('.pv-btn').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var freshReq = parseRequest(lastRequest);
+                var eff2 = readEff();
+                var nr = buildPlan(freshReq, eff2, variantPreset(this.dataset.variant));
+                lastResult = nr; lastThree.push(nr); if (lastThree.length > 3) lastThree.shift();
+                renderOutput(freshReq, eff2, nr, analyze(nr));
+            });
+        });
+        if (output.scrollIntoView) try { output.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+    }
+    function variantPreset(name) {
+        if (name === 'intense') return { name: 'Intense', intensity: 'intense', seedMult: 3 };
+        if (name === 'relaxed') return { name: 'Relaxed', intensity: 'relaxed', seedMult: 5 };
+        return { name: 'Balanced', intensity: 'balanced', seedMult: 1 };
+    }
+    function undoLast() {
+        if (lastThree.length <= 1) return;
+        lastThree.pop();
+        var prev = lastThree[lastThree.length - 1]; if (!prev) return;
+        var req = parseRequest(lastRequest);
+        var eff = readEff();
+        lastResult = prev; renderOutput(req, eff, prev, analyze(prev));
+    }
+    function applyPlan(replace) {
+        if (!lastResult) return;
+        var data = loadData();
+        if (!data.planner) data.planner = {};
+        if (!data.plannerUndoStack) data.plannerUndoStack = [];
+        if (replace && Object.keys(data.planner).length) {
+            /* old plan is not destroyed — it goes to the Trash, restorable */
+            if (typeof pushToTrash === 'function') pushToTrash(data, 'planner-full', { cells: JSON.parse(JSON.stringify(data.planner)) }, 'Full planner (' + Object.keys(data.planner).length + ' cells)');
+        }
+        data.plannerUndoStack.push(JSON.parse(JSON.stringify(data.planner)));
+        if (data.plannerUndoStack.length > 5) data.plannerUndoStack.shift();
+        if (replace) data.planner = {};
+        Object.keys(lastResult.plan).forEach(function (k) { data.planner[k] = lastResult.plan[k]; });
+        saveData(data);
+        if (typeof addActivity === 'function') {
+            addActivity(data, 'planner_ai', replace ? 'Replaced planner with AI routine (old plan in Trash)' : 'Merged AI routine into planner');
+            saveData(data);
+        }
+        renderPlanner();
+        updateTrashCount();
+        if (typeof window.__ehToast === 'function') window.__ehToast(replace ? 'Planner replaced — previous plan is in Trash' : 'Routine merged into planner');
+    }
+
+    /* ---------------- provider AI path ---------------- */
+    function sanitizeAiPlan(raw) {
+        try {
+            var src = raw && raw.plan ? raw.plan : null;
+            if (!src || typeof src !== 'object') return null;
+            var plan = {}, used = {}, cells = 0, hourSet = {};
+            ALL_HOURS.forEach(function (h) { hourSet[h] = 1; });
+            Object.keys(src).forEach(function (k) {
+                var m = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)_(\d{1,2}:00)$/.exec(String(k));
+                if (!m || !hourSet[m[2]]) return;
+                var v = String(src[k] || '').trim().slice(0, 40);
+                if (!v) return;
+                plan[m[1] + '_' + m[2]] = v; cells++;
+                if (!isLife(v)) used[v.split(' · ')[0]] = 1;
+            });
+            if (cells < 3) return null;
+            var dayOf = {}, days = [];
+            ALL_DAYS.forEach(function (day) {
+                var hours = [];
+                ALL_HOURS.forEach(function (h) { if (plan[day + '_' + h]) hours.push(h); });
+                if (hours.length) { days.push(day); dayOf[day] = { hours: hours, subjects: hours.map(function (h) { return plan[day + '_' + h]; }).filter(function (v) { return !isLife(v); }) }; }
+            });
+            if (!days.length) return null;
+            var pool = Object.keys(used);
+            return { plan: plan, days: days, dayOf: dayOf, pool: pool.length ? pool : ['Study'],
+                perSubject: (function () { var p = {}; Object.keys(plan).forEach(function (k) { var v = plan[k]; if (!isLife(v)) { var s = v.split(' · ')[0]; p[s] = (p[s] || 0) + 1; } }); return p; })(),
+                variant: { name: 'AI', intensity: 'balanced', seedMult: 1 }, sessionMin: 50 };
+        } catch (e) { return null; }
+    }
+
+    /* ---------------- settings + generate ---------------- */
+    function readEff() {
+        var g = function (id) { var e = document.getElementById(id); return e ? e.value : null; };
+        var c = function (id) { var e = document.getElementById(id); return e ? e.checked : true; };
+        return {
+            wake: Math.max(4, Math.min(10, parseInt(g('plnWake'), 10) || 6)),
+            sleep: Math.max(20, Math.min(23, parseInt(g('plnSleep'), 10) || 23)),
+            prayers: c('plnPrayers'),
+            sports: c('plnSports'),
+            rest: c('plnRest')
+        };
+    }
+    function generate() {
+        var inputEl = document.getElementById('plannerAiInput');
+        var btn = document.getElementById('plannerAiBtn');
+        var output = document.getElementById('plannerAiOutput');
+        if (!inputEl || !output) return;
+        var text = inputEl.value.trim();
+        var eff = readEff();
+        if (!text) {
+            output.innerHTML = '<div class="planner-ai-summary"><i class="ph ph-note-pencil"></i> Type what you want to plan — or click a chip above. Tip: try "make a full daily routine with prayers and gym, sleep at 11".</div>';
+            return;
+        }
+        lastRequest = text;
+        function local() {
+            var req = parseRequest(text);
+            var result = buildPlan(req, eff, variantPreset(req.mode === 'intense' ? 'intense' : req.mode === 'easy' ? 'relaxed' : 'balanced'));
+            lastResult = result; lastThree = [result];
+            renderOutput(req, eff, result, analyze(result));
+        }
+        if (typeof StudyHubAI === 'undefined') { local(); return; }
+        StudyHubAI.status().then(function (st) {
+            if (!st.configured) { local(); return undefined; }
+            if (btn) btn.disabled = true;
+            return StudyHubAI.chat([
+                { role: 'system', content: 'You build full-day student ROUTINES that mix study with daily life, placed logically and chronologically. Reply with ONLY a JSON object {"plan": {"Mon_6:00": "⏰ Wake up · Fajr", ...}}. ' +
+                    'Rules: day keys Mon Tue Wed Thu Fri Sat Sun; hour keys whole hours "5:00" to "23:00"; one activity per slot; never overlap. ' +
+                    'INCLUDE life blocks with these emoji labels: ⏰ wake, 🚿 shower, 🍳 breakfast, 🍽️ lunch, 😌 rest/nap, 🕌 prayers (Fajr with wake, Dhuhr with lunch, Asr 15-17, Maghrib 18-19, Isha with dinner), 🏃 sports, 🛏️ wind-down, 😴 sleep — ' +
+                    'but include prayers ONLY if the user mentions praying, and sports ONLY if mentioned or requested. ' +
+                    'NEVER schedule study before the wake hour or after the wind-down hour. Chronology: wake → shower → breakfast → study → lunch → study/rest → Asr → study → sports → Maghrib → dinner+Isha → light study → wind-down → sleep. ' +
+                    'Place the hardest subjects in morning slots. Study blocks use short subject names (1-3 words). No markdown, no prose.' },
+                { role: 'user', content: text.slice(0, 600) }
+            ], { jsonMode: true, maxTokens: 1600, temperature: 0.4, timeoutMs: 30000
+            }).then(function (res) {
+                if (btn) btn.disabled = false;
+                var result = sanitizeAiPlan(StudyHubAI.parseJsonReply(res.text));
+                if (!result) { local(); return undefined; }
+                var req = parseRequest(text);
+                lastResult = result; lastThree = [result];
+                renderOutput(req, eff, result, analyze(result));
+            }).catch(function () { if (btn) btn.disabled = false; local(); });
+        }).catch(function () { local(); });
+    }
+
+    /* ---------------- weekly grid ---------------- */
     function renderPlanner() {
         var data = loadData();
+        if (!data.planner) data.planner = {};
+        /* build with DOM APIs only — using `grid.innerHTML +=` inside the loop
+           would re-parse the grid and strip listeners from every earlier cell */
         grid.innerHTML = '';
-
-        grid.innerHTML += '<div class="time-label"></div>';
-        days.forEach(function(d) {
-            grid.innerHTML += '<div class="time-label" style="font-weight:700;">' + d + '</div>';
+        var corner = document.createElement('div');
+        corner.className = 'time-label';
+        grid.appendChild(corner);
+        ALL_DAYS.forEach(function (d) {
+            var lbl = document.createElement('div');
+            lbl.className = 'time-label';
+            lbl.style.fontWeight = '700';
+            lbl.textContent = d;
+            grid.appendChild(lbl);
         });
-
-        hours.forEach(function(h) {
-            grid.innerHTML += '<div class="time-label">' + h + '</div>';
-            days.forEach(function(d) {
+        ALL_HOURS.forEach(function (h) {
+            var lbl = document.createElement('div');
+            lbl.className = 'time-label';
+            lbl.textContent = h;
+            grid.appendChild(lbl);
+            ALL_DAYS.forEach(function (d) {
                 var key = d + '_' + h;
                 var val = data.planner[key] || '';
                 var cell = document.createElement('div');
-                cell.className = 'planner-cell' + (val ? ' filled' : '');
+                cell.className = 'planner-cell' + (val ? ' filled' : '') + (val && isLife(val) ? ' life' : '');
                 cell.textContent = val;
-                cell.addEventListener('click', function() {
+                cell.title = val ? 'Click to edit · right-click to clear' : 'Click to plan ' + d + ' ' + h;
+                cell.addEventListener('click', function () {
                     var newVal = prompt('Plan for ' + d + ' ' + h + ':', val || '');
                     if (newVal === null) return;
-                    var data = loadData();
+                    var dd = loadData();
                     if (newVal.trim() === '') {
-                        delete data.planner[key];
+                        if (dd.planner[key]) {   /* cleared cells go to Trash, restorable */
+                            if (typeof pushToTrash === 'function') pushToTrash(dd, 'planner', { day: d, hour: h, text: dd.planner[key] }, d + ' ' + h + ' — ' + dd.planner[key]);
+                            delete dd.planner[key];
+                            if (typeof addActivity === 'function') { addActivity(dd, 'planner', 'Cleared ' + d + ' ' + h + ' (in Trash)'); saveData(dd); }
+                            updateTrashCount();
+                        }
                     } else {
-                        data.planner[key] = newVal.trim();
+                        dd.planner[key] = newVal.trim();
                     }
-                    saveData(data);
+                    saveData(dd);
                     renderPlanner();
+                });
+                cell.addEventListener('contextmenu', function (e) {
+                    if (!val) return;
+                    e.preventDefault();
+                    var dd = loadData();
+                    if (dd.planner[key]) {
+                        if (typeof pushToTrash === 'function') pushToTrash(dd, 'planner', { day: d, hour: h, text: dd.planner[key] }, d + ' ' + h + ' — ' + dd.planner[key]);
+                        delete dd.planner[key];
+                        if (typeof addActivity === 'function') { addActivity(dd, 'planner', 'Cleared ' + d + ' ' + h + ' (in Trash)'); saveData(dd); }
+                        updateTrashCount();
+                        renderPlanner();
+                        if (typeof window.__ehToast === 'function') window.__ehToast('Moved to Trash — restore it from the Trash button');
+                    }
                 });
                 grid.appendChild(cell);
             });
         });
     }
+    window.renderPlannerGrid = renderPlanner;
+
+    /* ---------------- CSS + settings row ---------------- */
+    if (!document.getElementById('plannerV5Styles')) {
+        var st = document.createElement('style');
+        st.id = 'plannerV5Styles';
+        st.textContent =
+            '.pln-settings{display:flex;gap:.9rem;flex-wrap:wrap;align-items:center;background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.14));border-radius:12px;padding:.65rem .9rem;margin-bottom:.8rem;font-size:.8rem;color:var(--muted,#8d9aa9)}' +
+            '.pln-settings b{font:700 .68rem var(--font,sans-serif);text-transform:uppercase;letter-spacing:.1em;color:var(--faint,#7a8a9e);margin-right:.1rem}' +
+            '.pln-settings select{background:var(--panel-2,#0B0F1A);border:1px solid var(--line,#2a3648);color:var(--ink,#edf2f7);border-radius:8px;padding:.3rem .5rem;font:500 12.5px var(--font,inherit);cursor:pointer}' +
+            '.pln-settings label{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;user-select:none}' +
+            '.pln-settings input[type=checkbox]{accent-color:var(--accent,#3fd2b0);width:14px;height:14px;cursor:pointer}' +
+            '.planner-cell.life{background:rgba(127,179,217,.12) !important;border-color:rgba(127,179,217,.4) !important;color:var(--ink-2,#cfd9e3) !important;font-size:.72rem !important;font-weight:600}' +
+            '.ai-cell.ai-life{font-size:.72rem !important;font-weight:600}' +
+            '.fbt-toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:var(--surface-raised,#101623);border:1px solid var(--line,#2a3648);color:var(--ink,#edf2f7);padding:.7rem 1.2rem;border-radius:10px;font:600 13px var(--font,sans-serif);opacity:0;transition:all .25s;z-index:10050;pointer-events:none}' +
+            '.fbt-toast.show{opacity:1;transform:translate(-50%,0)}' +
+            '.planner-analytics{display:flex;gap:.6rem;flex-wrap:wrap;margin:.8rem 0}' +
+            '.pa-stat{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,rgba(148,163,184,.15));border-radius:10px;padding:.45rem .8rem;min-width:80px}' +
+            '.pa-label{display:block;font:700 9.5px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.12em;color:var(--faint,#7a8a9e)}' +
+            '.pa-val{font:700 16px var(--font,sans-serif);color:var(--ink,#edf2f7)}' +
+            '.planner-warnings{margin:.4rem 0 .8rem}' +
+            '.pw-item{font:600 12.5px var(--font,sans-serif);color:var(--warn,#f0b46a);padding:.25rem 0}' +
+            '.planner-ai-preview{display:grid;gap:4px;margin:.6rem 0}' +
+            '.ai-label{font:700 11px var(--font,sans-serif);color:var(--faint,#7a8a9e);display:flex;align-items:center;justify-content:center;text-align:center}' +
+            '.ai-cell{border:1px solid var(--line,rgba(148,163,184,.16));border-radius:8px;min-height:40px;padding:.25rem;font:600 11.5px/1.25 var(--font,sans-serif);color:var(--ink,#edf2f7);display:flex;align-items:center;text-align:center;word-break:break-word}' +
+            '.ai-cell.empty{opacity:.35;border-style:dashed}' +
+            '.planner-legend{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem}' +
+            '.legend-pill{border:1px solid;border-radius:999px;padding:.18rem .65rem;font:600 11.5px var(--font,sans-serif)}' +
+            '.planner-variants{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.9rem}' +
+            '.pv-label{font:700 11px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.1em;color:var(--faint,#7a8a9e)}' +
+            '.pv-btn{background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,#2a3648);color:var(--ink-2,#cfd9e3);border-radius:999px;padding:.35rem .85rem;font:600 12px var(--font,sans-serif);cursor:pointer}' +
+            '.pv-btn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
+            '.planner-ai-actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.9rem}' +
+            '.planner-ai-summary{font:500 13.5px/1.65 var(--font,sans-serif);color:var(--ink-2,#cfd9e3);margin-bottom:.5rem}' +
+            '.planner-ai-summary .tag{display:inline-block;background:var(--accent-soft,rgba(63,210,176,.12));border:1px solid rgba(63,210,176,.3);color:var(--accent,#3fd2b0);border-radius:999px;padding:.1rem .55rem;font:600 11.5px var(--font,sans-serif);margin:.1rem 0}';
+        document.head.appendChild(st);
+    }
+    (function injectSettings() {
+        var inputEl = document.getElementById('plannerAiInput');
+        var inputRow = inputEl ? inputEl.parentNode : null;
+        if (inputRow && !document.getElementById('plnWake')) {
+            var set = document.createElement('div');
+            set.className = 'pln-settings';
+            set.innerHTML = '<b>Daily life</b>' +
+                '<span>Wake <select id="plnWake">' + [5, 6, 7, 8, 9, 10].map(function (h) { return '<option value="' + h + '"' + (h === 6 ? ' selected' : '') + '>' + h + ':00</option>'; }).join('') + '</select></span>' +
+                '<span>Sleep <select id="plnSleep">' + [20, 21, 22, 23].map(function (h) { return '<option value="' + h + '"' + (h === 23 ? ' selected' : '') + '>' + (h === 23 ? '23:00' : h + ':00') + '</option>'; }).join('') + '</select></span>' +
+                '<label><input type="checkbox" id="plnPrayers" checked> 🕌 Prayers ×5</label>' +
+                '<label><input type="checkbox" id="plnSports" checked> 🏃 Sports</label>' +
+                '<label><input type="checkbox" id="plnRest" checked> 😌 Rest</label>';
+            inputRow.parentNode.insertBefore(set, inputRow);
+        }
+    })();
+
+    /* ---------------- wire buttons (once) ---------------- */
+    (function wireOnce() {
+        var inputEl = document.getElementById('plannerAiInput');
+        var btn = document.getElementById('plannerAiBtn');
+        var resetBtn = document.getElementById('resetPlannerBtn');
+        if (inputEl && !inputEl.dataset.plannerV5) {
+            inputEl.dataset.plannerV5 = '1';
+            inputEl.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); generate(); }
+            });
+        }
+        if (btn && !btn.dataset.plannerV5) {
+            btn.dataset.plannerV5 = '1';
+            btn.addEventListener('click', generate);
+        }
+        document.querySelectorAll('.planner-chip').forEach(function (chip) {
+            if (chip.dataset.plannerV5) return;
+            chip.dataset.plannerV5 = '1';
+            chip.addEventListener('click', function () {
+                var inp = document.getElementById('plannerAiInput');
+                if (inp) inp.value = this.dataset.prompt || this.getAttribute('data-prompt') || '';
+                generate();
+            });
+        });
+        if (resetBtn && !resetBtn.dataset.plannerV5) {
+            resetBtn.dataset.plannerV5 = '1';
+            resetBtn.addEventListener('click', function () {
+                var data = loadData();
+                var keys = Object.keys(data.planner || {});
+                if (!keys.length) { alert('The planner is already empty.'); return; }
+                if (!confirm('Reset the whole planner?\nYour current plan (' + keys.length + ' filled cells) will move to the Trash — you can restore it any time.')) return;
+                if (typeof pushToTrash === 'function') {
+                    pushToTrash(data, 'planner-full', { cells: JSON.parse(JSON.stringify(data.planner)) }, 'Full planner (' + keys.length + ' cells)');
+                }
+                data.planner = {};
+                if (typeof addActivity === 'function') { addActivity(data, 'planner_reset', 'Reset the planner (previous plan in Trash)'); saveData(data); }
+                renderPlanner();
+                updateTrashCount();
+                if (typeof window.__ehToast === 'function') window.__ehToast('Planner reset — old plan is in Trash');
+            });
+        }
+    })();
 
     renderPlanner();
 }
 
+
 // ================================================================
-// FLASHCARDS (FIXED)
+// FLASHCARDS v2 — professional spaced-repetition flashcards
+//   • Decks: create / rename / delete (→ Trash) / search / stats
+//   • Cards: add / edit / delete per card (card delete → Trash)
+//   • Review: due-first queue (or all cards), flip card, progress bar,
+//     keyboard (Space = flip · 1 Hard · 2 Good · 3 Easy)
+//   • SM-2-style scheduling with ease factor (adapts to you)
+//   • Session summary: reviewed, ratings, next-due info
+//   • AUTO-GENERATE v2: real Q/A extraction from notes
+//       – definitions ("X is Y" → What is X?)
+//       – "term: meaning" lines → Q/A
+//       – cloze deletion from key sentences
+//       – provider-AI path when configured, offline engine otherwise
 // ================================================================
 function setupFlashcards() {
     var list = document.getElementById('flashcardList');
+    if (!list) return;
 
-    function renderFlashcards() {
-        var data = loadData();
-        list.innerHTML = '';
-
-        data.flashcards.decks.forEach(function(deck) {
-            var div = document.createElement('div');
-            div.className = 'glass-card';
-            div.style.padding = '1rem';
-
-            var dueCount = deck.cards.filter(function(c) {
-                return c.dueDate && c.dueDate <= new Date().toISOString().slice(0, 10);
-            }).length;
-
-            div.innerHTML = '<h3>' + deck.name + ' <span class="hl-cyan">(' + deck.cards.length + ' cards, ' + dueCount + ' due)</span></h3>' +
-                '<button class="btn-primary-sm" data-deck="' + deck.id + '" data-action="review">Review</button> ' +
-                '<button class="btn-danger-sm" data-deck="' + deck.id + '" data-action="delete">' + getTranslation('delete_all') + '</button>' +
-                '<div style="margin-top:0.5rem;"><input class="input-dark" placeholder="Front" id="front_' + deck.id + '"> <input class="input-dark" placeholder="Back" id="back_' + deck.id + '"> <button class="btn-primary-sm" data-deck="' + deck.id + '" data-action="addcard">Add Card</button></div>';
-
-            list.appendChild(div);
-        });
-
-        list.querySelectorAll('[data-deck]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var deckId = this.dataset.deck;
-                var action = this.dataset.action;
-                var data = loadData();
-                var deck = data.flashcards.decks.find(function(d) { return d.id === deckId; });
-                if (!deck) return;
-
-                if (action === 'delete') {
-                    if (confirm('Delete deck?')) {
-                        data.flashcards.decks = data.flashcards.decks.filter(function(d) { return d.id !== deckId; });
-                        saveData(data);
-                        renderFlashcards();
-                    }
-                } else if (action === 'addcard') {
-                    var front = document.getElementById('front_' + deckId).value.trim();
-                    var back = document.getElementById('back_' + deckId).value.trim();
-                    if (!front || !back) return;
-                    deck.cards.push({
-                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                        front: front,
-                        back: back,
-                        dueDate: new Date().toISOString().slice(0, 10),
-                        level: 0
-                    });
-                    saveData(data);
-                    renderFlashcards();
-                } else if (action === 'review') {
-                    startReview(deckId);
-                }
-            });
-        });
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+    function todayStr() { return new Date().toISOString().slice(0, 10); }
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+    function deckById(data, id) { return data.flashcards.decks.find(function (d) { return d.id === id; }); }
+    function cardStats(deck) {
+        var due = deck.cards.filter(function (c) { return (c.dueDate || todayStr()) <= todayStr(); }).length;
+        var mastered = deck.cards.filter(function (c) { return (c.level || 0) >= 4; }).length;
+        return { total: deck.cards.length, due: due, mastered: mastered };
+    }
+    function nextDue(deck) {
+        var future = deck.cards.map(function (c) { return c.dueDate || todayStr(); }).sort();
+        return future.length ? future[future.length - 1] : null;
     }
 
-    function startReview(deckId) {
-        var data = loadData();
-        var deck = data.flashcards.decks.find(function(d) { return d.id === deckId; });
-        if (!deck) return;
+    /* ---------------- injected styles ---------------- */
+    if (!document.getElementById('fcV2Styles')) {
+        var st = document.createElement('style');
+        st.id = 'fcV2Styles';
+        st.textContent =
+            '.fc-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem}' +
+            '.fc-search{flex:1;min-width:160px;max-width:280px;background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,#2a3648);border-radius:999px;padding:.45rem .95rem;color:var(--ink,#edf2f7);font:500 13px var(--font,sans-serif);outline:none}' +
+            '.fc-deck{background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.16));border-radius:14px;padding:1rem;margin-bottom:.8rem;transition:border-color .15s}' +
+            '.fc-deck:hover{border-color:rgba(63,210,176,.4)}' +
+            '.fc-deck-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}' +
+            '.fc-deck-name{font:700 16px var(--font,sans-serif);color:var(--ink,#edf2f7);margin:0}' +
+            '.fc-deck-stats{display:flex;gap:.45rem;flex-wrap:wrap;margin:.5rem 0 .7rem}' +
+            '.fc-pill{border-radius:999px;padding:.14rem .6rem;font:600 11.5px var(--font,sans-serif);border:1px solid}' +
+            '.fc-pill.due{background:rgba(240,180,106,.12);border-color:rgba(240,180,106,.4);color:var(--warn,#f0b46a)}' +
+            '.fc-pill.total{background:rgba(125,211,252,.1);border-color:rgba(125,211,252,.35);color:#7dd3fc}' +
+            '.fc-pill.mastered{background:rgba(99,230,190,.1);border-color:rgba(99,230,190,.35);color:#6ee7b7}' +
+            '.fc-deck-actions{display:flex;gap:.45rem;flex-wrap:wrap}' +
+            '.fc-cards{margin-top:.8rem;border-top:1px dashed var(--line,rgba(148,163,184,.2));padding-top:.7rem}' +
+            '.fc-card-row{display:flex;align-items:center;gap:.55rem;padding:.42rem 0;border-bottom:1px solid var(--line,rgba(148,163,184,.09));font:500 13px var(--font,sans-serif);color:var(--ink-2,#cfd9e3)}' +
+            '.fc-card-row:last-child{border-bottom:none}' +
+            '.fc-front{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:var(--ink,#edf2f7)}' +
+            '.fc-back{flex:1.4;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted,#8d9aa9)}' +
+            '.fc-lvl{font:700 10.5px var(--mono,monospace);color:var(--faint,#7a8a9e);white-space:nowrap}' +
+            '.fc-addrow{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.7rem}' +
+            '.fc-addrow input{flex:1;min-width:140px;background:var(--surface-2,rgba(148,163,184,.06));border:1px solid var(--line,#2a3648);border-radius:9px;padding:.5rem .7rem;color:var(--ink,#edf2f7);font:500 13px var(--font,inherit);outline:none}' +
+            '.fc-addrow input:focus{border-color:var(--accent,#3fd2b0)}' +
+            '.fc-review-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.7rem}' +
+            '.fc-progress{height:7px;background:rgba(148,163,184,.14);border-radius:999px;overflow:hidden;flex:1;margin:0 .8rem}' +
+            '.fc-progress i{display:block;height:100%;background:var(--accent,#3fd2b0);border-radius:999px;transition:width .3s}' +
+            '.fc-card{background:var(--surface-raised,rgba(13,22,37,.7));border:1px solid var(--line,rgba(148,163,184,.22));border-radius:16px;padding:2rem 1.4rem;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:border-color .15s, transform .12s;user-select:none}' +
+            '.fc-card:active{transform:scale(.99)}' +
+            '.fc-face{font:650 18px/1.55 var(--font,inherit);color:var(--ink,#edf2f7);max-width:640px;word-break:break-word}' +
+            '.fc-face.back{color:var(--accent,#3fd2b0)}' +
+            '.fc-hint{font:600 10.5px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.12em;color:var(--faint,#7a8a9e);margin-top:.9rem}' +
+            '.fc-diff{display:flex;gap:.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap}' +
+            '.fc-diff button{border-radius:10px;padding:.55rem 1.1rem;font:700 13px var(--font,sans-serif);cursor:pointer;border:1px solid;transition:all .15s}' +
+            '.fc-diff .d1{background:rgba(252,165,165,.1);border-color:rgba(252,165,165,.4);color:#fca5a5}' +
+            '.fc-diff .d2{background:rgba(240,180,106,.1);border-color:rgba(240,180,106,.4);color:var(--warn,#f0b46a)}' +
+            '.fc-diff .d3{background:rgba(99,230,190,.1);border-color:rgba(99,230,190,.4);color:#6ee7b7}' +
+            '.fc-diff button:hover{filter:brightness(1.25)}' +
+            '.fc-diff button:disabled{opacity:.35;cursor:not-allowed}' +
+            '.fc-summary{text-align:center;padding:1.4rem 0}' +
+            '.fc-summary h3{font:700 20px var(--font,sans-serif);color:var(--ink,#edf2f7);margin:0 0 .6rem}' +
+            '.fc-sum-stats{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin:.8rem 0}' +
+            '.fc-empty-review{padding:1.6rem;text-align:center;color:var(--muted,#8d9aa9);font-size:14px}';
+        document.head.appendChild(st);
+    }
 
-        var dueCards = deck.cards.filter(function(c) {
-            return c.dueDate && c.dueDate <= new Date().toISOString().slice(0, 10);
+    /* ---------------- state ---------------- */
+    var browseDeckId = null, deckQuery = '';
+
+    /* ---------------- deck list ---------------- */
+    function renderFlashcards() {
+        var data = loadData();
+        if (!data.flashcards || !data.flashcards.decks) data.flashcards = { decks: [] };
+
+        var addBtn = document.getElementById('addDeckBtn');
+        var autoBtn = document.getElementById('autoGenFlashcardsBtn');
+        if (addBtn && !addBtn.dataset.fcHooked) {
+            addBtn.dataset.fcHooked = '1';
+            addBtn.addEventListener('click', function () {
+                var name = prompt('Deck name:', 'New deck');
+                if (!name || !name.trim()) return;
+                var d = loadData();
+                d.flashcards.decks.push({ id: uid(), name: name.trim().slice(0, 40), cards: [], createdAt: new Date().toISOString() });
+                if (typeof addActivity === 'function') addActivity(d, 'flashcard', 'Created deck "' + name.trim() + '"');
+                saveData(d);
+                renderFlashcards();
+            });
+        }
+        if (autoBtn && !autoBtn.dataset.fcHooked) {
+            autoBtn.dataset.fcHooked = '1';
+            autoBtn.addEventListener('click', function () { if (typeof autoGenerateFlashcards === 'function') autoGenerateFlashcards(); });
+        }
+
+        var decks = data.flashcards.decks.filter(function (d) {
+            return !deckQuery || d.name.toLowerCase().indexOf(deckQuery) !== -1;
         });
 
-        if (dueCards.length === 0) {
-            alert('No cards due for review!');
+        var toolbar = '<div class="fc-toolbar">' +
+            '<input id="fcSearch" class="fc-search" placeholder="🔍 Search decks…" value="' + esc(deckQuery) + '">' +
+            '</div>';
+
+        var emptyEl = document.getElementById('flashcardEmpty');
+        if (!data.flashcards.decks.length) {
+            list.innerHTML = '<p class="empty-state">No decks yet — create one or auto-generate from your notes.</p>';
+            if (emptyEl) emptyEl.style.display = '';
+            return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        if (!decks.length) {
+            list.innerHTML = toolbar + '<p class="empty-state">No deck matches “' + esc(deckQuery) + '”.</p>';
+            hookToolbar();
             return;
         }
 
-        var idx = 0;
-        var reviewContainer = document.getElementById('flashcardReview');
-        reviewContainer.style.display = 'block';
-        var frontEl = document.getElementById('reviewFront');
-        var backEl = document.getElementById('reviewBack');
-        var diffBtns = document.querySelectorAll('.flashcard-difficulty button');
-
-        function showCard() {
-            if (idx >= dueCards.length) {
-                reviewContainer.style.display = 'none';
-                alert('Review complete!');
-                renderFlashcards();
-                return;
-            }
-            var card = dueCards[idx];
-            frontEl.textContent = card.front;
-            backEl.textContent = card.back;
-            document.querySelector('.flashcard-review').classList.remove('show-back');
-        }
-
-        showCard();
-
-        document.querySelector('.flashcard-review').addEventListener('click', function(e) {
-            if (e.target.tagName !== 'BUTTON') {
-                this.classList.toggle('show-back');
-            }
-        });
-
-        diffBtns.forEach(function(btn) {
-            btn.onclick = function() {
-                var diff = parseInt(this.dataset.diff);
-                var card = dueCards[idx];
-                var data = loadData();
-                var deck2 = data.flashcards.decks.find(function(d) { return d.id === deckId; });
-                var c = deck2.cards.find(function(c) { return c.id === card.id; });
-                if (c) {
-                    var level = c.level || 0;
-                    if (diff === 1) level = Math.max(0, level - 1);
-                    else if (diff === 3) level = Math.min(5, level + 1);
-                    else if (diff === 2) level = Math.min(5, level + 0.5);
-                    c.level = level;
-                    var days = [1, 2, 4, 8, 16, 32];
-                    var next = new Date();
-                    next.setDate(next.getDate() + days[Math.min(5, Math.round(level))]);
-                    c.dueDate = next.toISOString().slice(0, 10);
-                    saveData(data);
-                }
-                idx++;
-                showCard();
-                if (idx === dueCards.length) {
-                    setTimeout(function() {
-                        reviewContainer.style.display = 'none';
-                        renderFlashcards();
-                    }, 500);
-                }
-            };
-        });
+        list.innerHTML = toolbar + decks.map(function (deck) {
+            var s = cardStats(deck);
+            return '<div class="fc-deck" data-deckcard="' + deck.id + '">' +
+                '<div class="fc-deck-head">' +
+                    '<h3 class="fc-deck-name">' + esc(deck.name) + '</h3>' +
+                    '<div class="fc-deck-actions">' +
+                        '<button class="btn-primary-sm" data-review="' + deck.id + '"' + (s.total ? '' : ' disabled style="opacity:.4;cursor:not-allowed"') + '>▶ Review' + (s.due ? ' (' + s.due + ')' : '') + '</button>' +
+                        '<button class="btn-primary-sm" data-reviewall="' + deck.id + '"' + (s.total ? '' : ' disabled style="opacity:.4;cursor:not-allowed"') + '>All ' + s.total + '</button>' +
+                        '<button class="btn-primary-sm" data-browse="' + deck.id + '">' + (browseDeckId === deck.id ? '▲ Cards' : '▼ Cards') + '</button>' +
+                        '<button class="btn-primary-sm" data-rename="' + deck.id + '">✎</button>' +
+                        '<button class="btn-danger-sm" data-deckdel="' + deck.id + '">🗑</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="fc-deck-stats">' +
+                    '<span class="fc-pill total">' + s.total + ' cards</span>' +
+                    '<span class="fc-pill due">' + s.due + ' due today</span>' +
+                    '<span class="fc-pill mastered">' + s.mastered + ' mastered</span>' +
+                '</div>' +
+                (browseDeckId === deck.id ? renderCards(deck) : '') +
+            '</div>';
+        }).join('');
+        hookToolbar();
     }
 
-    document.getElementById('addDeckBtn').addEventListener('click', function() {
-        var name = prompt('Deck name:');
-        if (!name) return;
-        var data = loadData();
-        data.flashcards.decks.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            name: name,
-            cards: []
-        });
-        saveData(data);
-        renderFlashcards();
-    });
+    function renderCards(deck) {
+        if (!deck.cards.length) {
+            return '<div class="fc-cards"><p class="empty-state">No cards in this deck yet — add the first one below.</p>' + addRow(deck.id) + '</div>';
+        }
+        var rows = deck.cards.map(function (c) {
+            return '<div class="fc-card-row">' +
+                '<span class="fc-front" title="' + esc(c.front) + '">' + esc(c.front) + '</span>' +
+                '<span class="fc-back" title="' + esc(c.back) + '">' + esc(c.back) + '</span>' +
+                '<span class="fc-lvl">L' + (c.level || 0) + ' · ' + esc(c.dueDate || '?') + '</span>' +
+                '<button class="btn-primary-sm" data-cardedit="' + c.id + '">✎</button>' +
+                '<button class="btn-danger-sm" data-carddel="' + c.id + '">🗑</button>' +
+            '</div>';
+        }).join('');
+        return '<div class="fc-cards">' + rows + addRow(deck.id) + '</div>';
+    }
+    function addRow(deckId) {
+        return '<div class="fc-addrow">' +
+            '<input type="text" id="fcFront_' + deckId + '" placeholder="Front (question / term)">' +
+            '<input type="text" id="fcBack_' + deckId + '" placeholder="Back (answer)">' +
+            '<button class="btn-primary-sm" data-addcard="' + deckId + '">➕ Add card</button>' +
+        '</div>';
+    }
 
+    function hookToolbar() {
+        var search = document.getElementById('fcSearch');
+        if (search && !search.dataset.fcHooked) {
+            search.dataset.fcHooked = '1';
+            search.addEventListener('input', function () { deckQuery = this.value.trim().toLowerCase(); renderFlashcardsKeepSearch(); });
+        }
+        if (!list.dataset.fcHooked) {
+            list.dataset.fcHooked = '1';
+            list.addEventListener('click', function (e) {
+                var t = e.target;
+                var rv = t.closest('[data-review]');
+                if (rv) { startReview(rv.dataset.review, false); return; }
+                var ra = t.closest('[data-reviewall]');
+                if (ra) { startReview(ra.dataset.reviewall, true); return; }
+                var br = t.closest('[data-browse]');
+                if (br) { browseDeckId = (browseDeckId === br.dataset.browse) ? null : br.dataset.browse; renderFlashcards(); return; }
+                var rn = t.closest('[data-rename]');
+                if (rn) {
+                    var d1 = loadData();
+                    var k1 = deckById(d1, rn.dataset.rename);
+                    if (!k1) return;
+                    var nn = prompt('Rename deck:', k1.name);
+                    if (nn && nn.trim()) { k1.name = nn.trim().slice(0, 40); saveData(d1); renderFlashcards(); }
+                    return;
+                }
+                var dd = t.closest('[data-deckdel]');
+                if (dd) {
+                    var d2 = loadData();
+                    var k2 = deckById(d2, dd.dataset.deckdel);
+                    if (!k2) return;
+                    if (!confirm('Move deck "' + k2.name + '" (' + k2.cards.length + ' cards) to the Trash?')) return;
+                    if (typeof pushToTrash === 'function') pushToTrash(d2, 'flashcards', JSON.parse(JSON.stringify(k2)), 'Deck: ' + k2.name);
+                    d2.flashcards.decks = d2.flashcards.decks.filter(function (x) { return x.id !== k2.id; });
+                    if (browseDeckId === k2.id) browseDeckId = null;
+                    if (typeof addActivity === 'function') addActivity(d2, 'delete', 'Moved deck "' + k2.name + '" to Trash');
+                    saveData(d2); updateTrashCount(); renderFlashcards();
+                    if (typeof window.__ehToast === 'function') window.__ehToast('Deck moved to Trash');
+                    return;
+                }
+                var ce = t.closest('[data-cardedit]');
+                if (ce) {
+                    var d3 = loadData();
+                    var found3 = null;
+                    d3.flashcards.decks.forEach(function (dk) { var c = dk.cards.find(function (x) { return x.id === ce.dataset.cardedit; }); if (c) found3 = { deck: dk, card: c }; });
+                    if (!found3) return;
+                    var nf = prompt('Edit FRONT:', found3.card.front);
+                    if (nf === null) return;
+                    var nb = prompt('Edit BACK:', found3.card.back);
+                    if (nb === null) return;
+                    if (nf.trim()) found3.card.front = nf.trim();
+                    if (nb.trim()) found3.card.back = nb.trim();
+                    saveData(d3); renderFlashcards();
+                    return;
+                }
+                var cd = t.closest('[data-carddel]');
+                if (cd) {
+                    var d4 = loadData();
+                    var found4 = null;
+                    d4.flashcards.decks.forEach(function (dk) { var c = dk.cards.find(function (x) { return x.id === cd.dataset.carddel; }); if (c) found4 = { deck: dk, card: c }; });
+                    if (!found4) return;
+                    if (!confirm('Move card "' + found4.card.front.slice(0, 40) + '" to the Trash?')) return;
+                    if (typeof pushToTrash === 'function') pushToTrash(d4, 'flashcard-card', { deckId: found4.deck.id, deckName: found4.deck.name, card: JSON.parse(JSON.stringify(found4.card)) }, found4.card.front.slice(0, 40));
+                    found4.deck.cards = found4.deck.cards.filter(function (x) { return x.id !== found4.card.id; });
+                    if (typeof addActivity === 'function') addActivity(d4, 'delete', 'Moved flashcard to Trash (deck "' + found4.deck.name + '")');
+                    saveData(d4); updateTrashCount(); renderFlashcards();
+                    if (typeof window.__ehToast === 'function') window.__ehToast('Card moved to Trash');
+                    return;
+                }
+                var ac = t.closest('[data-addcard]');
+                if (ac) {
+                    var deckId = ac.dataset.addcard;
+                    var front = document.getElementById('fcFront_' + deckId);
+                    var back = document.getElementById('fcBack_' + deckId);
+                    if (!front || !back) return;
+                    if (!front.value.trim() || !back.value.trim()) { front.value.trim() ? back.focus() : front.focus(); return; }
+                    var d5 = loadData();
+                    var k5 = deckById(d5, deckId);
+                    if (!k5) return;
+                    k5.cards.push({ id: uid(), front: front.value.trim().slice(0, 300), back: back.value.trim().slice(0, 1000), dueDate: todayStr(), level: 0, ease: 2.5, reps: 0 });
+                    saveData(d5);
+                    renderFlashcards();
+                    var again = document.getElementById('fcFront_' + deckId);
+                    if (again) again.focus();
+                    return;
+                }
+            });
+        }
+    }
+    function renderFlashcardsKeepSearch() {
+        var box = document.getElementById('fcSearch');
+        var pos = box ? box.selectionStart : null;
+        renderFlashcards();
+        var nb = document.getElementById('fcSearch');
+        if (nb && pos !== null) { nb.focus(); try { nb.setSelectionRange(pos, pos); } catch (e) {} }
+    }
+
+    /* ---------------- review mode ---------------- */
+    var reviewState = null;
+
+    function scheduleCard(card, diff) {
+        /* SM-2-style: adapt ease, grow intervals, recover after lapses */
+        if (card.ease === undefined) card.ease = 2.5;
+        if (card.reps === undefined) card.reps = 0;
+        var level = card.level || 0;
+        var baseDays = [1, 2, 4, 8, 16, 32, 64][Math.min(6, level)];
+        var days;
+        if (diff === 1) {                     /* Hard */
+            card.ease = Math.max(1.3, card.ease - 0.15);
+            level = Math.max(0, level - 1);
+            days = Math.max(1, Math.round(baseDays * 0.6 * (card.ease / 2.5)));
+        } else if (diff === 2) {              /* Good */
+            level = Math.min(6, level + 1);
+            days = Math.max(1, Math.round([1, 2, 4, 8, 16, 32, 64][Math.min(6, level)] * (card.ease / 2.5)));
+        } else {                              /* Easy */
+            card.ease = Math.min(3.2, card.ease + 0.12);
+            level = Math.min(6, level + 1);
+            days = Math.max(2, Math.round([1, 2, 4, 8, 16, 32, 64][Math.min(6, level)] * 1.35 * (card.ease / 2.5)));
+        }
+        card.level = level;
+        card.reps++;
+        var d = new Date();
+        d.setDate(d.getDate() + days);
+        card.dueDate = d.toISOString().slice(0, 10);
+        card.lastReviewed = todayStr();
+    }
+
+    function startReview(deckId, allCards) {
+        var data = loadData();
+        var deck = deckById(data, deckId);
+        if (!deck || !deck.cards.length) return;
+        var today = todayStr();
+        var queue = allCards
+            ? deck.cards.slice()
+            : deck.cards.filter(function (c) { return (c.dueDate || today) <= today; });
+        if (!allCards) queue = queue.concat();       /* keep order: oldest due first */
+        queue.sort(function (a, b) { return (a.dueDate || today) < (b.dueDate || today) ? -1 : 1; });
+        if (!queue.length) {
+            var rv0 = document.getElementById('flashcardReview');
+            if (rv0) {
+                rv0.classList.remove('hidden');
+                rv0.style.display = 'block';
+                rv0.innerHTML = '<div class="fc-empty-review">🎉 Nothing due in <b>' + esc(deck.name) + '</b> right now.<br><br><button class="btn-primary" id="fcReviewAllNow">Review all ' + deck.cards.length + ' cards anyway</button> <button class="btn-danger" id="fcBackDecks0">Back to decks</button></div>';
+                document.getElementById('fcReviewAllNow').addEventListener('click', function () { startReview(deckId, true); });
+                document.getElementById('fcBackDecks0').addEventListener('click', endReview);
+            } else {
+                alert('No cards due for review!');
+            }
+            return;
+        }
+        reviewState = { deckId: deckId, deckName: deck.name, queue: queue, i: 0, flipped: false, ratings: { 1: 0, 2: 0, 3: 0 } };
+        var rv = document.getElementById('flashcardReview');
+        if (!rv) return;
+        rv.classList.remove('hidden');
+        rv.style.display = 'block';
+        renderReviewCard();
+        if (!document.body.dataset.fcKeyHooked) {
+            document.body.dataset.fcKeyHooked = '1';
+            document.addEventListener('keydown', function (e) {
+                if (!reviewState) return;
+                if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
+                else if (e.key === '1' || e.key === '2' || e.key === '3') {
+                    if (reviewState.flipped) rateCard(parseInt(e.key, 10));
+                }
+            });
+        }
+    }
+    function renderReviewCard() {
+        var rv = document.getElementById('flashcardReview');
+        var st = reviewState;
+        if (!rv || !st) return;
+        if (st.i >= st.queue.length) { renderReviewSummary(); return; }
+        var card = st.queue[st.i];
+        rv.innerHTML =
+            '<div class="fc-review-head">' +
+                '<b style="font:700 14px var(--font,sans-serif);color:var(--ink,#edf2f7)">' + esc(st.deckName) + '</b>' +
+                '<div class="fc-progress"><i style="width:' + Math.round(st.i / st.queue.length * 100) + '%"></i></div>' +
+                '<span style="font:700 12px var(--mono,monospace);color:var(--faint,#7a8a9e)">' + (st.i + 1) + ' / ' + st.queue.length + '</span>' +
+                '<button class="btn-danger-sm" id="fcEndReview">✕ End</button>' +
+            '</div>' +
+            '<div class="fc-card" id="fcFlip">' +
+                '<div class="fc-face" id="reviewFront">' + esc(card.front) + '</div>' +
+                (st.flipped ? '<div class="fc-face back" id="reviewBack" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed rgba(148,163,184,.25)">' + esc(card.back) + '</div>' : '') +
+                '<div class="fc-hint">' + (st.flipped ? 'How well did you remember?' : 'Click or press Space to flip') + '</div>' +
+            '</div>' +
+            '<div class="fc-diff">' +
+                '<button class="d1" data-diff="1"' + (st.flipped ? '' : ' disabled') + '>1 · Hard</button>' +
+                '<button class="d2" data-diff="2"' + (st.flipped ? '' : ' disabled') + '>2 · Good</button>' +
+                '<button class="d3" data-diff="3"' + (st.flipped ? '' : ' disabled') + '>3 · Easy</button>' +
+            '</div>';
+        document.getElementById('fcEndReview').addEventListener('click', endReview);
+        document.getElementById('fcFlip').addEventListener('click', function (e) {
+            if (e.target.closest('button')) return;
+            flipCard();
+        });
+        rv.querySelectorAll('.fc-diff button').forEach(function (b) {
+            b.addEventListener('click', function () { rateCard(parseInt(this.dataset.diff, 10)); });
+        });
+    }
+    function flipCard() {
+        if (!reviewState) return;
+        reviewState.flipped = !reviewState.flipped;
+        renderReviewCard();
+    }
+    function rateCard(diff) {
+        var st = reviewState;
+        if (!st || !st.flipped) return;
+        var card = st.queue[st.i];
+        var data = loadData();
+        var deck = deckById(data, st.deckId);
+        if (deck) {
+            var live = deck.cards.find(function (c) { return c.id === card.id; });
+            if (live) scheduleCard(live, diff);
+            saveData(data);
+        }
+        st.ratings[diff]++;
+        st.i++;
+        st.flipped = false;
+        renderReviewCard();
+    }
+    function renderReviewSummary() {
+        var rv = document.getElementById('flashcardReview');
+        var st = reviewState;
+        if (!rv || !st) return;
+        var total = st.queue.length;
+        var goodish = st.ratings[2] + st.ratings[3];
+        var acc = total ? Math.round(goodish / total * 100) : 0;
+        rv.innerHTML =
+            '<div class="fc-summary">' +
+                '<h3>🎉 Review complete!</h3>' +
+                '<p style="color:var(--muted,#8d9aa9);font-size:14px;">Deck: <b style="color:var(--ink,#edf2f7)">' + esc(st.deckName) + '</b></p>' +
+                '<div class="fc-sum-stats">' +
+                    '<span class="fc-pill total">' + total + ' reviewed</span>' +
+                    '<span class="fc-pill due">' + st.ratings[1] + ' hard</span>' +
+                    '<span class="fc-pill total">' + st.ratings[2] + ' good</span>' +
+                    '<span class="fc-pill mastered">' + st.ratings[3] + ' easy</span>' +
+                    '<span class="fc-pill mastered">' + acc + '% recall</span>' +
+                '</div>' +
+                '<p style="color:var(--faint,#7a8a9e);font-size:12.5px;">Cards are scheduled with spaced repetition — come back tomorrow for the hard ones.</p>' +
+                '<button class="btn-primary" id="fcBackDecks" style="margin-top:.6rem;">Back to decks</button>' +
+            '</div>';
+        document.getElementById('fcBackDecks').addEventListener('click', endReview);
+        reviewState = null;
+    }
+    function endReview() {
+        reviewState = null;
+        var rv = document.getElementById('flashcardReview');
+        if (rv) { rv.classList.add('hidden'); rv.style.display = 'none'; rv.innerHTML = ''; }
+        renderFlashcards();
+    }
+    window.renderFlashcards = renderFlashcards;
     renderFlashcards();
 }
 
+
 // ================================================================
-// READING LIST
+// READING LIST v2 — professional reading tracker
+//   • Add / edit / mark read · favorites ★ · search · filters
+//   • Progress bar (X of Y read) · open-link safe
+//   • Delete → Trash (restorable) · "Forever" permanent delete
+//   • Clear-all → Trash · empty state always in sync
 // ================================================================
 function setupReading() {
     var form = document.getElementById('readingForm');
     if (!form) return;
+
+    if (!document.getElementById('rdV2Styles')) {
+        var stl = document.createElement('style');
+        stl.id = 'rdV2Styles';
+        stl.textContent =
+            '.rd-progress{display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem}' +
+            '.rd-progress-bar{flex:1;max-width:340px;height:8px;background:rgba(148,163,184,.14);border-radius:999px;overflow:hidden}' +
+            '.rd-progress-bar i{display:block;height:100%;background:var(--accent,#3fd2b0);border-radius:999px;transition:width .35s}' +
+            '.rd-progress-label{font:700 12px var(--font,sans-serif);color:var(--muted,#8d9aa9);white-space:nowrap}' +
+            '.rd-toolbar{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin-bottom:.9rem}' +
+            '.rd-search{max-width:250px;border-radius:999px;padding:.42rem .95rem;font:500 13px var(--font,inherit)}' +
+            '.rd-item{align-items:center}' +
+            '.rd-read .rd-title{opacity:.6;text-decoration:line-through}' +
+            '.rd-fav{background:transparent;border:none;font-size:17px;cursor:pointer;color:var(--faint,#7a8a9e);padding:0 .1rem;line-height:1}' +
+            '.rd-fav.on{color:#fbbf24}' +
+            '.rd-title{font:600 14px var(--font,sans-serif);color:var(--ink,#edf2f7)}';
+        document.head.appendChild(stl);
+    }
     var list = document.getElementById('readingList');
+    var editingId = null, filter = 'all', q = '';
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
 
     function renderReading() {
         var data = loadData();
-        if (data.readingList.length === 0) {
-            list.innerHTML = '<p class="empty-state">' + getTranslation('no_items') + '</p>';
-            return;
+        data.readingList = data.readingList || [];
+        if (editingId && !data.readingList.some(function (r) { return r.id === editingId; })) editingId = null;
+
+        var all = data.readingList;
+        var read = all.filter(function (r) { return r.read; }).length;
+        var shown = all.filter(function (r) {
+            if (filter === 'unread' && r.read) return false;
+            if (filter === 'read' && !r.read) return false;
+            if (filter === 'fav' && !r.fav) return false;
+            if (q) {
+                var hay = ((r.title || '') + ' ' + (r.subject || '') + ' ' + (r.tags || []).join(' ')).toLowerCase();
+                if (hay.indexOf(q) === -1) return false;
+            }
+            return true;
+        }).sort(function (a, b) { return (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || (a.read ? 1 : 0) - (b.read ? 1 : 0); });
+
+        var pct = all.length ? Math.round(read / all.length * 100) : 0;
+        var toolbar =
+            '<div class="rd-progress"><div class="rd-progress-bar"><i style="width:' + pct + '%"></i></div>' +
+            '<span class="rd-progress-label">' + read + ' / ' + all.length + ' read · ' + pct + '%</span></div>' +
+            '<div class="rd-toolbar">' +
+                '<input id="rdSearch" class="input-dark rd-search" placeholder="🔍 Search title, subject, tag…" value="' + esc(q) + '">' +
+                '<button class="as-filter' + (filter === 'all' ? ' on' : '') + '" data-filter="all">All <b>' + all.length + '</b></button>' +
+                '<button class="as-filter' + (filter === 'unread' ? ' on' : '') + '" data-filter="unread">Unread <b>' + (all.length - read) + '</b></button>' +
+                '<button class="as-filter' + (filter === 'read' ? ' on' : '') + '" data-filter="read">Read <b>' + read + '</b></button>' +
+                '<button class="as-filter' + (filter === 'fav' ? ' on' : '') + '" data-filter="fav">★ <b>' + all.filter(function (r) { return r.fav; }).length + '</b></button>' +
+                (all.length ? '<button id="rdClearAll" class="as-mini">Clear all → Trash</button>' : '') +
+            '</div>';
+
+        var emptyEl = document.getElementById('readingEmpty');
+        if (!all.length) {
+            list.innerHTML = toolbar + '<p class="empty-state">' + getTranslation('no_items') + '</p>';
+            if (emptyEl) emptyEl.style.display = '';
+        } else if (!shown.length) {
+            list.innerHTML = toolbar + '<p class="empty-state">Nothing matches this filter.</p>';
+            if (emptyEl) emptyEl.style.display = 'none';
+        } else {
+            list.innerHTML = toolbar + shown.map(function (r) {
+                var tags = '<span class="tags">#' + esc(r.subject) + (r.tags || []).map(function (t) { return ' #' + esc(t); }).join('') + '</span>';
+                return '<div class="assignment-item rd-item' + (r.read ? ' rd-read' : '') + (editingId === r.id ? ' as-editing' : '') + '">' +
+                    '<div class="as-main">' +
+                        '<button class="rd-fav' + (r.fav ? ' on' : '') + '" data-fav="' + r.id + '" title="Favorite">' + (r.fav ? '★' : '☆') + '</button>' +
+                        '<span class="rd-title">' + esc(r.title) + (r.read ? ' <i class="ph ph-check-circle" aria-hidden="true"></i>' : ' <i class="ph ph-book-open" aria-hidden="true"></i>') + '</span>' +
+                        tags +
+                    '</div>' +
+                    '<div class="as-actions">' +
+                        '<a class="btn-primary-sm" href="' + esc(r.url) + '" target="_blank" rel="noopener" style="text-decoration:none;color:#c084fc;">🔗 Open</a>' +
+                        '<button class="btn-primary-sm" data-toggle="' + r.id + '">' + (r.read ? 'Unread' : getTranslation('read')) + '</button>' +
+                        '<button class="btn-primary-sm" data-edit="' + r.id + '">✎ Edit</button>' +
+                        '<button class="btn-danger-sm" data-del="' + r.id + '">🗑 Trash</button>' +
+                        '<button class="as-forever" data-purge="' + r.id + '" title="Delete permanently">⌫ Forever</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+            if (emptyEl) emptyEl.style.display = 'none';
         }
 
-        list.innerHTML = data.readingList.map(function(r) {
-            return '<div class="assignment-item"><span>' + escapeUserHtml(r.title) + (r.read ? ' <i class="ph ph-check-circle" aria-hidden="true"></i>' : ' <i class="ph ph-book-open" aria-hidden="true"></i>') + ' <span class="tags">#' + escapeUserHtml(r.subject) + (r.tags ? r.tags.map(function(t) { return ' #' + escapeUserHtml(t); }).join('') : '') + '</span></span><span><a href="' + escapeUserHtml(r.url) + '" target="_blank" rel="noopener" style="color:#c084fc;">Link</a> <button class="btn-danger-sm" data-id="' + r.id + '">' + getTranslation('delete_all') + '</button> <button class="btn-primary-sm" data-id="' + r.id + '" data-action="toggle">' + (r.read ? 'Unread' : getTranslation('read')) + '</button></span></div>';
-        }).join('');
+        if (!list.dataset.rdHooked) {
+            list.dataset.rdHooked = '1';
+            list.addEventListener('click', function (e) {
+                var t = e.target;
+                var f = t.closest('[data-filter]');
+                if (f) { filter = f.dataset.filter; renderReading(); return; }
+                var ca = t.closest('#rdClearAll');
+                if (ca) {
+                    var dc = loadData();
+                    if (!dc.readingList.length) return;
+                    if (!confirm('Move all ' + dc.readingList.length + ' reading item(s) to the Trash?')) return;
+                    dc.readingList.forEach(function (r) { if (typeof pushToTrash === 'function') pushToTrash(dc, 'reading', r, r.title); });
+                    dc.readingList = [];
+                    if (typeof addActivity === 'function') addActivity(dc, 'delete', 'Moved all reading items to Trash');
+                    saveData(dc); updateTrashCount(); renderReading();
+                    if (typeof window.__ehToast === 'function') window.__ehToast('Reading list moved to Trash');
+                    return;
+                }
+                var fv = t.closest('[data-fav]');
+                if (fv) {
+                    var df = loadData();
+                    var rf = df.readingList.find(function (x) { return x.id === fv.dataset.fav; });
+                    if (!rf) return;
+                    rf.fav = !rf.fav;
+                    saveData(df); renderReading(); return;
+                }
+                var tg = t.closest('[data-toggle]');
+                if (tg) {
+                    var dt = loadData();
+                    var rt = dt.readingList.find(function (x) { return x.id === tg.dataset.toggle; });
+                    if (!rt) return;
+                    rt.read = !rt.read;
+                    if (typeof addActivity === 'function') addActivity(dt, 'reading', (rt.read ? 'Finished reading' : 'Reopened') + ' "' + rt.title + '"');
+                    saveData(dt); renderReading(); return;
+                }
+                var ed = t.closest('[data-edit]');
+                if (ed) {
+                    var d2 = loadData();
+                    var r2 = d2.readingList.find(function (x) { return x.id === ed.dataset.edit; });
+                    if (!r2) return;
+                    editingId = (editingId === r2.id) ? null : r2.id;
+                    if (editingId) {
+                        document.getElementById('readTitle').value = r2.title;
+                        document.getElementById('readUrl').value = r2.url;
+                        document.getElementById('readSubject').value = r2.subject;
+                        document.getElementById('readTags').value = (r2.tags || []).join(', ');
+                        var sub = form.querySelector('button[type=submit]');
+                        if (sub) sub.textContent = '💾 Update';
+                    } else {
+                        form.reset();
+                        var sub2 = form.querySelector('button[type=submit]');
+                        if (sub2) sub2.textContent = '➕ Add';
+                    }
+                    renderReading();
+                    return;
+                }
+                var del = t.closest('[data-del]');
+                if (del) {
+                    var d3 = loadData();
+                    var r3 = d3.readingList.find(function (x) { return x.id === del.dataset.del; });
+                    if (!r3) return;
+                    if (!confirm('Move "' + r3.title + '" to the Trash?')) return;
+                    if (typeof pushToTrash === 'function') pushToTrash(d3, 'reading', r3, r3.title);
+                    d3.readingList = d3.readingList.filter(function (x) { return x.id !== r3.id; });
+                    if (typeof addActivity === 'function') addActivity(d3, 'delete', 'Moved reading item "' + r3.title + '" to Trash');
+                    saveData(d3); updateTrashCount(); renderReading();
+                    if (typeof window.__ehToast === 'function') window.__ehToast('Reading item moved to Trash');
+                    return;
+                }
+                var pur = t.closest('[data-purge]');
+                if (pur) {
+                    var d4 = loadData();
+                    var r4 = d4.readingList.find(function (x) { return x.id === pur.dataset.purge; });
+                    if (!r4) return;
+                    if (!confirm('Permanently delete "' + r4.title + '"?\nThis cannot be undone.')) return;
+                    window.__TRASH_BYPASS__ = true;
+                    try {
+                        d4.readingList = d4.readingList.filter(function (x) { return x.id !== r4.id; });
+                        if (typeof addActivity === 'function') addActivity(d4, 'delete', 'Permanently deleted reading item "' + r4.title + '"');
+                        saveData(d4);
+                    } finally { window.__TRASH_BYPASS__ = false; }
+                    renderReading();
+                    return;
+                }
+            });
+            list.addEventListener('input', function (e) {
+                if (e.target.id === 'rdSearch') { q = e.target.value.trim().toLowerCase(); renderReadingKeepSearch(); }
+            });
+        }
 
-        list.querySelectorAll('[data-id]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.dataset.id;
-                var action = this.dataset.action;
+        function renderReadingKeepSearch() {
+            /* re-render but restore focus + caret in the search box */
+            var pos = null;
+            var box = document.getElementById('rdSearch');
+            if (box) pos = box.selectionStart;
+            renderReading();
+            var nb = document.getElementById('rdSearch');
+            if (nb && pos !== null) { nb.focus(); try { nb.setSelectionRange(pos, pos); } catch (e) {} }
+        }
+
+        if (!form.dataset.rdFormHooked) {
+            form.dataset.rdFormHooked = '1';
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var title = document.getElementById('readTitle').value.trim();
+                var url = document.getElementById('readUrl').value.trim();
+                var subject = document.getElementById('readSubject').value;
+                var tags = document.getElementById('readTags').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                if (!title || !url) return;
+                if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
                 var data = loadData();
-                var item = data.readingList.find(function(r) { return r.id === id; });
-                if (!item) return;
-                if (action === 'toggle') {
-                    item.read = !item.read;
+                if (editingId) {
+                    var r = data.readingList.find(function (x) { return x.id === editingId; });
+                    if (r) { r.title = title; r.url = url; r.subject = subject; r.tags = tags; }
+                    editingId = null;
+                    var sub = form.querySelector('button[type=submit]');
+                    if (sub) sub.textContent = '➕ Add';
+                    if (typeof addActivity === 'function') addActivity(data, 'reading', 'Updated reading item "' + title + '"');
                 } else {
-                    data.readingList = data.readingList.filter(function(r) { return r.id !== id; });
+                    data.readingList.push({
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        title: title, url: url, subject: subject, tags: tags,
+                        read: false, fav: false, addedAt: new Date().toISOString()
+                    });
+                    if (typeof addActivity === 'function') addActivity(data, 'reading', 'Added reading item "' + title + '"');
                 }
                 saveData(data);
                 renderReading();
+                form.reset();
             });
-        });
+        }
     }
 
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        var title = document.getElementById('readTitle').value.trim();
-        var url = document.getElementById('readUrl').value.trim();
-        var subject = document.getElementById('readSubject').value;
-        var tags = document.getElementById('readTags').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    /* populate subject select from the user's subjects (keep selection) */
+    function fillSubjects() {
+        var sel = document.getElementById('readSubject');
+        if (!sel) return;
+        var subs = loadData().subjects || ['General'];
+        var cur = sel.value;
+        sel.innerHTML = subs.map(function (s) {
+            return '<option value="' + String(s).replace(/"/g, '&quot;') + '">' + String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</option>';
+        }).join('');
+        if (cur && subs.indexOf(cur) !== -1) sel.value = cur;
+    }
+    fillSubjects();
 
-        if (!title || !url) return;
-        var data = loadData();
-        data.readingList.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-            title: title,
-            url: url,
-            subject: subject,
-            tags: tags,
-            read: false
-        });
-        saveData(data);
-        renderReading();
-        form.reset();
-    });
-
+    window.renderReading = renderReading;
     renderReading();
 }
-
 // ================================================================
 // FOCUS MODE
 // ================================================================
@@ -3430,7 +4898,7 @@ function generateQuizFromNotes() {
 }
 
 // ================================================================
-// FLASHCARD AUTO-GENERATE FROM NOTES
+// FLASHCARD AUTO-GENERATE FROM NOTES (v2 — real Q/A extraction)
 // ================================================================
 function autoGenerateFlashcards() {
     var data = loadData();
@@ -3445,39 +4913,110 @@ function autoGenerateFlashcards() {
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
             front: String(front || '').trim().slice(0, 200) || 'Note',
             back: String(back || '').trim().slice(0, 1000),
-            dueDate: new Date().toISOString().slice(0,10),
-            level: 0
+            dueDate: new Date().toISOString().slice(0, 10),
+            level: 0, ease: 2.5, reps: 0
         };
     }
 
-    function commit(cards, logText) {
+    function commit(cards, deckName, logText) {
         var data2 = loadData();
-        var deck = data2.flashcards.decks.find(function(d) { return d.name === 'Auto from Notes'; });
+        var deck = data2.flashcards.decks.find(function (d) { return d.name === deckName; });
         if (!deck) {
-            deck = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                name: 'Auto from Notes',
-                cards: []
-            };
+            deck = { id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5), name: deckName, cards: [] };
             data2.flashcards.decks.push(deck);
         }
         deck.cards = deck.cards.concat(cards);
         addActivity(data2, 'flashcard_auto', logText);
         saveData(data2);
         if (typeof setupFlashcards === 'function') setupFlashcards();
-        alert('Added ' + cards.length + ' flashcards to "Auto from Notes" deck!');
+        updateTrashCount();
+        alert('Added ' + cards.length + ' flashcards to the "' + deckName + '" deck!');
+    }
+
+    /* ---------- offline Q/A extraction engine ---------- */
+    var FC_STOP = {};
+    ('a an the is are was were be been being of to in on for with and or but if then than that this these those it its as at by from we they he she you i our their your not no can could should would may might must do does did have has had will shall about into over under between within without during each every some any most more much many few both all one two'.split(' ')).forEach(function (w) { FC_STOP[w] = 1; });
+    function fcWords(s) { return (String(s).toLowerCase().match(/[a-z][a-z'\-]*/g) || []); }
+
+    function sentencesOf(text) {
+        var x = String(text).replace(/\r/g, '').replace(/\b(Mr|Mrs|Dr|vs|etc|e\.g|i\.e)\./gi, '$1\u0001');
+        return x.split(/(?<=[.!?])\s+|\n+/).map(function (s) { return s.replace(/\u0001/g, '.').trim(); }).filter(function (s) { return s.length > 15; });
+    }
+    function capFirst(s) { s = s.trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+    function cleanDef(def) {
+        var d = String(def).trim().replace(/[.,;:\s]+$/, '');
+        if (!d) return d;
+        d = d.charAt(0).toUpperCase() + d.slice(1);
+        return d.length > 400 ? d.slice(0, 400) + '…' : d;
+    }
+    function extractCards(texts, cap) {
+        var cards = [], seen = {}, allText = texts.join('\n');
+
+        function push(front, back) {
+            front = String(front).trim(); back = String(back).trim();
+            if (!front || !back) return;
+            var key = front.toLowerCase();
+            if (seen[key] || cards.length >= cap) return;
+            /* skip useless fronts */
+            if (front.split(/\s+/).length > 14) return;
+            seen[key] = 1;
+            cards.push(makeCard(front, back));
+        }
+
+        texts.forEach(function (text) {
+            /* line pattern "Term: definition" */
+            String(text).split(/\n+/).forEach(function (line) {
+                var m = line.match(/^\s*([^:\-–—]{2,60}?)\s*[:\-–—]\s+(.{10,})$/);
+                if (m && !FC_STOP[m[1].trim().toLowerCase()]) push('What is ' + m[1].trim() + '?', cleanDef(m[2]));
+            });
+            /* sentence patterns */
+            sentencesOf(text).forEach(function (s) {
+                var m;
+                if ((m = s.match(/^(.{2,60}?)\s+(is|are)\s+(?:the|a|an)?\s*(.{15,})$/i)) && !FC_STOP[m[1].trim().toLowerCase()]) {
+                    var verb = m[2].toLowerCase() === 'are' ? 'are' : 'is';
+                    push('What ' + verb + ' ' + m[1].trim() + '?', cleanDef(m[3]));
+                } else if ((m = s.match(/^(.{2,60}?)\s+(?:refers to|means|is defined as|is known as)\s+(.{10,})$/i))) {
+                    push('What does "' + m[1].trim() + '" mean?', cleanDef(m[2]));
+                }
+            });
+        });
+
+        /* cloze cards from information-dense sentences */
+        if (cards.length < cap) {
+            var freq = {};
+            fcWords(allText).forEach(function (w) { if (!FC_STOP[w] && w.length > 3) freq[w] = (freq[w] || 0) + 1; });
+            var cand = Object.keys(freq).sort(function (a, b) { return freq[b] - freq[a]; }).slice(0, 40);
+            var sents = sentencesOf(allText);
+            for (var i = 0; i < sents.length && cards.length < cap; i++) {
+                var s = sents[i], low = s.toLowerCase();
+                var best = null;
+                for (var j = 0; j < cand.length; j++) {
+                    if (low.indexOf(cand[j]) !== -1 && s.length < 220) { best = cand[j]; break; }
+                }
+                if (!best) continue;
+                var re = new RegExp('\\b' + best.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+                var blank = s.replace(re, '_____');
+                if (blank !== s) push('Fill in the blank: ' + capFirst(blank), capFirst(best));
+            }
+        }
+        return cards;
     }
 
     function localCards() {
-        var newCards = notes.map(function(n) {
-            var words = n.text.split(/\s+/);
-            var front = words.slice(0, Math.min(5, words.length)).join(' ');
-            return makeCard(front + (words.length > 5 ? '…' : ''), n.text);
-        });
-        commit(newCards, 'Auto-generated ' + newCards.length + ' flashcards from notes');
+        var texts = notes.map(function (n) { return String(n.text || ''); }).filter(Boolean);
+        var cards = extractCards(texts, 20);
+        if (cards.length === 0) {
+            /* absolute fallback: term cards */
+            cards = notes.map(function (n) {
+                var words = String(n.text).split(/\s+/);
+                var front = words.slice(0, Math.min(5, words.length)).join(' ');
+                return makeCard(front + (words.length > 5 ? '…' : ''), n.text);
+            }).slice(0, 20);
+        }
+        commit(cards, 'Auto from Notes', 'Auto-generated ' + cards.length + ' flashcards from notes');
     }
 
-    // AI path: Q/A pairs authored from the note contents.
+    if (typeof StudyHubAI === 'undefined') { localCards(); return; }
     StudyHubAI.status().then(function (st) {
         if (!st.configured) { localCards(); return undefined; }
         var corpus = notes.slice(0, 20).map(function (n, i) { return (i + 1) + '. ' + String(n.text).slice(0, 300); }).join('\n');
@@ -3491,7 +5030,7 @@ function autoGenerateFlashcards() {
                 return c && typeof c.front === 'string' && typeof c.back === 'string' && c.front.trim() && c.back.trim();
             }).slice(0, 20).map(function (c) { return makeCard(c.front, c.back); });
             if (cards.length < 2) { localCards(); return undefined; }
-            commit(cards, 'AI-generated ' + cards.length + ' flashcards from notes');
+            commit(cards, 'Auto from Notes', 'AI-generated ' + cards.length + ' flashcards from notes');
         }).catch(function () { localCards(); });
     }).catch(function () { localCards(); });
 }
@@ -3501,7 +5040,7 @@ function autoGenerateFlashcards() {
 // ================================================================
 function generateFlashcardsFromFiles() {
     var data = loadData();
-    var fileNotes = (data.notes || []).filter(function(n) { return n.source; });
+    var fileNotes = (data.notes || []).filter(function (n) { return n.source; });
     if (fileNotes.length === 0) {
         alert('No file-based notes found. Upload files on the Notes page first.');
         return;
@@ -3512,38 +5051,48 @@ function generateFlashcardsFromFiles() {
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
             front: String(front || '').trim().slice(0, 200) || 'Note',
             back: String(back || '').trim().slice(0, 1000),
-            dueDate: new Date().toISOString().slice(0,10),
-            level: 0
+            dueDate: new Date().toISOString().slice(0, 10),
+            level: 0, ease: 2.5, reps: 0
         };
     }
-
     function commit(cards, logText) {
         var data2 = loadData();
-        var deck = data2.flashcards.decks.find(function(d) { return d.name === 'Auto from Files'; });
+        var deck = data2.flashcards.decks.find(function (d) { return d.name === 'Auto from Files'; });
         if (!deck) {
-            deck = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                name: 'Auto from Files',
-                cards: []
-            };
+            deck = { id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5), name: 'Auto from Files', cards: [] };
             data2.flashcards.decks.push(deck);
         }
         deck.cards = deck.cards.concat(cards);
         addActivity(data2, 'flashcard_auto', logText);
         saveData(data2);
         if (typeof setupFlashcards === 'function') setupFlashcards();
-        alert('Added ' + cards.length + ' flashcards to "Auto from Files" deck!');
+        updateTrashCount();
+        alert('Added ' + cards.length + ' flashcards to the "Auto from Files" deck!');
     }
-
     function localCards() {
-        var newCards = fileNotes.map(function(n) {
-            var words = n.text.split(/\s+/);
-            var front = words.slice(0, Math.min(8, words.length)).join(' ');
-            return makeCard(front + (words.length > 8 ? '…' : ''), n.text.slice(0, 1000));
-        });
-        commit(newCards, 'Auto-generated ' + newCards.length + ' flashcards from files');
+        var cards = [];
+        var texts = fileNotes.map(function (n) { return String(n.text || '').slice(0, 4000); });
+        try {
+            /* reuse the notes extraction engine on file text */
+            var tmp = [];
+            texts.forEach(function (t) {
+                String(t).split(/\n+/).forEach(function (line) {
+                    var m = line.match(/^\s*([^:\-–—]{2,60}?)\s*[:\-–—]\s+(.{10,})$/);
+                    if (m) tmp.push({ front: 'What is ' + m[1].trim() + '?', back: m[2].trim().replace(/[.,;:\s]+$/, '') });
+                });
+            });
+            tmp.slice(0, 25).forEach(function (c) { cards.push(makeCard(c.front, c.back)); });
+        } catch (e) {}
+        if (cards.length < 2) {
+            cards = fileNotes.map(function (n) {
+                var words = String(n.text).split(/\s+/);
+                var front = words.slice(0, Math.min(8, words.length)).join(' ');
+                return makeCard(front + (words.length > 8 ? '…' : ''), n.text.slice(0, 1000));
+            }).slice(0, 25);
+        }
+        commit(cards, 'Auto-generated ' + cards.length + ' flashcards from files');
     }
-
+    if (typeof StudyHubAI === 'undefined') { localCards(); return; }
     StudyHubAI.status().then(function (st) {
         if (!st.configured) { localCards(); return undefined; }
         var corpus = fileNotes.slice(0, 10).map(function (n, i) {
@@ -3564,130 +5113,447 @@ function generateFlashcardsFromFiles() {
     }).catch(function () { localCards(); });
 }
 
-
-
 // ================================================================
-// TRASH / UNDO (soft delete, 24h retention)
+// TRASH v3 — unified, single-writer, NOTHING gets lost anymore
+//   (replaces the old "TRASH / UNDO" section AND "TRASH CORE v2.1")
+//   • FIXED: old 24h purge wiped every auto-captured item on page
+//     reload (NaN retention bug) — retention is now 30 DAYS and only
+//     applies to entries that actually carry a valid timestamp
+//   • Every delete in the whole app lands here:
+//       notes · notices · habits · files · assignments · goals ·
+//       reading list · flashcard DECKS · single flashcards ·
+//       planner CELLS · full planner resets · lists
+//   • Both capture styles supported forever:
+//       {id,type,data,deletedAt} (old)  +  {id,type,name,item,ts} (new)
+//   • Restore anything to its original place · per-item Delete forever ·
+//     Restore all · Empty trash · search · age labels · live badge
 // ================================================================
-var TRASH_RETENTION_MS = 24 * 60 * 60 * 1000;
+var TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;   /* 30 days */
+var TRASH_MAX_ITEMS = 200;
 
-function pushToTrash(data, itemType, itemData) {
-    if (!data.trash) data.trash = [];
-    data.trash.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        type: itemType,
-        data: itemData,
-        deletedAt: Date.now()
-    });
-    data.trash = data.trash.filter(function(t) { return Date.now() - t.deletedAt < TRASH_RETENTION_MS; });
-}
+(function () {
+    'use strict';
+    if (window.__TRASH_V3__) return;
+    window.__TRASH_V3__ = true;
 
-function updateTrashCount() {
-    var btn = document.getElementById('trashBtn');
-    if (!btn) return;
-    var data = loadData();
-    if (data.trash) {
-        data.trash = data.trash.filter(function(t) { return Date.now() - t.deletedAt < TRASH_RETENTION_MS; });
-        saveData(data);
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function innerItem(e) { return e && typeof e === 'object' ? (e.item != null ? e.item : (e.data != null ? e.data : e)) : e; }
+    function entryTime(e) { var t = e && (e.deletedAt || e.ts); return (typeof t === 'number' && isFinite(t)) ? t : 0; }
+
+    function labelOf(it) {
+        if (it == null) return '';
+        if (typeof it !== 'object') return String(it).slice(0, 60);
+        var prefer = ['name', 'title', 'text', 'label', 'fileName', 'task', 'content', 'front', 'question', 'body', 'desc', 'description', 'subject', 'url'];
+        for (var i = 0; i < prefer.length; i++) { var v = it[prefer[i]];
+            if (typeof v === 'string' && v.trim() && v.indexOf('data:') !== 0) return v.slice(0, 60); }
+        for (var k in it) { var s = it[k];
+            if (typeof s === 'string' && s.trim() && s.length < 300 && s.indexOf('data:') !== 0 && s.indexOf('<') !== 0) return s.slice(0, 60); }
+        try { var js = JSON.stringify(it); return js && js.length > 2 ? 'Item' : '?'; } catch (e) { return '?'; }
     }
-    var count = (data.trash || []).length;
-    btn.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> Trash (' + count + ')';
-}
-
-function setupTrash() {
-    var btn = document.getElementById('trashBtn');
-    if (!btn) return;
-    updateTrashCount();
-    btn.addEventListener('click', openTrashModal);
-}
-
-function openTrashModal() {
-    var data = loadData();
-    if (data.trash) {
-        data.trash = data.trash.filter(function(t) { return Date.now() - t.deletedAt < TRASH_RETENTION_MS; });
-        saveData(data);
+    function keyOf(it) {
+        if (!it || typeof it !== 'object') return 'p:' + String(it);
+        if (it.id != null && it.id !== '') return 'id:' + it.id;
+        var prefer = ['name', 'title', 'text', 'label', 'front'];
+        for (var i = 0; i < prefer.length; i++) { if (it[prefer[i]] != null && it[prefer[i]] !== '') return prefer[i] + ':' + it[prefer[i]]; }
+        try { return 'j:' + JSON.stringify(it); } catch (e) { return 'u:' + Math.random(); }
     }
-    var items = data.trash || [];
+    function guessType(o) {
+        if (!o || typeof o !== 'object') return null;
+        var ks = Object.keys(o).join(' ');
+        if (/createdAt|updatedAt|items/i.test(ks) && /name/i.test(ks)) return 'lists';
+        if (/front|deck|card|ease/i.test(ks)) return 'flashcards';
+        if (/streak|done/i.test(ks)) return 'habits';
+        if (/size|dataUrl/i.test(ks)) return 'files';
+        if (/due|priority/i.test(ks)) return 'assignments';
+        if (/(^| )url|author/i.test(ks)) return 'readingList';
+        if (/pinned/i.test(ks)) return 'notices';
+        if (/text|body|content/i.test(ks)) return 'notes';
+        return null;
+    }
 
-    var existing = document.getElementById('trashModal');
-    if (existing) existing.remove();
+    function purgeExpired(d) {
+        if (!d.trash || !d.trash.length) return 0;
+        var before = d.trash.length;
+        d.trash = d.trash.filter(function (e) {
+            var t = entryTime(e);
+            if (!t) return true;                                   /* no valid time → keep */
+            return Date.now() - t < TRASH_RETENTION_MS;            /* valid time → 30-day rule */
+        });
+        return before - d.trash.length;
+    }
+    function trashCount() {
+        try { return (loadData().trash || []).length; } catch (e) { return 0; }
+    }
+    window.__ehToast = function (msg) {
+        if (!document.getElementById('fbt-toast-style')) {
+            var st = document.createElement('style');
+            st.id = 'fbt-toast-style';
+            st.textContent = '.fbt-toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:var(--surface-raised,#101623);border:1px solid var(--line,#2a3648);color:var(--ink,#edf2f7);padding:.7rem 1.2rem;border-radius:10px;font:600 13px var(--font,sans-serif);opacity:0;transition:all .25s;z-index:10050;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.35)}.fbt-toast.show{opacity:1;transform:translate(-50%,0)}';
+            document.head.appendChild(st);
+        }
+        var t = document.createElement('div');
+        t.className = 'fbt-toast';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        requestAnimationFrame(function () { t.classList.add('show'); });
+        setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 400); }, 2400);
+    };
 
-    var modal = document.createElement('div');
-    modal.className = 'trash-modal';
-    modal.id = 'trashModal';
-    modal.innerHTML = '<div class="trash-modal-content">' +
-        '<div class="trash-modal-header"><h2>🗑️ Trash (' + items.length + ')</h2><button id="trashCloseBtn" class="btn-danger-sm">Close</button></div>' +
-        (items.length === 0 ? '<p class="empty-state">Trash is empty.</p>' :
-            items.map(function(t) {
-                var label = (t.data.text || t.data.name || t.data.title || t.type);
-                return '<div class="trash-item"><span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
-                    '<span><button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
-                    '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button></span></div>';
-            }).join('')) +
-        '<div style="margin-top:1rem; text-align:right;"><button id="emptyTrashBtn" class="btn-danger">Empty Trash</button></div>' +
-        '</div>';
-    document.body.appendChild(modal);
+    /* ---------------- CAPTURE (single writer) ---------------- */
+    var WATCH = ['notes', 'notices', 'habits', 'files', 'assignments', 'goals', 'readingList', 'lists'];
+    function decksOf(d) { return (d.flashcards && d.flashcards.decks) ? d.flashcards.decks : []; }
+    function snap(d) {
+        var s = {};
+        WATCH.forEach(function (k) { s[k] = (d[k] || []).slice(); });
+        s._decks = decksOf(d).slice();
+        s._planner = {};
+        Object.keys(d.planner || {}).forEach(function (k) { s._planner[k] = d.planner[k]; });
+        s._tk = (d.trash || []).map(function (e) { return keyOf(innerItem(e)); });
+        return s;
+    }
+    function diffArr(oldA, newA) {
+        var removed = [], map = {};
+        (oldA || []).forEach(function (it) { var k = keyOf(it); if (!map[k]) map[k] = { c: 1, it: it }; else map[k].c++; });
+        (newA || []).forEach(function (it) { var k = keyOf(it); if (map[k] && map[k].c > 0) map[k].c--; });
+        Object.keys(map).forEach(function (k) { if (map[k].c > 0) removed.push(map[k].it); });
+        return removed;
+    }
+    var prev = null;
+    try { prev = snap(loadData()); } catch (e) { prev = {}; }
 
-    document.getElementById('trashCloseBtn').addEventListener('click', function() { modal.remove(); });
-    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+    var __origSave = saveData;
+    function wrappedSave(d) {
+        if (window.__TRASH_BYPASS__) {                 /* permanent delete → skip capture */
+            try { prev = snap(d); } catch (e) {}
+            return __origSave(d);
+        }
+        var cap = [];
+        try {
+            if (!prev) prev = snap(loadData());
+            if (d && typeof d === 'object') {
+                WATCH.forEach(function (k) {
+                    var removed = diffArr(prev[k] || [], d[k] || []);
+                    removed.forEach(function (it) { if (it && typeof it === 'object') cap.push({ type: k, name: labelOf(it), item: it, ts: Date.now() }); });
+                });
+                var rd = diffArr(prev._decks || [], decksOf(d));
+                rd.forEach(function (it) { if (it && typeof it === 'object') cap.push({ type: 'flashcards', name: 'Deck: ' + labelOf(it), item: it, ts: Date.now() }); });
 
-    modal.querySelectorAll('[data-restore]').forEach(function(b) {
-        b.addEventListener('click', function() {
-            var id = this.dataset.restore;
-            var data = loadData();
-            var item = data.trash.find(function(t) { return t.id === id; });
-            if (!item) return;
-            if (item.type === 'note') {
-                data.notes.push(item.data);
-                addActivity(data, 'restore', 'Restored note');
-            } else if (item.type === 'file') {
-                data.files.push(item.data);
-                addActivity(data, 'restore', 'Restored file: "' + item.data.name + '"');
-            } else if (item.type === 'notice') {
-                data.notices.push(item.data);
-                addActivity(data, 'restore', 'Restored notice');
-            } else if (item.type === 'habit') {
-                data.habits.push(item.data);
-                addActivity(data, 'restore', 'Restored habit');
+                /* planner cells: cleared keys go to trash; big wipes → one snapshot */
+                var removedKeys = [];
+                Object.keys(prev._planner || {}).forEach(function (k) { if (!(k in (d.planner || {}))) removedKeys.push(k); });
+                if (removedKeys.length) {
+                    if (removedKeys.length >= 4) {
+                        var cells = {};
+                        removedKeys.forEach(function (k) { cells[k] = prev._planner[k]; });
+                        cap.push({ type: 'planner-full', name: 'Planner (' + removedKeys.length + ' cells)', item: { cells: cells }, ts: Date.now() });
+                    } else {
+                        removedKeys.forEach(function (k) {
+                            var parts = k.split('_');
+                            cap.push({ type: 'planner', name: parts[0] + ' ' + parts[1] + ' — ' + labelOf(prev._planner[k]), item: { day: parts[0], hour: parts[1], text: prev._planner[k] }, ts: Date.now() });
+                        });
+                    }
+                }
+
+                if (cap.length) {
+                    /* dedupe: skip anything explicitly pushed to trash during THIS save */
+                    if (d.trash && d.trash.length) {
+                        var prevSet = {};
+                        (prev._tk || []).forEach(function (k) { prevSet[k] = 1; });
+                        var fresh = {};
+                        d.trash.forEach(function (e) { var k = keyOf(innerItem(e)); if (!prevSet[k]) fresh[k] = 1; });
+                        cap = cap.filter(function (c) { return !fresh[keyOf(c.item)]; });
+                    }
+                    if (cap.length) {
+                        d.trash = (d.trash && d.trash.push) ? d.trash : [];
+                        cap.forEach(function (c) {
+                            d.trash.push({ id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                                type: c.type, name: c.name, item: c.item, deletedAt: c.ts, ts: c.ts });
+                        });
+                        while (d.trash.length > TRASH_MAX_ITEMS) d.trash.shift();
+                        try {
+                            var size = JSON.stringify(d).length;
+                            while (size > 4300000 && d.trash.length) { d.trash.shift(); size = JSON.stringify(d).length; }
+                        } catch (e) {}
+                        if (typeof window.__ehToast === 'function') window.__ehToast(cap.length + ' item' + (cap.length > 1 ? 's' : '') + ' moved to Trash');
+                    }
+                }
             }
-            data.trash = data.trash.filter(function(t) { return t.id !== id; });
-            saveData(data);
-            modal.remove();
-            updateTrashCount();
-            refreshCurrentPage();
-        });
-    });
-    modal.querySelectorAll('[data-purge]').forEach(function(b) {
-        b.addEventListener('click', function() {
-            var id = this.dataset.purge;
-            var data = loadData();
-            data.trash = data.trash.filter(function(t) { return t.id !== id; });
-            saveData(data);
-            modal.remove();
-            updateTrashCount();
-            openTrashModal();
-        });
-    });
-    var emptyBtn = document.getElementById('emptyTrashBtn');
-    if (emptyBtn) emptyBtn.addEventListener('click', function() {
-        if (!confirm('Empty trash permanently?')) return;
-        var data = loadData();
-        data.trash = [];
-        saveData(data);
-        modal.remove();
+        } catch (e) {}
+        try { prev = snap(d); } catch (e) {}
+        var r2 = __origSave(d);
         updateTrashCount();
+        return r2;
+    }
+    if (!saveData.__trashWrapped) { saveData = wrappedSave; saveData.__trashWrapped = true; }
+
+    /* ---------------- RESTORE ---------------- */
+    var RESTORE = {
+        notes: 'notes', note: 'notes', notices: 'notices', notice: 'notices',
+        habits: 'habits', habit: 'habits', files: 'files', file: 'files',
+        assignments: 'assignments', assignment: 'assignments',
+        goals: 'goals', goal: 'goals',
+        readinglist: 'readingList', reading: 'readingList',
+        lists: 'lists', list: 'lists',
+        flashcards: 'flashcards.decks', deck: 'flashcards.decks'
+    };
+    function arrFor(d, type) {
+        var c = d;
+        String(RESTORE[(type || '').toLowerCase()] || '').split('.').forEach(function (k) { c = c ? c[k] : null; });
+        return (c && c.push) ? c : null;
+    }
+    function restoreEntry(d, entry) {
+        var back = innerItem(entry), type = (entry.type || guessType(back) || '').toLowerCase();
+        if (type === 'planner' && back && back.day && back.hour) {
+            if (!d.planner) d.planner = {};
+            d.planner[back.day + '_' + back.hour] = back.text;
+            return true;
+        }
+        if (type === 'planner-full' && back && back.cells) {
+            if (!d.planner) d.planner = {};
+            Object.keys(back.cells).forEach(function (k) { if (!d.planner[k]) d.planner[k] = back.cells[k]; });
+            return true;
+        }
+        if (type === 'flashcard-card' && back && back.card) {
+            var deck = (d.flashcards && d.flashcards.decks || []).find(function (x) { return x.id === back.deckId || x.name === back.deckName; });
+            if (!deck) {
+                deck = { id: back.deckId || Date.now().toString(36), name: back.deckName || 'Restored deck', cards: [] };
+                if (!d.flashcards) d.flashcards = { decks: [] };
+                d.flashcards.decks.push(deck);
+            }
+            if (!deck.cards.find(function (c) { return c.id === back.card.id; })) deck.cards.push(back.card);
+            return true;
+        }
+        var arr = arrFor(d, type);
+        if (arr) {
+            var it = innerItem(entry);
+            if (!arr.some(function (x) { return x && it && x.id != null && x.id === it.id; })) arr.push(it);
+            return true;
+        }
+        return false;
+    }
+
+    /* ---------------- public API (same names as before) ---------------- */
+    window.pushToTrash = function (data, itemType, itemData, name) {
+        if (!data.trash) data.trash = [];
+        purgeExpired(data);
+        var ik = keyOf(itemData);
+        var dup = data.trash.some(function (e) { return e.type === itemType && keyOf(innerItem(e)) === ik; });
+        if (dup) return;
+        var now = Date.now();
+        data.trash.push({
+            id: now.toString(36) + Math.random().toString(36).substr(2, 5),
+            type: itemType,
+            name: name || labelOf(itemData),
+            data: itemData, item: itemData,          /* both keys → old + new readers work */
+            deletedAt: now, ts: now
+        });
+        while (data.trash.length > TRASH_MAX_ITEMS) data.trash.shift();
+    };
+
+    window.updateTrashCount = function () {
+        var btn = document.getElementById('trashBtn');
+        if (!btn) return;
+        var n = trashCount();
+        btn.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> Trash (' + n + ')';
+    };
+
+    window.setupTrash = function () {
+        var btn = document.getElementById('trashBtn');
+        if (!btn || btn.dataset.trashHooked) return;
+        btn.dataset.trashHooked = '1';
+        updateTrashCount();
+        btn.addEventListener('click', function (e) { e.preventDefault(); openTrashModal(); });
+    };
+
+    window.refreshCurrentPage = function () {
+        var path = window.location.pathname.split('/').pop() || 'index.html';
+        if (path === 'index.html' || path === '') { if (typeof renderDashboard === 'function') renderDashboard(); }
+        else if (path === 'files.html') { if (typeof renderFileList === 'function') renderFileList(); }
+        else if (path === 'notes.html') { if (typeof setupNotes === 'function') setupNotes(); }
+        else if (path === 'notice.html') { if (typeof setupNotice === 'function') setupNotice(); }
+        else if (path === 'habits.html') { if (typeof setupHabits === 'function') setupHabits(); }
+        else if (path === 'assignments.html') { if (typeof window.renderAssignments === 'function') window.renderAssignments(); else if (typeof setupAssignments === 'function') setupAssignments(); }
+        else if (path === 'planner.html') { if (typeof window.renderPlannerGrid === 'function') window.renderPlannerGrid(); else if (typeof setupPlanner === 'function') setupPlanner(); }
+        else if (path === 'flashcards.html') { if (typeof window.renderFlashcards === 'function') window.renderFlashcards(); else if (typeof setupFlashcards === 'function') setupFlashcards(); }
+        else if (path === 'reading.html') { if (typeof window.renderReading === 'function') window.renderReading(); else if (typeof setupReading === 'function') setupReading(); }
+    };
+
+    function refreshLists(types) {
+        var hit = 0;
+        (types || []).forEach(function (t) {
+            var map = { notes: 'setupNotes', notices: 'setupNotice', habits: 'setupHabits', files: 'renderFileList',
+                assignments: 'renderAssignments', readingList: 'renderReading', flashcards: 'renderFlashcards',
+                'flashcard-card': 'renderFlashcards', planner: 'renderPlannerGrid', 'planner-full': 'renderPlannerGrid', lists: 'renderListMaker' };
+            var fn = map[t];
+            if (fn && typeof window[fn] === 'function') { try { window[fn](); hit++; } catch (e) {} }
+        });
+        try { if (typeof refreshCurrentPage === 'function') { refreshCurrentPage(); hit++; } } catch (e) {}
+        if (!hit && typeof renderDashboard === 'function') { try { renderDashboard(); hit++; } catch (e) {} }
+    }
+
+    /* ---------------- MODAL ---------------- */
+    var CSS = '#tc-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;font-family:var(--font,system-ui,sans-serif)}' +
+        '#tc-modal[hidden]{display:none!important}' +
+        '.tc-scrim{position:absolute;inset:0;background:rgba(2,5,10,.6);opacity:0;transition:opacity .22s}' +
+        '.tc-panel{position:relative;width:min(600px,100%);max-height:min(80vh,760px);display:flex;flex-direction:column;background:var(--surface-raised,rgba(13,22,37,.96));border:1px solid var(--line,rgba(148,163,184,.2));border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);opacity:0;transform:translateY(12px) scale(.98);transition:opacity .24s cubic-bezier(.16,1,.3,1),transform .24s cubic-bezier(.16,1,.3,1);overflow:hidden}' +
+        '#tc-modal.tc-in .tc-scrim{opacity:1}#tc-modal.tc-in .tc-panel{opacity:1;transform:none}' +
+        '.tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line,rgba(148,163,184,.15))}' +
+        '.tc-eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent,#3fd2b0);font-weight:700;margin-bottom:4px}' +
+        '.tc-title{font-family:var(--display,var(--font,sans-serif));font-weight:700;font-size:20px;color:var(--ink,#edf2f7)}' +
+        '.tc-x{width:32px;height:32px;border-radius:50%;border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);cursor:pointer;font-size:14px}' +
+        '.tc-body{padding:16px 20px 22px;overflow-y:auto}' +
+        '.tc-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}' +
+        '.tc-search{flex:1;min-width:170px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);border:1px solid var(--line,#2a3648);border-radius:999px;padding:0 14px;color:var(--muted,#8d9aa9)}' +
+        '.tc-search input{flex:1;background:none;border:none;outline:none;color:var(--ink,#edf2f7);height:40px;font:inherit;font-size:14px;min-width:0}' +
+        '.tc-count{font-size:12px;font-weight:700;color:var(--muted,#8d9aa9);white-space:nowrap}' +
+        '.tc-actions{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}' +
+        '.tc-btn{border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);border-radius:8px;padding:6px 12px;font:600 12.5px var(--font,sans-serif);cursor:pointer;transition:border-color .15s,color .15s,background .15s}' +
+        '.tc-btn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}' +
+        '.tc-btn.danger:hover{border-color:var(--danger,#f0938c);color:var(--danger,#f0938c);background:var(--danger-soft,rgba(240,147,140,.12))}' +
+        '.tc-row{display:flex;align-items:center;gap:11px;padding:10px 2px;border-top:1px solid var(--line,rgba(148,163,184,.12))}' +
+        '.tc-row:first-child{border-top:none}.tc-ic{font-size:17px;flex:none;width:26px;text-align:center}' +
+        '.tc-main{min-width:0;flex:1}.tc-main b{display:block;font-size:13.5px;color:var(--ink,#edf2f7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-main i{font-style:normal;font-size:11px;color:var(--muted,#8d9aa9)}' +
+        '.tc-acts{display:flex;gap:6px;flex:none}' +
+        '.tc-empty{border:1px dashed rgba(63,210,176,.3);border-radius:12px;padding:28px 18px;text-align:center;color:var(--muted,#8d9aa9);font-size:13.5px;line-height:1.6}';
+
+    var armed = -1, armedEmpty = false, q = '', armedT = null, armedEmptyT = null;
+    var ICONS = { notes: '📝', note: '📝', notices: '📌', notice: '📌', habits: '🔁', habit: '🔁',
+        files: '📎', file: '📎', assignments: '📚', assignment: '📚', goals: '🎯', goal: '🎯',
+        readinglist: '🔖', reading: '🔖', lists: '🗒', list: '🗒', flashcards: '🃏', deck: '🃏',
+        'flashcard-card': '🃏', planner: '📅', 'planner-full': '📅' };
+    function when(ts) {
+        if (!ts) return '—';
+        try {
+            var d = new Date(ts);
+            return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' · ' +
+                d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        } catch (e) { return '—'; }
+    }
+    function inject() {
+        if (document.getElementById('tc-modal')) return;
+        var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+        document.body.insertAdjacentHTML('beforeend',
+            '<div id="tc-modal" hidden><div class="tc-scrim" data-tc-close></div>' +
+            '<div class="tc-panel" role="dialog" aria-modal="true" aria-label="Trash">' +
+            '<div class="tc-head"><div><div class="tc-eyebrow">Recycle bin · 30-day keep</div><div class="tc-title">Trash</div></div>' +
+            '<button class="tc-x" data-tc-close aria-label="Close">✕</button></div>' +
+            '<div class="tc-body"><div class="tc-toolbar">' +
+            '<div class="tc-search">🔍<input id="tc-q" placeholder="Search trash…"></div>' +
+            '<span class="tc-count" id="tc-count"></span></div>' +
+            '<div class="tc-actions"><button class="tc-btn" id="tc-restoreall">♻ Restore all</button>' +
+            '<button class="tc-btn danger" id="tc-emptyall">Empty trash</button></div>' +
+            '<div class="tc-list" id="tc-list"></div></div></div></div>');
+        document.getElementById('tc-q').addEventListener('input', function (e) { q = e.target.value; render(); });
+    }
+    function render() {
+        var listEl = document.getElementById('tc-list'); if (!listEl) return;
+        var d = loadData(); purgeExpired(d); saveData(d);
+        var tr = d.trash || [];
+        document.getElementById('tc-count').textContent = tr.length + (tr.length === 1 ? ' item' : ' items');
+        var ea = document.getElementById('tc-emptyall');
+        ea.textContent = armedEmpty ? 'Really empty all?' : 'Empty trash';
+        ea.style.color = armedEmpty ? 'var(--danger,#f0938c)' : '';
+        var f = tr.map(function (w, i) { return { w: w, i: i }; }).filter(function (x) {
+            var t = (x.w.type || guessType(innerItem(x.w)) || '');
+            return !q || ((x.w.name || labelOf(innerItem(x.w))) + ' ' + t).toLowerCase().indexOf(q.toLowerCase()) > -1;
+        });
+        listEl.innerHTML = tr.length === 0
+            ? '<div class="tc-empty">Trash is empty.<br>Deleted notes, files, decks, plans, assignments and more will appear here for 30 days.</div>'
+            : (f.length ? f.map(function (x) {
+                var back = innerItem(x.w), type = (x.w.type || guessType(back) || 'item').toLowerCase();
+                return '<div class="tc-row"><span class="tc-ic">' + (ICONS[type] || '🗑') + '</span>' +
+                    '<span class="tc-main"><b>' + esc(x.w.name || labelOf(back) || 'Untitled item') + '</b><i>' + esc(type) + ' · deleted ' + when(entryTime(x.w)) + '</i></span>' +
+                    (armed === x.i
+                        ? '<span class="tc-acts"><button class="tc-btn danger" data-tc-confirm="' + x.i + '">Sure?</button><button class="tc-btn" data-tc-cancel="1">Keep</button></span>'
+                        : '<span class="tc-acts"><button class="tc-btn" data-tc-restore="' + x.i + '">Restore</button><button class="tc-btn danger" data-tc-arm="' + x.i + '">Delete forever</button></span>') + '</div>';
+            }).join('') : '<div class="tc-empty">Nothing matches “' + esc(q) + '”.</div>');
+    }
+    function restoreAt(i) {
+        var d = loadData(); if (!d || !d.trash || !d.trash[i]) return;
+        var entry = d.trash[i];
+        var type = (entry.type || '').toLowerCase();
+        if (restoreEntry(d, entry)) {
+            d.trash.splice(i, 1);
+            if (typeof addActivity === 'function') { addActivity(d, 'restore', 'Restored from Trash: ' + (entry.name || entry.type)); saveData(d); }
+            else saveData(d);
+            if (typeof window.__ehToast === 'function') window.__ehToast('Restored');
+            render(); updateTrashCount(); refreshLists([type]);
+        } else {
+            if (typeof window.__ehToast === 'function') window.__ehToast('Unknown item type — use TrashCore.diag() in the console');
+        }
+    }
+    function deleteAt(i) {
+        var d = loadData(); if (!d || !d.trash || !d.trash[i]) return;
+        d.trash.splice(i, 1); saveData(d);
+        if (typeof window.__ehToast === 'function') window.__ehToast('Deleted forever');
+        render(); updateTrashCount();
+    }
+    function restoreAll() {
+        var d = loadData(), n = (d.trash || []).length;
+        if (!n) { if (window.__ehToast) window.__ehToast('Trash is empty'); return; }
+        var ok = 0, types = {};
+        for (var i = d.trash.length - 1; i >= 0; i--) {
+            var type = (d.trash[i].type || '').toLowerCase();
+            if (restoreEntry(d, d.trash[i])) { d.trash.splice(i, 1); ok++; types[type] = 1; }
+        }
+        saveData(d);
+        if (typeof window.__ehToast === 'function') window.__ehToast(ok + ' of ' + n + ' restored' + (ok < n ? ' (' + (n - ok) + ' unknown left)' : ''));
+        render(); updateTrashCount(); refreshLists(Object.keys(types));
+    }
+    function emptyAll() {
+        var d = loadData(), n = (d.trash || []).length;
+        if (!n) { if (window.__ehToast) window.__ehToast('Trash is already empty'); return; }
+        d.trash = []; saveData(d);
+        if (typeof window.__ehToast === 'function') window.__ehToast(n + ' item(s) deleted forever');
+        render(); updateTrashCount();
+    }
+    window.openTrashModal = function () {
+        inject(); armed = -1; armedEmpty = false; q = '';
+        var qi = document.getElementById('tc-q'); if (qi) qi.value = '';
+        var m = document.getElementById('tc-modal'); m.hidden = false; render();
+        requestAnimationFrame(function () { requestAnimationFrame(function () { m.classList.add('tc-in'); }); });
+    };
+    document.addEventListener('click', function (e) {
+        var b = e.target; if (!b.closest) return;
+        var a = b.closest('[data-tc-restore],[data-tc-arm],[data-tc-confirm],[data-tc-cancel],#tc-restoreall,#tc-emptyall,[data-tc-close]');
+        if (!a) return;
+        if (a.hasAttribute('data-tc-close')) { close(); return; }
+        if (a.id === 'tc-restoreall') { restoreAll(); return; }
+        if (a.id === 'tc-emptyall') {
+            if (!armedEmpty) { armedEmpty = true; render(); clearTimeout(armedEmptyT);
+                armedEmptyT = setTimeout(function () { armedEmpty = false; render(); }, 3000); }
+            else { armedEmpty = false; emptyAll(); } return; }
+        if (a.dataset.tcRestore != null) { armed = -1; restoreAt(+a.dataset.tcRestore); return; }
+        if (a.dataset.tcArm != null) { armed = +a.dataset.tcArm; armedEmpty = false; render(); clearTimeout(armedT);
+            armedT = setTimeout(function () { armed = -1; render(); }, 3000); return; }
+        if (a.dataset.tcConfirm != null) { armed = -1; deleteAt(+a.dataset.tcConfirm); return; }
+        if (a.dataset.tcCancel != null) { armed = -1; render(); return; }
     });
-}
+    function close() {
+        var m = document.getElementById('tc-modal'); if (!m || m.hidden) return;
+        m.classList.remove('tc-in'); setTimeout(function () { m.hidden = true; }, 220);
+    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 
-function refreshCurrentPage() {
-    var path = window.location.pathname.split('/').pop() || 'index.html';
-    if (path === 'index.html' || path === '') { if (typeof renderDashboard === 'function') renderDashboard(); }
-    else if (path === 'files.html') { if (typeof renderFileList === 'function') renderFileList(); }
-    else if (path === 'notes.html') { if (typeof setupNotes === 'function') setupNotes(); }
-    else if (path === 'notice.html') { if (typeof setupNotice === 'function') setupNotice(); }
-    else if (path === 'habits.html') { if (typeof setupHabits === 'function') setupHabits(); }
-}
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateTrashCount);
+    else updateTrashCount();
+    setTimeout(updateTrashCount, 800);
 
+    window.TrashCore = {
+        open: window.openTrashModal, close: close, count: trashCount, restoreAll: restoreAll, empty: emptyAll,
+        diag: function () {
+            console.log('— TRASH v3 —');
+            console.log('saveData wrapped:', !!saveData.__trashWrapped);
+            try {
+                console.table((loadData().trash || []).map(function (t, i) {
+                    var it = innerItem(t);
+                    return { i: i, type: t.type || guessType(it) || '?', label: t.name || labelOf(it),
+                        when: when(entryTime(t)), keys: Object.keys(t).join(',') };
+                }));
+            } catch (e) { console.log(e); }
+        }
+    };
+})();
 // ================================================================
 // FILE ANNOTATION (overrides renderFileList to add note inputs + trash)
 // ================================================================
@@ -4421,692 +6287,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateTrashCount();
 });
 
-// ================================================================
-// BLOCKER + TRASH — SELF-CONTAINED (works on every page)
-// ================================================================
-(function () {
-    function ready(fn) {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', fn);
-        } else {
-            fn();
-        }
-    }
 
-    ready(function () {
-
-       
-        // ---------- TRASH ----------
-        var trashBtn = document.getElementById('trashBtn');
-        if (trashBtn) {
-            function readState() {
-                try { return JSON.parse(localStorage.getItem('studyHubData') || '{}'); }
-                catch (e) { return {}; }
-            }
-            function writeState(d) {
-                localStorage.setItem('studyHubData', JSON.stringify(d));
-            }
-            function cleanTrash(d) {
-                if (!d.trash) d.trash = [];
-                var now = Date.now();
-                d.trash = d.trash.filter(function (t) {
-                    return (now - t.deletedAt) < 24 * 60 * 60 * 1000;
-                });
-                return d;
-            }
-            function paint() {
-                var d = cleanTrash(readState());
-                writeState(d);
-                trashBtn.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> Trash (' + d.trash.length + ')';
-            }
-
-            paint();
-            trashBtn.addEventListener('click', function () {
-                var d = cleanTrash(readState());
-                var items = d.trash;
-
-                var old = document.getElementById('trashModal');
-                if (old) old.remove();
-
-                var modal = document.createElement('div');
-                modal.className = 'trash-modal';
-                modal.id = 'trashModal';
-                modal.innerHTML =
-                    '<div class="trash-modal-content">' +
-                        '<div class="trash-modal-header">' +
-                            '<h2><i class="ph ph-trash" aria-hidden="true"></i> Trash (' + items.length + ')</h2>' +
-                            '<button id="trashCloseBtn" class="btn-danger-sm">Close</button>' +
-                        '</div>' +
-                        (items.length === 0
-                            ? '<p class="empty-state">Trash is empty.</p>'
-                            : items.map(function (t) {
-                                var label = (t.data && (t.data.text || t.data.name || t.data.title)) || t.type;
-                                return '<div class="trash-item">' +
-                                    '<span>' + label + ' <small style="color:#64748b;">(' + t.type + ')</small></span>' +
-                                    '<span>' +
-                                        '<button class="btn-primary-sm" data-restore="' + t.id + '">Restore</button> ' +
-                                        '<button class="btn-danger-sm" data-purge="' + t.id + '">Delete</button>' +
-                                    '</span>' +
-                                '</div>';
-                            }).join('')) +
-                        '<div style="margin-top:1rem; text-align:right;">' +
-                            '<button id="emptyTrashBtn" class="btn-danger">Empty Trash</button>' +
-                        '</div>' +
-                    '</div>';
-                document.body.appendChild(modal);
-
-                document.getElementById('trashCloseBtn').addEventListener('click', function () {
-                    modal.remove();
-                });
-                modal.addEventListener('click', function (e) {
-                    if (e.target === modal) modal.remove();
-                });
-
-                // Restore
-                modal.querySelectorAll('[data-restore]').forEach(function (b) {
-                    b.addEventListener('click', function () {
-                        var id = this.dataset.restore;
-                        var d2 = cleanTrash(readState());
-                        var item = d2.trash.find(function (x) { return x.id === id; });
-                        if (!item) { modal.remove(); return; }
-                        if (item.type === 'note')        d2.notes.push(item.data);
-                        else if (item.type === 'file')   d2.files.push(item.data);
-                        else if (item.type === 'notice') d2.notices.push(item.data);
-                        else if (item.type === 'habit')  d2.habits.push(item.data);
-                        d2.trash = d2.trash.filter(function (x) { return x.id !== id; });
-                        writeState(d2);
-                        modal.remove();
-                        paint();
-                        location.reload();
-                    });
-                });
-
-                // Purge one
-                modal.querySelectorAll('[data-purge]').forEach(function (b) {
-                    b.addEventListener('click', function () {
-                        var id = this.dataset.purge;
-                        var d2 = cleanTrash(readState());
-                        d2.trash = d2.trash.filter(function (x) { return x.id !== id; });
-                        writeState(d2);
-                        modal.remove();
-                        paint();
-                        trashBtn.click();
-                    });
-                });
-
-                // Empty trash
-                var emptyBtn = document.getElementById('emptyTrashBtn');
-                if (emptyBtn) {
-                    emptyBtn.addEventListener('click', function () {
-                        if (!confirm('Empty trash permanently?')) return;
-                        var d2 = cleanTrash(readState());
-                        d2.trash = [];
-                        writeState(d2);
-                        modal.remove();
-                        paint();
-                    });
-                }
-            });
-        }
-    });
-})();
-
-// ================================================================
-// AI PLANNER v4.5 — full-day routines: study + LIFE, logically placed
-// • Life layer: wake · shower · breakfast · lunch(+prayer) · rest ·
-//   Asr/Maghrib · sports · dinner(+Isha) · wind-down · sleep
-// • Collision-free placement (firstFree scanning), chronological study
-// • Slot-preference parsing ("study in the morning"), daily rotation
-// • TEST PREVIEW gate — planner grid untouched until Apply/Replace
-// • Timeline view · 5:00–23:00 grid · provider-AI + offline engine
-// ================================================================
-(function () {
-  'use strict';
-  function ready(fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
-
-  var ALL_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  var ALL_HOURS = (function () { var a = []; for (var h = 5; h <= 23; h++) a.push(h + ':00'); return a; })();
-  var DAY_NAMES = { mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun',
-    monday:'Mon',tuesday:'Tue',wednesday:'Wed',thursday:'Thu',friday:'Fri',saturday:'Sat',sunday:'Sun' };
-
-  var LIFE = {
-    wake:{i:'⏰',c:'#7dd3fc'}, shower:{i:'🚿',c:'#7fb3d9'}, breakfast:{i:'🍳',c:'#f0b46a'},
-    lunch:{i:'🍽️',c:'#f0b46a'}, rest:{i:'😌',c:'#a78bfa'}, prayer:{i:'🕌',c:'#5fd6a4'},
-    sports:{i:'🏃',c:'#f472b6'}, dinner:{i:'🍽️',c:'#f0b46a'}, wind:{i:'🛏️',c:'#8d9aa9'}, sleep:{i:'😴',c:'#5a6b7d'}
-  };
-  var LIFE_EMOJIS = ['⏰','🚿','🍳','🍽️','😌','🕌','🏃','🛏️','😴'];
-  function isLife(v) { v = String(v || ''); for (var i = 0; i < LIFE_EMOJIS.length; i++) if (v.indexOf(LIFE_EMOJIS[i]) === 0) return true; return false; }
-  function life(k, extra) { return LIFE[k].i + ' ' + k.charAt(0).toUpperCase() + k.slice(1) + (extra ? ' · ' + extra : ''); }
-
-  var SUBJECT_MAP = { math:'Math',maths:'Math',mathematics:'Math',algebra:'Math',calculus:'Math',geometry:'Math',trig:'Math',trigonometry:'Math',statistics:'Stats',stats:'Stats',probability:'Stats',physics:'Physics',phy:'Physics',chemistry:'Chemistry',chem:'Chemistry',biology:'Biology',bio:'Biology',science:'Science',sci:'Science',coding:'Coding',code:'Coding',programming:'Coding',cs:'Computer Science','computer science':'Computer Science',dsa:'Data Structures',algorithms:'Algorithms',algo:'Algorithms','machine learning':'ML',ml:'ML',ai:'AI','artificial intelligence':'AI',web:'Web Dev','web dev':'Web Dev',python:'Python',java:'Java',cpp:'C++','c++':'C++',english:'English',eng:'English',bangla:'Bangla',bengali:'Bangla',spanish:'Spanish',french:'French',german:'German',arabic:'Arabic',hindi:'Hindi',chinese:'Chinese',japanese:'Japanese',history:'History',geography:'Geography',economics:'Economics',econ:'Economics',literature:'Literature',philosophy:'Philosophy',psychology:'Psychology',revision:'Revision',revise:'Revision',review:'Revision',homework:'Homework',hw:'Homework',practice:'Practice',problems:'Practice',project:'Project',writing:'Writing',essay:'Writing' };
-  var DIFFICULTY = { Math:3,Physics:3,Chemistry:3,'Computer Science':3,Algorithms:3,'Data Structures':3,ML:3,Stats:2,Biology:2,Coding:3,Python:2,Java:3,'C++':3,'Web Dev':2,English:2,Bangla:1,Spanish:2,French:2,German:3,Arabic:3,Hindi:2,Chinese:3,Japanese:3,History:2,Geography:2,Economics:3,Literature:2,Philosophy:3,Psychology:2,Revision:1,Homework:2,Practice:2,Project:2,Writing:2 };
-
-  function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-
-  /* ---------- PARSER ---------- */
-  function parseRequest(text) {
-    var t = ' ' + String(text).toLowerCase().replace(/\s+/g, ' ') + ' ';
-    var req = { mode:'balanced', scope:'all', bias:'all', hours:0, sessionMin:60,
-      subjects:[], focus:null, wake:null, sleep:null, prayers:null, sports:null, raw:text };
-    if (/\b(easy|light|chill|relaxed|casual|minimal|gentle)\b/.test(t)) req.mode = 'easy';
-    else if (/\b(intense|intensive|heavy|hard|exam|sprint|crunch|maximum|max|jam|packed|marathon)\b/.test(t)) req.mode = 'intense';
-
-    if (/\b(weekend|sat(urday)?|sun(day)?)\b/.test(t)) req.scope = 'weekend';
-    else if (/\b(weekdays|work\s?week|school\s?week)\b/.test(t)) req.scope = 'weekday';
-    else if (/\b(today|tonight)\b/.test(t)) req.scope = 'today';
-    else if (/\btomorrow\b/.test(t)) req.scope = 'tomorrow';
-    var dm = t.match(/\b(?:on|for|this)\s+(mon|tue|wed|thu|fri|sat|sun)(day)?\b/);
-    if (dm) { req.scope = 'specific-day'; req.specificDay = DAY_NAMES[dm[1]]; }
-
-    if (/\b(in the |at |during )?morning\b|\bearly\b/.test(t) && !/evening/.test(t)) req.bias = 'morning';
-    else if (/\b(in the |at |during )?evening\b|\bnight\b|\btonight\b/.test(t)) req.bias = 'evening';
-
-    var mh = t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
-    var mm = t.match(/(\d+)\s*(?:minutes?|mins?|m)\b/);
-    if (mh) req.hours = parseFloat(mh[1]); else if (mm) req.hours = parseFloat(mm[1]) / 60;
-
-    Object.keys(SUBJECT_MAP).forEach(function (k) {
-      var re = new RegExp('(?:^|[\\s|])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[\\s|])');
-      if (re.test(t) && req.subjects.indexOf(SUBJECT_MAP[k]) === -1) req.subjects.push(SUBJECT_MAP[k]);
-    });
-    var fm = t.match(/(?:focus on|concentrate on|mainly|mostly|priority on)\s+([a-z ]+)/);
-    if (fm) { Object.keys(SUBJECT_MAP).forEach(function (k) { if (!req.focus && fm[1].indexOf(k) !== -1) req.focus = SUBJECT_MAP[k]; }); }
-
-    var w = t.match(/\bwake(?:\s*up)?(?:\s*at)?\s+(\d{1,2})/);
-    if (w) req.wake = Math.max(4, Math.min(10, +w[1]));
-    var s = t.match(/\bsleep(?:\s*at)?\s+(\d{1,2})/);
-    if (s) { var n = +s[1]; if (n >= 7 && n <= 11) n += 12; else if (n >= 1 && n <= 6) n += 24; req.sleep = Math.min(23, n); }
-
-    if (/no (prayer|prayers|namaz|salah)|without (prayer|prayers|namaz)/.test(t)) req.prayers = false;
-    else if (/pray|prayers|namaz|salah|salat|fajr|dhuhr|asr|maghrib|isha/.test(t)) req.prayers = true;
-    if (/no (gym|sports|exercise|workout)|without (gym|sports|exercise)/.test(t)) req.sports = false;
-    else if (/gym|workout|exercis|\bsports?\b|\btraining\b|running|football practice|cricket practice/.test(t)) req.sports = true;
-    return req;
-  }
-
-  /* ---------- LIFE LAYER — collision-free ---------- */
-  function pickDays(req) {
-    if (req.scope === 'weekend') return ['Sat','Sun'];
-    if (req.scope === 'weekday') return ['Mon','Tue','Wed','Thu','Fri'];
-    if (req.scope === 'today') return [['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()]];
-    if (req.scope === 'tomorrow') return [['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][(new Date().getDay()+1)%7]];
-    if (req.scope === 'specific-day') return [req.specificDay];
-    return ALL_DAYS.slice();
-  }
-  function put(life, day, hour, label) {
-    var k = day + '_' + hour;
-    if (!life[k]) life[k] = label;
-  }
-  function firstFree(life, day, start, end) {
-    var s = Math.max(5, start), e = (end === undefined) ? 23 : Math.min(end, 23);
-    for (var h = s; h <= e; h++) if (!life[day + '_' + h]) return h;
-    return -1;
-  }
-  function buildLife(req, eff, days) {
-    var life = {};
-    var wake = req.wake || eff.wake;
-    var sleepH = req.sleep || eff.sleep;
-    var prayers = req.prayers !== null ? req.prayers : eff.prayers;
-    var sports = req.sports !== null ? req.sports : eff.sports;
-    days.forEach(function (day) {
-      put(life, day, wake, life('wake', prayers ? 'Fajr' : ''));
-      var sh = firstFree(life, day, wake + 1); if (sh > -1) put(life, day, sh, life('shower'));
-      var br = firstFree(life, day, sh + 1, 11); if (br > -1) put(life, day, br, life('breakfast'));
-      var lu = firstFree(life, day, 12); if (lu > -1) put(life, day, lu, prayers ? LIFE.lunch.i + ' Lunch · Dhuhr' : LIFE.lunch.i + ' Lunch');
-      if (eff.rest) { var rs = firstFree(life, day, 13, 15); if (rs > -1) put(life, day, rs, life('rest')); }
-      if (prayers) {
-        var as = firstFree(life, day, 15, 17); if (as > -1) put(life, day, as, LIFE.prayer.i + ' Asr');
-        var mg = firstFree(life, day, 18, 19); if (mg > -1) put(life, day, mg, LIFE.prayer.i + ' Maghrib');
-      }
-      if (sports) {
-        var sp = firstFree(life, day, (req.bias === 'morning' ? wake + 3 : 16), 18);
-        if (sp > -1) put(life, day, sp, life('sports'));
-      }
-      var dn = firstFree(life, day, 19, 21); if (dn > -1) put(life, day, dn, prayers ? LIFE.dinner.i + ' Dinner · Isha' : LIFE.dinner.i + ' Dinner');
-      var wn = firstFree(life, day, sleepH - 1); if (wn > -1) put(life, day, wn, life('wind'));
-      if (sleepH <= 23) put(life, day, sleepH, life('sleep'));
-    });
-    return life;
-  }
-
-  /* ---------- STUDY LAYER ---------- */
-  function shuffle(a, seed) { var x = a.slice(), s = seed || 1;
-    for (var i = x.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280;
-      var j = Math.floor((s / 233280) * (i + 1)); var t = x[i]; x[i] = x[j]; x[j] = t; } return x; }
-  function interleave(pool) {
-    if (pool.length <= 1) return pool.slice();
-    var byCat = {}; pool.forEach(function (s) { var c = (DIFFICULTY[s] || 2) >= 3 ? 'hard' : 'soft';
-      (byCat[c] = byCat[c] || []).push(s); });
-    var cats = Object.keys(byCat), out = [], guard = 0;
-    while (out.length < pool.length && guard++ < 400) {
-      var c = cats[Math.floor(Math.random() * cats.length)];
-      if (byCat[c] && byCat[c].length) out.push(byCat[c].shift());
-    }
-    pool.forEach(function (s) { if (out.indexOf(s) === -1) out.push(s); });
-    return out;
-  }
-  function energyOrder(pool, bias) {
-    var s = pool.slice().sort(function (a, b) { return (DIFFICULTY[b] || 2) - (DIFFICULTY[a] || 2); });
-    return bias === 'evening' ? s.reverse() : s;
-  }
-
-  function buildPlan(req, eff, variant) {
-    variant = variant || { name: 'Balanced', intensity: 'balanced', seedMult: 1 };
-    var days = pickDays(req);
-    var life = buildLife(req, eff, days);
-    var seed = variant.seedMult * 7919 + req.raw.length;
-
-    var pool = req.subjects.slice();
-    if (req.focus && pool.indexOf(req.focus) === -1) pool.unshift(req.focus);
-    if (!pool.length) {
-      if (req.mode === 'intense') pool = ['Math','Physics','Revision','Practice','Reading'];
-      else if (req.mode === 'easy') pool = ['Reading','Revision','Note Review','Practice'];
-      else pool = ['Math','Science','English','Reading','Revision','Practice'];
-    }
-    var ordered = interleave(energyOrder(shuffle(pool, seed + 13), req.bias));
-
-    var target = req.hours > 0 ? Math.max(1, Math.round(req.hours))
-      : req.mode === 'intense' ? 6 : req.mode === 'easy' ? 3 : 5;
-
-    var plan = {}, dayOf = {}, perSubject = {};
-    days.forEach(function (day, di) {
-      var free = ALL_HOURS.filter(function (h) { return !life[day + '_' + h]; });
-      /* slot preferences: "study in the morning" → prioritize morning free hours */
-      var pref = null;
-      if (/\bstudy\s+(?:in\s+the\s+)?morning\b/.test(' ' + req.raw.toLowerCase()) ) pref = 'morning';
-      if (/\bstudy\s+(?:in\s+the\s+|at\s+)?(?:evening|night)\b/.test(' ' + req.raw.toLowerCase())) pref = req.bias === 'morning' ? 'morning' : 'evening';
-      var ordered_ = free.slice().sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
-      if (pref === 'morning') ordered_.sort(function (a, b) { return parseInt(a,10) - parseInt(b,10); });
-      if (pref === 'evening') ordered_.sort(function (a, b) { return parseInt(b,10) - parseInt(a,10); });
-      var dayHours = shuffle(ordered_, seed + di * 37).slice(0, target)
-        .sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
-      var si = 0; dayOf[day] = { hours: [], subjects: [] };
-      ALL_HOURS.forEach(function (h) {
-        var lk = day + '_' + h, v = null;
-        if (life[lk]) v = life[lk];
-        else if (dayHours.indexOf(h) !== -1) {
-          /* daily rotation: every subject appears each day when pool is small */
-          v = (pool.length <= target) ? ordered[(si + di) % ordered.length] : ordered[si % ordered.length];
-          si++;
-          perSubject[v] = (perSubject[v] || 0) + 1;
-          dayOf[day].hours.push(h); dayOf[day].subjects.push(v);
-        }
-        if (v) plan[lk] = v;
-      });
-    });
-    return { plan: plan, days: days, dayOf: dayOf, pool: ordered, perSubject: perSubject,
-             variant: variant, sessionMin: req.sessionMin || 60 };
-  }
-
-  function analyze(result) {
-    var studySessions = Object.keys(result.dayOf).reduce(function (a, d) { return a + result.dayOf[d].hours.length; }, 0);
-    var lifeCount = Object.keys(result.plan).filter(function (k) { return isLife(result.plan[k]); }).length;
-    var warnings = [];
-    if (studySessions === 0) warnings.push('⚠️ No study hours fit — widen the window (earlier wake / later sleep).');
-    if (studySessions > 0 && studySessions < 3) warnings.push('ℹ️ Light plan — good for recovery days.');
-    if (lifeCount === 0) warnings.push('⚠️ No life blocks placed — check wake/sleep settings.');
-    return { studySessions: studySessions, studyHours: (studySessions * result.sessionMin / 60).toFixed(1),
-             lifeCount: lifeCount, perSubject: result.perSubject, warnings: warnings };
-  }
-
-  var SUBJ_COLORS = ['#5eead4','#7dd3fc','#c4b5fd','#f472b6','#fdba74','#6ee7b7','#f9a8d4','#a78bfa','#22d3ee','#fbbf24'];
-  function colorFor(v, pool) {
-    var idx = pool.indexOf(v);
-    if (idx < 0) idx = v.charCodeAt(0) % SUBJ_COLORS.length;
-    return SUBJ_COLORS[idx % SUBJ_COLORS.length];
-  }
-
-  /* ---------- RENDER ---------- */
-  var lastResult = null, lastRequest = null, lastThree = [];
-
-  function renderAnalytics(an) {
-    var h = '<div class="planner-analytics">';
-    h += '<div class="pa-stat"><span class="pa-label">Study</span><span class="pa-val">' + an.studySessions + '</span></div>';
-    h += '<div class="pa-stat"><span class="pa-label">Hours</span><span class="pa-val">' + an.studyHours + 'h</span></div>';
-    h += '<div class="pa-stat"><span class="pa-label">Subjects</span><span class="pa-val">' + Object.keys(an.perSubject).length + '</span></div>';
-    h += '<div class="pa-stat"><span class="pa-label">Life blocks</span><span class="pa-val">' + an.lifeCount + '</span></div>';
-    h += '</div>';
-    if (an.warnings.length) {
-      h += '<div class="planner-warnings">';
-      an.warnings.forEach(function (w) { h += '<div class="pw-item">' + w + '</div>'; });
-      h += '</div>';
-    }
-    return h;
-  }
-  function renderPreview(result) {
-    var days = result.days, used = {};
-    Object.keys(result.plan).forEach(function (k) { used[k.split('_')[1]] = true; });
-    var showHours = ALL_HOURS.filter(function (h) { return used[h]; });
-    if (!showHours.length) showHours = ALL_HOURS.slice();
-    var from = ALL_HOURS.indexOf(showHours[0]), to = ALL_HOURS.indexOf(showHours[showHours.length - 1]);
-    showHours = ALL_HOURS.slice(Math.max(0, from - 1), Math.min(ALL_HOURS.length, to + 2));
-
-    var html = '<div class="planner-ai-preview" style="grid-template-columns:60px repeat(' + days.length + ', minmax(80px,1fr));">';
-    html += '<div class="ai-label"></div>';
-    days.forEach(function (d) { html += '<div class="ai-label">' + d + '</div>'; });
-    showHours.forEach(function (h) {
-      html += '<div class="ai-label">' + h + '</div>';
-      days.forEach(function (d) {
-        var v = result.plan[d + '_' + h] || '';
-        var life = isLife(v);
-        var style = '';
-        if (v) {
-          if (life) {
-            var e = v.split(' ')[0], meta = null;
-            Object.keys(LIFE).forEach(function (k) { if (LIFE[k].i === e && !meta) meta = LIFE[k]; });
-            var c = meta ? meta.c : '#7fb3d9';
-            style = 'background:' + c + '22;border-color:' + c + '66;color:' + c + ';';
-          } else {
-            var c2 = colorFor(v, result.pool);
-            style = 'background:' + c2 + '20;border-color:' + c2 + '60;color:' + c2 + ';';
-          }
-        }
-        html += '<div class="ai-cell' + (v ? '' : ' empty') + (life ? ' ai-life' : '') + '" style="' + style + '">' + escH(v) + '</div>';
-      });
-    });
-    html += '</div>';
-    return html;
-  }
-  function renderTimeline(result) {
-    var h = '<div style="margin-top:.9rem;">';
-    h += '<div style="font:700 10.5px var(--font,sans-serif);text-transform:uppercase;letter-spacing:.14em;color:var(--accent,#3fd2b0);margin-bottom:.5rem;">📋 Routine timeline (Monday-style, per selected day)</div>';
-    result.days.slice(0, 7).forEach(function (day) {
-      var rows = ALL_HOURS.filter(function (h2) { return result.plan[day + '_' + h2]; });
-      if (!rows.length) return;
-      h += '<div style="margin-bottom:.55rem;"><b style="font:700 12px var(--font,sans-serif);color:var(--ink,#edf2f7)">' + day + '</b>' +
-           '<div style="font:500 12px/1.7 var(--font,sans-serif);color:var(--muted,#8d9aa9);margin-top:.15rem">' +
-           rows.map(function (h2) { return '<span style="white-space:nowrap;display:inline-block;margin-right:.6rem"><b style="color:var(--ink-2,#cfd9e3)">' + h2 + '</b> ' + escH(result.plan[day + '_' + h2]) + '</span>'; }).join('') +
-           '</div></div>';
-    });
-    h += '</div>';
-    return h;
-  }
-  function renderLegend(result) {
-    var h = '<div class="planner-legend">';
-    Object.keys(result.perSubject).forEach(function (s) {
-      var c = colorFor(s, result.pool);
-      h += '<span class="legend-pill" style="background:' + c + '20;border-color:' + c + '60;color:' + c + '">' + escH(s) + ' × ' + result.perSubject[s] + '</span>';
-    });
-    h += '</div>';
-    h += '<div class="planner-legend" style="margin-top:.4rem;">';
-    h += '<span class="legend-pill" style="background:rgba(125,211,252,.12);border-color:rgba(125,211,252,.4);color:#7dd3fc">⏰ Life blocks auto-placed</span>';
-    h += '</div>';
-    return h;
-  }
-  function renderDescription(req, eff, result) {
-    var modeLabel = { easy:'Easy / light', balanced:'Balanced', intense:'Intense' }[req.mode];
-    var scopeLabel = { all:'Full week', weekend:'Weekend only', weekday:'Weekdays only', today:'Today only', tomorrow:'Tomorrow only', 'specific-day':(req.specificDay || 'One day') }[req.scope];
-    var h = '<div class="planner-ai-summary"><strong>🧠 Here\'s your routine:</strong> ';
-    h += '<span class="tag">' + modeLabel + '</span> · <span class="tag">' + scopeLabel + '</span>';
-    h += ' · <span class="tag">Wake ' + (req.wake || eff.wake) + ':00</span> · <span class="tag">Sleep ' + (req.sleep || eff.sleep) + ':00</span>';
-    h += (req.prayers !== false && eff.prayers) ? ' · <span class="tag">🕌 Prayers ×5</span>' : '';
-    h += (req.sports !== false && eff.sports) ? ' · <span class="tag">🏃 Sports</span>' : '';
-    h += ' · <span class="tag">😌 Rest</span>';
-    h += '<br><strong>📚 Subjects:</strong> ' + (result.pool.slice(0, 8).join(', ') || '—') + '.';
-    if (req.focus) h += ' <em>Focus on ' + escH(req.focus) + '.</em>';
-    h += '</div>';
-    return h;
-  }
-  function renderOutput(req, eff, result, an) {
-    var output = document.getElementById('plannerAiOutput');
-    var html = '<div style="border:1px solid rgba(240,180,106,.35);background:rgba(240,180,106,.07);color:var(--warn,#f0b46a);border-radius:10px;padding:.6rem .9rem;margin-bottom:.8rem;font:600 12.5px var(--font,sans-serif);">🧪 TEST PREVIEW — nothing applied yet. Review the routine, then <b>Apply to Planner</b> (merge) or <b>Replace Planner</b> (wipe &amp; apply).</div>';
-    html += renderDescription(req, eff, result) + renderAnalytics(an) + renderPreview(result) + renderLegend(result) + renderTimeline(result);
-    html += '<div class="planner-variants"><div class="pv-label">Try another style:</div>' +
-      '<button class="pv-btn" data-variant="balanced">⚖️ Balanced</button>' +
-      '<button class="pv-btn" data-variant="intense">🔥 Intense</button>' +
-      '<button class="pv-btn" data-variant="relaxed">🌿 Relaxed</button></div>';
-    html += '<div class="planner-ai-actions">' +
-      '<button id="aiApplyBtn" class="btn-primary">✅ Apply to Planner</button>' +
-      '<button id="aiReplaceBtn" class="btn-primary" style="background:rgba(252,165,165,.15);color:#fca5a5;border-color:rgba(252,165,165,.3);">🔁 Replace Planner</button>' +
-      '<button id="aiUndoBtn" class="btn-danger"' + (lastThree.length > 1 ? '' : ' disabled style="opacity:.4;cursor:not-allowed;"') + '>↩ Undo</button></div>';
-    output.innerHTML = html;
-    document.getElementById('aiApplyBtn').addEventListener('click', function () { applyPlan(false); });
-    document.getElementById('aiReplaceBtn').addEventListener('click', function () { applyPlan(true); });
-    var undo = document.getElementById('aiUndoBtn');
-    if (undo && lastThree.length > 1) undo.addEventListener('click', undoLast);
-    output.querySelectorAll('.pv-btn').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var freshReq = parseRequest(lastRequest);
-        var eff = readEff();
-        var nr = buildPlan(freshReq, eff, variantPreset(this.dataset.variant));
-        lastResult = nr; lastThree.push(nr); if (lastThree.length > 3) lastThree.shift();
-        renderOutput(freshReq, eff, nr, analyze(nr));
-      });
-    });
-  }
-  function variantPreset(name) {
-    if (name === 'intense') return { name:'Intense', intensity:'intense', seedMult:3 };
-    if (name === 'relaxed') return { name:'Relaxed', intensity:'relaxed', seedMult:5 };
-    return { name:'Balanced', intensity:'balanced', seedMult:1 };
-  }
-  function undoLast() {
-    if (lastThree.length <= 1) return;
-    lastThree.pop();
-    var prev = lastThree[lastThree.length - 1]; if (!prev) return;
-    var req = parseRequest(lastRequest);
-    var eff = readEff();
-    lastResult = prev; renderOutput(req, eff, prev, analyze(prev));
-  }
-
-  /* ---------- provider AI path ---------- */
-  function sanitizeAiPlan(raw) {
-    try {
-      var src = raw && raw.plan ? raw.plan : null;
-      if (!src || typeof src !== 'object') return null;
-      var plan = {}, used = {}, cells = 0, hourSet = {};
-      ALL_HOURS.forEach(function (h) { hourSet[h] = 1; });
-      Object.keys(src).forEach(function (k) {
-        var m = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)_(\d{1,2}:00)$/.exec(String(k));
-        if (!m || !hourSet[m[2]]) return;
-        var v = String(src[k] || '').trim().slice(0, 40);
-        if (!v) return;
-        plan[m[1] + '_' + m[2]] = v; cells++;
-        if (!isLife(v)) used[v] = 1;
-      });
-      if (cells < 3) return null;
-      var dayOf = {}, days = [];
-      ALL_DAYS.forEach(function (day) {
-        var hours = [];
-        ALL_HOURS.forEach(function (h) { if (plan[day + '_' + h]) hours.push(h); });
-        if (hours.length) { days.push(day); dayOf[day] = { hours: hours, subjects: hours.map(function (h) { return plan[day + '_' + h]; }).filter(function (v) { return !isLife(v); }) }; }
-      });
-      if (!days.length) return null;
-      var pool = Object.keys(used);
-      return { plan: plan, days: days, dayOf: dayOf, pool: pool.length ? pool : ['Study'],
-               perSubject: (function(){ var p={}; Object.keys(plan).forEach(function(k){ var v=plan[k]; if(!isLife(v)) p[v]=(p[v]||0)+1; }); return p; })(),
-               variant: { name:'AI', intensity:'balanced', seedMult:1 }, sessionMin: 50 };
-    } catch (e) { return null; }
-  }
-
-  /* ---------- SETTINGS + GENERATE ---------- */
-  function readEff() {
-    var g = function (id) { var e = document.getElementById(id); return e ? e.value : null; };
-    var c = function (id) { var e = document.getElementById(id); return e ? e.checked : true; };
-    return {
-      wake: Math.max(4, Math.min(10, parseInt(g('plnWake'), 10) || 6)),
-      sleep: Math.max(20, Math.min(23, parseInt(g('plnSleep'), 10) || 23)),
-      prayers: c('plnPrayers'),
-      sports: c('plnSports'),
-      rest: c('plnRest')
-    };
-  }
-  function generate() {
-    var inputEl = document.getElementById('plannerAiInput');
-    var btn = document.getElementById('plannerAiBtn');
-    var output = document.getElementById('plannerAiOutput');
-    var text = inputEl.value.trim();
-    var eff = readEff();
-    if (!text) {
-      output.innerHTML = '<div class="planner-ai-summary"><i class="ph ph-note-pencil"></i> Type what you want to plan — or click a chip above. Tip: try "make a full daily routine with prayers and gym, sleep at 11".</div>';
-      return;
-    }
-    lastRequest = text;
-    function local() {
-      var req = parseRequest(text);
-      var result = buildPlan(req, eff, variantPreset('balanced'));
-      lastResult = result; lastThree = [result];
-      renderOutput(req, eff, result, analyze(result));
-    }
-    if (typeof StudyHubAI === 'undefined') { local(); return; }
-    StudyHubAI.status().then(function (st) {
-      if (!st.configured) { local(); return undefined; }
-      btn.disabled = true;
-      return StudyHubAI.chat([
-        { role: 'system', content: 'You build full-day student ROUTINES that mix study with daily life, placed logically and chronologically. Reply with ONLY a JSON object {"plan": {"Mon_6:00": "⏰ Wake up · Fajr", ...}}. ' +
-          'Rules: day keys Mon Tue Wed Thu Fri Sat Sun; hour keys whole hours "5:00" to "23:00"; one activity per slot; never overlap. ' +
-          'INCLUDE life blocks with these emoji labels: ⏰ wake, 🚿 shower, 🍳 breakfast, 🍽️ lunch, 😌 rest/nap, 🕌 prayers (Fajr with wake, Dhuhr with lunch, Asr 15-17, Maghrib 18-19, Isha with dinner), 🏃 sports, 🛏️ wind-down, 😴 sleep — ' +
-          'but include prayers ONLY if the user mentions praying, and sports ONLY if mentioned or requested. ' +
-          'Chronology: wake → shower → breakfast → study → lunch → study/rest → Asr → study → sports → Maghrib → dinner+Isha → study → wind-down → sleep. ' +
-          'Place the hardest subjects in morning slots. Study blocks use short subject names (1-3 words). No markdown, no prose.' },
-        { role: 'user', content: text.slice(0, 600) }
-      ], { jsonMode: true, maxTokens: 1600, temperature: 0.4, timeoutMs: 30000
-      }).then(function (res) {
-        btn.disabled = false;
-        var result = sanitizeAiPlan(StudyHubAI.parseJsonReply(res.text));
-        if (!result) { local(); return undefined; }
-        var req = parseRequest(text);
-        lastResult = result; lastThree = [result];
-        renderOutput(req, eff, result, analyze(result));
-      }).catch(function () { btn.disabled = false; local(); });
-    }).catch(function () { local(); });
-  }
-  function applyPlan(replace) {
-    if (!lastResult) return;
-    var data = loadData();
-    if (!data.planner) data.planner = {};
-    if (!data.plannerUndoStack) data.plannerUndoStack = [];
-    data.plannerUndoStack.push(JSON.parse(JSON.stringify(data.planner)));
-    if (data.plannerUndoStack.length > 5) data.plannerUndoStack.shift();
-    if (replace) data.planner = {};
-    Object.keys(lastResult.plan).forEach(function (k) { data.planner[k] = lastResult.plan[k]; });
-    saveData(data);
-    if (typeof addActivity === 'function') {
-      addActivity(data, 'planner_ai', replace ? 'Replaced planner with AI routine' : 'Merged AI routine into planner');
-      saveData(data);
-    }
-    if (typeof setupPlanner === 'function') setupPlanner();
-    var toast = document.createElement('div');
-    toast.className = 'fbt-toast show';
-    toast.innerHTML = replace ? 'Planner replaced' : 'Routine merged into planner';
-    toast.style.borderColor = '#6ee7b7';
-    document.body.appendChild(toast);
-    setTimeout(function () { toast.classList.remove('show'); setTimeout(function () { toast.remove(); }, 400); }, 2200);
-  }
-
-  /* ---------- ENHANCED GRID ---------- */
-  setupPlanner = function () {
-    var grid = document.getElementById('plannerGrid');
-    if (!grid) return;
-    var days = ALL_DAYS;
-    function renderPlanner() {
-      var data = loadData();
-      grid.innerHTML = '';
-      grid.innerHTML += '<div class="time-label"></div>';
-      days.forEach(function (d) { grid.innerHTML += '<div class="time-label" style="font-weight:700;">' + d + '</div>'; });
-      ALL_HOURS.forEach(function (h) {
-        grid.innerHTML += '<div class="time-label">' + h + '</div>';
-        days.forEach(function (d) {
-          var key = d + '_' + h;
-          var val = data.planner[key] || '';
-          var cell = document.createElement('div');
-          cell.className = 'planner-cell' + (val ? ' filled' : '') + (val && isLife(val) ? ' life' : '');
-          cell.textContent = val;
-          cell.title = val ? 'Click to edit' : 'Click to plan ' + d + ' ' + h;
-          cell.addEventListener('click', function () {
-            var newVal = prompt('Plan for ' + d + ' ' + h + ':', val || '');
-            if (newVal === null) return;
-            var dd = loadData();
-            if (newVal.trim() === '') delete dd.planner[key];
-            else dd.planner[key] = newVal.trim();
-            saveData(dd);
-            renderPlanner();
-          });
-          grid.appendChild(cell);
-        });
-      });
-    }
-    renderPlanner();
-  };
-
-  /* ---------- CSS + SETTINGS ---------- */
-  var CSS =
-    '.pln-settings{display:flex;gap:.9rem;flex-wrap:wrap;align-items:center;background:var(--surface-2,rgba(148,163,184,.05));border:1px solid var(--line,rgba(148,163,184,.14));border-radius:12px;padding:.65rem .9rem;margin-bottom:.8rem;font-size:.8rem;color:var(--muted,#8d9aa9)}' +
-    '.pln-settings b{font:700 .68rem var(--font,sans-serif);text-transform:uppercase;letter-spacing:.1em;color:var(--faint,#7a8a9e);margin-right:.1rem}' +
-    '.pln-settings select{background:var(--panel-2,#0B0F1A);border:1px solid var(--line,#2a3648);color:var(--ink,#edf2f7);border-radius:8px;padding:.3rem .5rem;font:500 12.5px var(--font,inherit);cursor:pointer}' +
-    '.pln-settings label{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;user-select:none}' +
-    '.pln-settings input[type=checkbox]{accent-color:var(--accent,#3fd2b0);width:14px;height:14px;cursor:pointer}' +
-    '.planner-cell.life{background:color-mix(in srgb, #7fb3d9 12%, transparent) !important;border-color:rgba(127,179,217,.4) !important;color:var(--ink-2,#cfd9e3) !important;font-size:.72rem !important;font-weight:600}' +
-    '.ai-cell.ai-life{font-size:.72rem !important;font-weight:600}' +
-    '.fbt-toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:var(--surface-raised,#101623);border:1px solid var(--line,#2a3648);color:var(--ink,#edf2f7);padding:.7rem 1.2rem;border-radius:10px;font:600 13px var(--font,sans-serif);opacity:0;transition:all .25s;z-index:10050;pointer-events:none}' +
-    '.fbt-toast.show{opacity:1;transform:translate(-50%,0)}';
-  var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-
-  ready(function () {
-    var inputEl = document.getElementById('plannerAiInput');
-    var btn = document.getElementById('plannerAiBtn');
-    var inputRow = inputEl ? inputEl.parentNode : null;
-    if (inputRow && !document.getElementById('plnWake')) {
-      var set = document.createElement('div');
-      set.className = 'pln-settings';
-      set.innerHTML = '<b>Daily life</b>' +
-        '<span>Wake <select id="plnWake">' + [5,6,7,8,9,10].map(function(h){return '<option value="'+h+'"'+(h===6?' selected':'')+'>'+h+':00</option>';}).join('') + '</select></span>' +
-        '<span>Sleep <select id="plnSleep">' + [20,21,22,23].map(function(h){return '<option value="'+h+'"'+(h===23?' selected':'')+'>'+(h===23?'23:00':h+':00')+'</option>';}).join('') + '</select></span>' +
-        '<label><input type="checkbox" id="plnPrayers" checked> 🕌 Prayers ×5</label>' +
-        '<label><input type="checkbox" id="plnSports" checked> 🏃 Sports</label>' +
-        '<label><input type="checkbox" id="plnRest" checked> 😌 Rest</label>';
-      inputRow.parentNode.insertBefore(set, inputRow);
-    }
-    var chips = document.querySelector('.planner-ai-chips');
-    if (chips && !document.getElementById('chipRoutine')) {
-      var c = document.createElement('button');
-      c.className = 'planner-chip'; c.id = 'chipRoutine'; c.type = 'button';
-      c.setAttribute('data-prompt', 'make a full daily routine for me with prayers, sports and sleep at 11');
-      c.innerHTML = '<i class="ph ph-moon-stars" aria-hidden="true"></i> Daily routine';
-      chips.appendChild(c);
-    }
-    if (btn) btn.addEventListener('click', generate);
-    document.querySelectorAll('.planner-chip').forEach(function (chip) {
-      chip.addEventListener('click', function () {
-        inputEl.value = this.dataset.prompt;
-        generate();
-      });
-    });
-    inputEl.addEventListener('keydown', function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); generate(); }
-    });
-  });
-})();
-// ================================================================
-// RESET PLANNER
-// ================================================================
-(function () {
-    function ready(fn) {
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
-        else fn();
-    }
-
-    ready(function () {
-        var btn = document.getElementById('resetPlannerBtn');
-        if (!btn) return;
-
-        btn.addEventListener('click', function () {
-            if (!confirm(getTranslation('reset_confirm'))) return;
-            var data = loadData();
-            data.planner = {};
-            if (typeof addActivity === 'function') {
-                addActivity(data, 'planner_reset', 'Reset the planner');
-            }
-            saveData(data);
-
-            // Re-render grid without reloading the page
-            if (typeof setupPlanner === 'function') {
-                setupPlanner();
-            } else {
-                location.reload();
-            }
-        });
-    });
-})();
 
 // ================================================================
 // APPLY TRANSLATIONS TO NEW UI ELEMENTS
@@ -6848,309 +8029,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }, { threshold: 0.1 });
 
   staggerTargets.forEach(el => staggerObserver.observe(el));
-})();
-
-
-/* ================================================================
-   TRASH CORE v2.1 — single-writer, schema-proof, self-diagnosing
-   Covers: notes · notices · habits · files · assignments · goals ·
-   readingList · flashcard decks · LISTS (List Maker).
-   Handles both capture format {type,name,item,ts} and the site's
-   pushToTrash format {id,type,data,deletedAt}. Planner excluded.
-   Integrations required elsewhere in script.js:
-     • getDefaultData() must contain  lists: [],
-     • notes.html loads eduhub-lists.js (exposes renderListMaker).
-   ================================================================ */
-(function () {
-  'use strict';
-  if (window.__TRASH_CORE__) return;
-  window.__TRASH_CORE__ = true;
-
-  var WATCH = ['notes','notices','habits','files','assignments','goals','readingList','lists'];
-  var MAX_TRASH = 80, QUOTA = 4300000;
-  var prev = null, armed = -1, armedEmpty = false, armedT = null, armedEmptyT = null, q = '';
-
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function innerItem(e){ return e && typeof e==='object' ? (e.item!=null?e.item:(e.data!=null?e.data:(e.payload!=null?e.payload:e))) : e; }
-
-  /* label = preferred key, else FIRST readable string anywhere in the object */
-  function labelOf(it){
-    if(it==null) return '';
-    if(typeof it!=='object') return String(it).slice(0,60);
-    var prefer=['name','title','text','label','fileName','task','content','front','question','body','note','desc','description','subject','url'];
-    for(var i=0;i<prefer.length;i++){ var v=it[prefer[i]];
-      if(typeof v==='string'&&v.trim()&&v.indexOf('data:')!==0) return v.slice(0,60); }
-    for(var k in it){ var s=it[k];
-      if(typeof s==='string'&&s.trim()&&s.length<300&&s.indexOf('data:')!==0&&s.indexOf('<')!==0) return s.slice(0,60); }
-    var nest=['item','data','payload'];
-    for(var j=0;j<nest.length;j++){ if(it[nest[j]]&&typeof it[nest[j]]==='object'){ var r=labelOf(it[nest[j]]); if(r&&r!=='?') return r; } }
-    try{ var js=JSON.stringify(it); return js&&js.length>2 ? 'Item '+(it.id!=null?'('+it.id+')':'') : '?'; }catch(e){ return '?'; }
-  }
-  function keyOf(it){
-    if(!it||typeof it!=='object') return 'p:'+String(it);
-    if(it.id!=null&&it.id!=='') return 'id:'+it.id;
-    var prefer=['name','title','text','label','fileName','task','content','front','question','body','url'];
-    for(var i=0;i<prefer.length;i++){ if(it[prefer[i]]!=null&&it[prefer[i]]!=='') return prefer[i]+':'+it[prefer[i]]; }
-    try{ return 'j:'+JSON.stringify(it); }catch(e){ return 'u:'+Math.random(); }
-  }
-  function guessType(o){
-    if(!o||typeof o!=='object') return null;
-    var ks=Object.keys(o).join(' ');
-    if(/createdAt|updatedAt|items/i.test(ks)&&/name/i.test(ks)) return 'lists';
-    if(/front|deck|card/i.test(ks)) return 'flashcards';
-    if(/streak|done/i.test(ks)) return 'habits';
-    if(/size|dataUrl/i.test(ks)) return 'files';
-    if(/due|priority/i.test(ks)) return 'assignments';
-    if(/(^| )url|author/i.test(ks)) return 'readingList';
-    if(/pinned/i.test(ks)) return 'notices';
-    if(/text|body|content/i.test(ks)) return 'notes';
-    return null;
-  }
-  function diff(oldA,newA){
-    var removed=[],added=[],map=new Map();
-    (oldA||[]).forEach(function(it){ var k=keyOf(it),e=map.get(k); if(e)e.c++; else map.set(k,{c:1,it:it}); });
-    (newA||[]).forEach(function(it){ var k=keyOf(it),e=map.get(k); if(e&&e.c>0)e.c--; else added.push(it); });
-    map.forEach(function(e){ if(e.c>0) removed.push(e.it); });
-    return {removed:removed,added:added};
-  }
-  function decksOf(d){ return (d.flashcards&&d.flashcards.decks)?d.flashcards.decks:[]; }
-  function snap(d){
-    var s={}; WATCH.forEach(function(k){ s[k]=(d[k]||[]).slice(); });
-    s._decks=decksOf(d).slice();
-    s._tk=(d.trash||[]).map(function(e){ return keyOf(innerItem(e)); });
-    return s;
-  }
-  function count(){ try{ return (loadData().trash||[]).length; }catch(e){ return 0; } }
-  function toast(m){ var t=document.getElementById('eh-toast');
-    if(t){ t.textContent=m; t.hidden=false; t.classList.add('show');
-      setTimeout(function(){ t.classList.remove('show'); t.hidden=true; },2200); }
-    else console.log('[Trash]',m); }
-  function when(w){ try{ if(!w.ts&&!w.deletedAt) return '—';
-    var d=new Date(w.ts||w.deletedAt);
-    return d.toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+
-      d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }catch(e){ return '—'; } }
-  function updateBadge(){ var b=document.getElementById('trashBtn'); if(!b) return; var n=count();
-    if(/\(\d+\)/.test(b.innerHTML)) b.innerHTML=b.innerHTML.replace(/\(\d+\)/,'('+n+')');
-    else b.innerHTML=b.innerHTML+' ('+n+')'; }
-
-  /* ---------- CAPTURE (single writer, identity-deduped) ---------- */
-  var origSave = saveData;
-  function wrappedSave(d){
-    var cap=[];
-    try{
-      if(!prev) prev=snap(loadData());
-      if(d&&typeof d==='object'){
-        WATCH.forEach(function(k){
-          var r=diff(prev[k]||[],d[k]||[]);
-          if(!r.removed.length||r.added.length) return;
-          r.removed.forEach(function(it){ if(it&&typeof it==='object')
-            cap.push({type:k,name:labelOf(it),item:it,ts:Date.now()}); });
-        });
-        var rd=diff(prev._decks||[],decksOf(d));
-        if(rd.removed.length&&!rd.added.length) rd.removed.forEach(function(it){
-          if(it&&typeof it==='object')
-            cap.push({type:'flashcards',name:labelOf(it),item:it,ts:Date.now()}); });
-        if(cap.length&&d.trash&&d.trash.length){
-          /* identity dedup: skip if an equivalent item was added to trash during THIS save
-             (by the site's own pushToTrash, or any other writer) */
-          var prevSet={}; (prev._tk||[]).forEach(function(k){ prevSet[k]=1; });
-          var fresh={};
-          d.trash.forEach(function(e){ var k=keyOf(innerItem(e)); if(!prevSet[k]) fresh[k]=1; });
-          cap=cap.filter(function(c){ return !fresh[keyOf(c.item)]; });
-        }
-        if(cap.length){
-          d.trash=(d.trash&&d.trash.push)?d.trash:[];
-          cap.forEach(function(c){ d.trash.push(c); });
-          while(d.trash.length>MAX_TRASH) d.trash.shift();
-          try{ var size=JSON.stringify(d).length;
-            while(size>QUOTA&&d.trash.length){ d.trash.shift(); size=JSON.stringify(d).length; } }catch(e){}
-          toast(cap.length+' item'+(cap.length>1?'s':'')+' moved to Trash');
-        }
-      }
-    }catch(e){}
-    try{ prev=snap(d); }catch(e){}
-    var r2=origSave(d);
-    updateBadge();
-    return r2;
-  }
-  try{ prev=snap(loadData()); }catch(e){ prev={}; }
-  if(!saveData.__tcWrapped){ saveData=wrappedSave; saveData.__tcWrapped=true; }
-
-  /* ---------- OPERATIONS ---------- */
-  var RESTORE={
-    notes:'notes',note:'notes',notices:'notices',notice:'notices',
-    habits:'habits',habit:'habits',files:'files',file:'files',
-    assignments:'assignments',assignment:'assignments',
-    goals:'goals',goal:'goals',
-    readinglist:'readingList',reading:'readingList',
-    lists:'lists',list:'lists',
-    flashcards:'flashcards.decks',deck:'flashcards.decks' };
-  function arrFor(d,type){ var c=d;
-    String(RESTORE[(type||'').toLowerCase()]||'').split('.').forEach(function(k){ c=c?c[k]:null; });
-    return (c&&c.push)?c:null; }
-
-  /* ---------- SCREEN REFRESH after restore ---------- */
-  /* notes/habits/notices/files/lists have safe global entry points → instant.
-     assignments/reading/decks have no safe re-render → auto-reload (correct). */
-  var RENDER_CANDIDATES = {
-    notes:['renderNotes','initNotes','loadNotes','displayNotes','showNotes'],
-    notices:['renderNotices','initNotices','loadNotices','displayNotices'],
-    habits:['renderHabits','initHabits','loadHabits','displayHabits'],
-    files:['renderFiles','initFiles','loadFiles','displayFiles'],
-    assignments:['renderAssignments','initAssignments','loadAssignments','displayAssignments'],
-    goals:['renderGoals','initGoals','loadGoals'],
-    readingList:['renderReading','initReading','loadReading','displayReading'],
-    flashcards:['renderFlashcards','renderDecks','initFlashcards','loadFlashcards'],
-    lists:['renderListMaker']
-  };
-  function refreshLists(types){
-    var hit = 0;
-    var safe = { notes:'setupNotes', notices:'setupNotice', habits:'setupHabits',
-                 files:'renderFileList', lists:'renderListMaker' };
-    (types||[]).forEach(function(t){
-      if(safe[t]){ try{ if(typeof window[safe[t]]==='function'){ window[safe[t]](); hit++; } }catch(e){} }
-      (RENDER_CANDIDATES[t]||[]).forEach(function(n){
-        if(safe[t]===n) return;   /* already tried the safe one */
-        try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
-      });
-    });
-    ['refreshCurrentPage','renderDashboard'].forEach(function(n){
-      try{ if(typeof window[n]==='function'){ window[n](); hit++; } }catch(e){}
-    });
-    /* nothing matched → guaranteed-correct fallback */
-    if(!hit && !window.TRASH_NO_RELOAD) setTimeout(function(){ location.reload(); }, 350);
-  }
-
-  function restoreAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
-    var it=d.trash[i], back=innerItem(it), type=it.type||guessType(back), a=type?arrFor(d,type):null;
-    if(a){ a.push(back); d.trash.splice(i,1); saveData(d); toast('Restored'); render(); refreshLists([type]); }
-    else toast('Unknown item type — use TrashCore.diag()'); }
-  function deleteAt(i){ var d=loadData(); if(!d||!d.trash||!d.trash[i]) return;
-    d.trash.splice(i,1); saveData(d); toast('Deleted forever'); render(); }
-  function restoreAll(){ var d=loadData(),n=(d.trash||[]).length;
-    if(!n){ toast('Trash is empty'); return; } var ok=0, types={};
-    for(var i=d.trash.length-1;i>=0;i--){ var back=innerItem(d.trash[i]),
-      type=d.trash[i].type||guessType(back), a=type?arrFor(d,type):null;
-      if(a){ a.push(back); d.trash.splice(i,1); ok++; types[type]=1; } }
-    saveData(d); toast(ok+' of '+n+' restored'+(ok<n?' ('+(n-ok)+' unknown types left)':'')); render();
-    refreshLists(Object.keys(types)); }
-  function emptyAll(){ var d=loadData(),n=(d.trash||[]).length;
-    if(!n){ toast('Trash is already empty'); return; }
-    d.trash=[]; saveData(d); toast(n+' item(s) deleted forever'); render(); }
-
-  /* ---------- UI ---------- */
-  var CSS='#tc-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;font-family:var(--font,system-ui,sans-serif)}'+
-    '#tc-modal[hidden]{display:none!important}'+
-    '.tc-scrim{position:absolute;inset:0;background:rgba(2,5,10,.6);opacity:0;transition:opacity .22s}'+
-    '.tc-panel{position:relative;width:min(600px,100%);max-height:min(80vh,760px);display:flex;flex-direction:column;background:var(--surface-raised,rgba(13,22,37,.96));border:1px solid var(--line,rgba(148,163,184,.2));border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);opacity:0;transform:translateY(12px) scale(.98);transition:opacity .24s cubic-bezier(.16,1,.3,1),transform .24s cubic-bezier(.16,1,.3,1);overflow:hidden}'+
-    '#tc-modal.tc-in .tc-scrim{opacity:1}#tc-modal.tc-in .tc-panel{opacity:1;transform:none}'+
-    '.tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line,rgba(148,163,184,.15))}'+
-    '.tc-eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent,#3fd2b0);font-weight:700;margin-bottom:4px}'+
-    '.tc-title{font-family:var(--display,var(--font,sans-serif));font-weight:700;font-size:20px;color:var(--ink,#edf2f7)}'+
-    '.tc-x{width:32px;height:32px;border-radius:50%;border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);cursor:pointer;font-size:14px}'+
-    '.tc-body{padding:16px 20px 22px;overflow-y:auto}'+
-    '.tc-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}'+
-    '.tc-search{flex:1;min-width:170px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);border:1px solid var(--line,#2a3648);border-radius:999px;padding:0 14px;color:var(--muted,#8d9aa9)}'+
-    '.tc-search input{flex:1;background:none;border:none;outline:none;color:var(--ink,#edf2f7);height:40px;font:inherit;font-size:14px;min-width:0}'+
-    '.tc-count{font-size:12px;font-weight:700;color:var(--muted,#8d9aa9);white-space:nowrap}'+
-    '.tc-actions{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}'+
-    '.tc-btn{border:1px solid var(--line,#2a3648);background:transparent;color:var(--ink,#edf2f7);border-radius:8px;padding:6px 12px;font:600 12.5px var(--font,sans-serif);cursor:pointer;transition:border-color .15s,color .15s,background .15s}'+
-    '.tc-btn:hover{border-color:var(--accent,#3fd2b0);color:var(--accent,#3fd2b0)}'+
-    '.tc-btn.danger:hover{border-color:var(--danger,#f0938c);color:var(--danger,#f0938c);background:var(--danger-soft,rgba(240,147,140,.12))}'+
-    '.tc-row{display:flex;align-items:center;gap:11px;padding:10px 2px;border-top:1px solid var(--line,rgba(148,163,184,.12))}'+
-    '.tc-row:first-child{border-top:none}.tc-ic{font-size:17px;flex:none;width:26px;text-align:center}'+
-    '.tc-main{min-width:0;flex:1}.tc-main b{display:block;font-size:13.5px;color:var(--ink,#edf2f7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-main i{font-style:normal;font-size:11px;color:var(--muted,#8d9aa9)}'+
-    '.tc-acts{display:flex;gap:6px;flex:none}'+
-    '.tc-empty{border:1px dashed rgba(63,210,176,.3);border-radius:12px;padding:28px 18px;text-align:center;color:var(--muted,#8d9aa9);font-size:13.5px;line-height:1.6}';
-  function inject(){
-    if(document.getElementById('tc-modal')) return;
-    var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
-    document.body.insertAdjacentHTML('beforeend',
-      '<div id="tc-modal" hidden><div class="tc-scrim" data-tc-close></div>'+
-      '<div class="tc-panel" role="dialog" aria-modal="true" aria-label="Trash">'+
-      '<div class="tc-head"><div><div class="tc-eyebrow">Recycle bin</div><div class="tc-title">Trash</div></div>'+
-      '<button class="tc-x" data-tc-close aria-label="Close">✕</button></div>'+
-      '<div class="tc-body"><div class="tc-toolbar">'+
-      '<div class="tc-search">🔍<input id="tc-q" placeholder="Search trash…"></div>'+
-      '<span class="tc-count" id="tc-count"></span></div>'+
-      '<div class="tc-actions"><button class="tc-btn" id="tc-restoreall">♻ Restore all</button>'+
-      '<button class="tc-btn danger" id="tc-emptyall">Empty trash</button></div>'+
-      '<div class="tc-list" id="tc-list"></div></div></div></div>');
-    document.getElementById('tc-q').addEventListener('input',function(e){ q=e.target.value; render(); });
-  }
-  var ICONS={ notes:'📝',note:'📝',notices:'📌',notice:'📌',habits:'🔁',habit:'🔁',
-    files:'📎',file:'📎',assignments:'📚',assignment:'📚',goals:'🎯',goal:'🎯',
-    readinglist:'🔖',reading:'🔖',lists:'🗒',list:'🗒',flashcards:'🃏',deck:'🃏' };
-  function render(){
-    var list=document.getElementById('tc-list'); if(!list) return;
-    var d=loadData(),tr=d.trash||[];
-    document.getElementById('tc-count').textContent=tr.length+(tr.length===1?' item':' items');
-    var ea=document.getElementById('tc-emptyall');
-    ea.textContent=armedEmpty?'Really empty all?':'Empty trash';
-    ea.style.color=armedEmpty?'var(--danger,#f0938c)':'';
-    var f=tr.map(function(w,i){return{w:w,i:i};}).filter(function(x){
-      var t=(x.w.type||guessType(innerItem(x.w))||'');
-      return !q||(labelOf(innerItem(x.w))+' '+t).toLowerCase().indexOf(q.toLowerCase())>-1; });
-    list.innerHTML=tr.length===0
-      ?'<div class="tc-empty">Trash is empty.<br>Deleted notes, files, habits, decks, lists and more will appear here.</div>'
-      :(f.length?f.map(function(x){
-        var back=innerItem(x.w), type=(x.w.type||guessType(back)||'item').toLowerCase();
-        return '<div class="tc-row"><span class="tc-ic">'+(ICONS[type]||'🗑')+'</span>'+
-          '<span class="tc-main"><b>'+esc(labelOf(back)||'Untitled item')+'</b><i>'+esc(type)+' · '+when(x.w)+'</i></span>'+
-          (armed===x.i
-            ?'<span class="tc-acts"><button class="tc-btn danger" data-tc-confirm="'+x.i+'">Sure?</button><button class="tc-btn" data-tc-cancel="1">Keep</button></span>'
-            :'<span class="tc-acts"><button class="tc-btn" data-tc-restore="'+x.i+'">Restore</button><button class="tc-btn danger" data-tc-arm="'+x.i+'">Delete</button></span>')+'</div>';
-      }).join(''):'<div class="tc-empty">Nothing matches “'+esc(q)+'”.</div>');
-  }
-  function open(){ inject(); armed=-1; armedEmpty=false; q=''; var qi=document.getElementById('tc-q'); if(qi) qi.value='';
-    var m=document.getElementById('tc-modal'); m.hidden=false; render();
-    requestAnimationFrame(function(){ requestAnimationFrame(function(){ m.classList.add('tc-in'); }); }); }
-  function close(){ var m=document.getElementById('tc-modal'); if(!m||m.hidden) return;
-    m.classList.remove('tc-in'); setTimeout(function(){ m.hidden=true; },220); }
-
-  /* ---------- EVENTS ---------- */
-  document.addEventListener('click',function(e){
-    var b=e.target; if(!b.closest) return;
-    if(b.closest('#trashBtn')){ e.preventDefault(); e.stopImmediatePropagation(); open(); return; }
-    var a=b.closest('[data-tc-restore],[data-tc-arm],[data-tc-confirm],[data-tc-cancel],#tc-restoreall,#tc-emptyall,[data-tc-close]');
-    if(!a) return;
-    if(a.hasAttribute('data-tc-close')){ close(); return; }
-    if(a.id==='tc-restoreall'){ restoreAll(); return; }
-    if(a.id==='tc-emptyall'){
-      if(!armedEmpty){ armedEmpty=true; render(); clearTimeout(armedEmptyT);
-        armedEmptyT=setTimeout(function(){ armedEmpty=false; render(); },3000); }
-      else{ armedEmpty=false; emptyAll(); } return; }
-    if(a.dataset.tcRestore!=null){ armed=-1; restoreAt(+a.dataset.tcRestore); return; }
-    if(a.dataset.tcArm!=null){ armed=+a.dataset.tcArm; armedEmpty=false; render(); clearTimeout(armedT);
-      armedT=setTimeout(function(){ armed=-1; render(); },3000); return; }
-    if(a.dataset.tcConfirm!=null){ armed=-1; deleteAt(+a.dataset.tcConfirm); return; }
-    if(a.dataset.tcCancel!=null){ armed=-1; render(); return; }
-  },true);
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
-
-  /* ---------- BOOT + DIAGNOSTICS ---------- */
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateBadge);
-  else updateBadge();
-  setTimeout(updateBadge,800);
-  console.log('[TrashCore v2.1] active —',count(),'item(s)');
-  window.openTrashModal = open;   /* Ctrl+K palette + legacy callers → unified popup */
-  window.TrashCore={
-    open:open, close:close, count:count, restoreAll:restoreAll, empty:emptyAll,
-    diag:function(){
-      console.log('— WRAP CHAIN —');
-      console.log('saveData.name =',saveData.name,'| wrapped:',!!saveData.__tcWrapped);
-      console.log('old autotrash still loaded:',!!window.AutoTrash,'(if true → remove its <script> tag!)');
-      console.log('old trash-ui still loaded:',!!document.getElementById('ehtr-modal'));
-      console.log('— TRASH CONTENTS —');
-      try{ console.table((loadData().trash||[]).map(function(t,i){
-        var it=innerItem(t);
-        return { i:i, type:t.type||guessType(it)||'?', label:t.name||labelOf(it),
-                 entryKeys:Object.keys(t).join(','), itemKeys:(it&&typeof it==='object')?Object.keys(it).join(','):'-',
-                 sample:JSON.stringify(it).slice(0,90) }; })); }catch(e){ console.log(e); }
-    }
-  };
-
-    
 })();
 
 
