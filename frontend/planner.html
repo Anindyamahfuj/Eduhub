@@ -1,133 +1,124 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StudyHub · Planner</title>
-    <meta name="description" content="Plan your study schedule with AI-assisted weekly planning.">
-    <meta property="og:title" content="Planner — StudyHub">
-    <meta property="og:type" content="website">
-       <link rel="stylesheet" href="style.css" />
-   <link rel="stylesheet" href="eduhub-ai.css">
-<link rel="stylesheet" href="eduhub-shortcuts.css">
-<link rel="stylesheet" href="eduhub-theme.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
-      <link rel="icon" type="image/x-icon" href="logoedu.png">
-    <style>.skip-link{position:absolute;top:-100%;left:0;background:var(--accent,#3fd2b0);color:#000;padding:.5rem 1rem;z-index:10000;font-weight:600;text-decoration:none;border-radius:0 0 var(--r-sm,6px) 0}.skip-link:focus{top:0}</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planner - StudyHub</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-        <a href="#main-content" class="skip-link">Skip to content</a>
-        <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="nav-brand"><i class="ph ph-graduation-cap" aria-hidden="true"></i> <span class="brand-highlight">Study</span>Hub</a>
-            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu"><i class="ph ph-list" aria-hidden="true"></i></button>
-            <ul class="nav-links">
-                <li><a href="index.html" class="active"><i class="ph ph-squares-four" aria-hidden="true"></i> <span data-i18n="dash_title">Dashboard</span></a></li>
-                <li><a href="ai-tools.html"><i class="ph ph-robot" aria-hidden="true"></i> <span data-i18n="ai_tools">AI Tools</span></a></li>
-                <li><a href="calculator.html"><i class="ph ph-calculator" aria-hidden="true"></i> Calculator</a></li>
-                <li><a href="files.html"><i class="ph ph-folder-open" aria-hidden="true"></i> <span data-i18n="files">Files</span></a></li>
-                <li><a href="habits.html"><i class="ph ph-fire" aria-hidden="true"></i> <span data-i18n="habits">Habits</span></a></li>
-                <li><a href="notice.html"><i class="ph ph-megaphone" aria-hidden="true"></i> <span data-i18n="notice">Notice</span></a></li>
-                <li><a href="notes.html"><i class="ph ph-note-pencil" aria-hidden="true"></i> <span data-i18n="notes">Notes</span></a></li>
-                <li><a href="assignments.html"><i class="ph ph-clipboard-text" aria-hidden="true"></i> <span data-i18n="assignments">Assignments</span></a></li>
-                <li><a href="planner.html"><i class="ph ph-calendar-blank" aria-hidden="true"></i> <span data-i18n="planner">Planner</span></a></li>
-                <li><a href="flashcards.html"><i class="ph ph-cards" aria-hidden="true"></i> <span data-i18n="flashcards">Flashcards</span></a></li>
-                <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
-            </ul>
-            <div class="nav-right">
-                
-          
-                <button id="trashBtn" class="focus-toggle"><i class="ph ph-trash" aria-hidden="true"></i> Trash (0)</button>
-                
-                <button id="focusToggle" class="focus-toggle"><i class="ph ph-lock-open" aria-hidden="true"></i> <span data-i18n="focus_off">Focus Off</span></button>
-            </div>
-        </div>
+  <header class="topbar">
+    <div class="brand">📚 StudyHub</div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="planner.html" class="active">Planner</a>
+      <a href="notes.html">Notes</a>
+      <a href="flashcards.html">Flashcards</a>
+      <a href="assignments.html">Assignments</a>
+      <a href="reading.html">Reading</a>
+      <a href="notice.html">Notice</a>
     </nav>
+    <button id="trashBtn" class="trash-btn" onclick="openTrash()">🗑️ Trash <span id="trashCount">0</span></button>
+  </header>
 
-       <main class="container" id="main-content">
-        <section class="clock-section mini-clock">
-            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle"><i class="ph ph-alarm" aria-hidden="true"></i> <span data-i18n="switch_analog">Switch to Analog</span></button></div>
-            <div class="clock-container">
-                <div id="digitalClock" class="digital-clock active">00:00:00</div>
-                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
-            </div>
-            <div class="clock-date" id="clockDate"></div>
+  <main class="container">
+    <h1>📅 Study Planner</h1>
+    <p class="subtitle">Let AI build a smart study schedule for you, or plan manually.</p>
 
-            <div class="calendar-widget">
-                <div class="calendar-compact">
-                    <div class="cal-day" id="calCompactDay">-</div>
-                    <div class="cal-date" id="calCompactDate">-</div>
-                    <div class="cal-month" id="calCompactMonth">-</div>
-                </div>
-                <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar"><i class="ph ph-calendar-blank" aria-hidden="true"></i></button>
-            </div>
+    <!-- AI Planner Section -->
+    <section class="card ai-card">
+      <h2>🤖 AI Planner</h2>
+      <p class="hint">Tell the AI what you need, or pick a quick preset:</p>
 
-         
-        </section>
+      <div class="ai-input-row">
+        <input type="text" id="plannerAiInput" placeholder="e.g., I have math exam on Friday and physics project due Monday">
+        <button id="plannerAiBtn" class="btn primary" onclick="runPlannerAI()">✨ Generate Plan</button>
+      </div>
 
-        <div class="calendar-modal" id="calendarModal" style="display:none;">
-            <div class="calendar-modal-content">
-                <div class="calendar-modal-header">
-                    <button id="calPrevYear" title="Previous year">«</button>
-                    <button id="calPrevMonth" title="Previous month">‹</button>
-                    <span id="calModalTitle">-</span>
-                    <button id="calNextMonth" title="Next month">›</button>
-                    <button id="calNextYear" title="Next year">»</button>
-                    <button id="calendarCloseBtn" class="cal-close-btn" title="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
-                </div>
-                <div class="calendar-grid" id="calendarGrid"></div>
-            </div>
+      <div class="quick-prompts">
+        <button class="chip" onclick="setPlannerPrompt('auto')">⚡ Auto Schedule</button>
+        <button class="chip" onclick="setPlannerPrompt('simple')">🌱 Simple Day</button>
+        <button class="chip" onclick="setPlannerPrompt('exam')">📝 Exam Week</button>
+        <button class="chip" onclick="setPlannerPrompt('weekend')">🎉 Weekend Plan</button>
+        <button class="chip" onclick="setPlannerPrompt('math-morning-physics-evening')">🧮 Math Morning + ⚛️ Physics Evening</button>
+        <button class="chip" onclick="setPlannerPrompt('random')">🎲 Random Mix</button>
+        <button class="chip" onclick="setPlannerPrompt('3hours')">⏰ Today 3 Hours</button>
+      </div>
+
+      <div id="plannerAiOutput" class="ai-output" style="display:none;"></div>
+    </section>
+
+    <!-- Manual Add -->
+    <section class="card">
+      <h2>➕ Add Study Slot Manually</h2>
+      <form id="plannerForm" onsubmit="return addPlannerSlot(event)">
+        <div class="form-row">
+          <input type="text" id="plannerTitle" placeholder="Activity title *" required>
+          <select id="plannerSubject">
+            <option value="Math">Math</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Biology">Biology</option>
+            <option value="English">English</option>
+            <option value="History">History</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Other">Other</option>
+          </select>
         </div>
+        <div class="form-row">
+          <select id="plannerDay">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+          <input type="time" id="plannerStart">
+          <input type="time" id="plannerEnd">
+          <select id="plannerPriority">
+            <option value="low">🟢 Low</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="high">🔴 High</option>
+          </select>
+        </div>
+        <button type="submit" class="btn primary">➕ Add Slot</button>
+      </form>
+    </section>
 
-        <header class="page-header">
-            <h1><span class="hl-cyan"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span> <span class="neon-text" data-i18n="planner">Study Planner</span></h1>
-            <p data-i18n="planner_subtitle">Click any cell to plan your subject for that day &amp; time.</p>
-        </header>
+    <!-- Weekly Grid -->
+    <section class="card">
+      <div class="card-header-row">
+        <h2>📊 Weekly Schedule</h2>
+        <button class="btn danger-outline" onclick="clearAllPlanner()">🧹 Clear All</button>
+      </div>
+      <div id="plannerGrid" class="planner-grid">
+        <!-- Days will be rendered here -->
+      </div>
+    </section>
+  </main>
 
-        <!-- ===== AI PLANNER ===== -->
-        <section class="glass-card planner-ai-section">
-            <h2><span class="hl-purple"><i class="ph ph-brain" aria-hidden="true"></i></span> <span class="neon-text">StudyHub AI Planner</span></h2>
-            <p class="text-muted-sm">
-                Describe what you want: the AI will plan it for you. Try <em>"make a routine by yourself"</em>,
-                <em>"easy weekend plan"</em>, <em>"intense exam week"</em>, <em>"math morning, physics evening"</em>,
-                <em>"3 hours today"</em>, or <em>"focus on chemistry this week"</em>.
-            </p>
+  <!-- Trash Modal -->
+  <div id="trashModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🗑️ Trash</h2>
+        <button class="close-btn" onclick="closeTrash()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="trashList" class="trash-list">
+          <p class="empty-state">Trash is empty.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn danger" onclick="emptyTrash()">⚠️ Empty All Trash</button>
+        <button class="btn" onclick="closeTrash()">Close</button>
+      </div>
+    </div>
+  </div>
 
-            <div class="planner-ai-input">
-                <textarea id="plannerAiInput" placeholder="Type your request here..." aria-label="Describe your study plan"></textarea>
-                <button id="plannerAiBtn" class="btn-primary"><i class="ph ph-sparkle" aria-hidden="true"></i> Generate Plan</button>
-            </div>
-
-            <div class="planner-ai-chips">
-                <button class="planner-chip" data-prompt="make a routine by yourself"><i class="ph ph-shuffle" aria-hidden="true"></i> Auto routine</button>
-                <button class="planner-chip" data-prompt="make an easy routine"><i class="ph ph-coffee" aria-hidden="true"></i> Easy</button>
-                <button class="planner-chip" data-prompt="intense exam week plan"><i class="ph ph-fire" aria-hidden="true"></i> Exam week</button>
-                <button class="planner-chip" data-prompt="weekend study plan"><i class="ph ph-sun-horizon" aria-hidden="true"></i> Weekend</button>
-                <button class="planner-chip" data-prompt="math in the morning, physics in the evening"><i class="ph ph-books" aria-hidden="true"></i> Math + Physics</button>
-                <button class="planner-chip" data-prompt="surprise me"><i class="ph ph-gift" aria-hidden="true"></i> Surprise</button>
-                <button class="planner-chip" data-prompt="I have 3 hours to study today"><i class="ph ph-timer" aria-hidden="true"></i> 3h today</button>
-            </div>
-
-            <div id="plannerAiOutput" class="planner-ai-output"></div>
-        </section>
-
-                <section class="glass-card">
-            <div class="flex-end">
-                <button id="resetPlannerBtn" class="btn-danger"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i> Reset Planner</button>
-            </div>
-            <div class="planner-grid" id="plannerGrid" aria-live="polite"></div>
-        </section>
-    </main>
-    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
-<script src="script.js"></script>
-<script src="eduhub-shortcuts.js"></script>
-<script src="eduhub-ai.js"></script>
-<script src="eduhub-dock.js"></script>
-    <script src="eduhub-cinema.js"></script>
-    <script src="eduhub-translate.js"></script>
+  <script src="script.js"></script>
+  <script src="eduhub-ai.js"></script>
 </body>
 </html>
