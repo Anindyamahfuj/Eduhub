@@ -1,100 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assignments — StudyHub</title>
-
-    <!-- shared project styles (keep as in your other pages) -->
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="eduhub-ai.css">
-    <link rel="stylesheet" href="eduhub-theme.css">
-
-    <!-- Phosphor icons + fonts (same as the rest of StudyHub) -->
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-
-    <style>
-        /* add-assignment form layout (page-scoped) */
-        .as-form { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:.6rem; margin-bottom:.6rem; }
-        .as-form .as-tags-row { grid-column:1 / -1; display:flex; gap:.6rem; }
-        .as-form input, .as-form select {
-            background:var(--surface-2, rgba(148,163,184,.06));
-            border:1px solid var(--line, #2a3648);
-            border-radius:10px; padding:.6rem .75rem;
-            color:var(--ink, #edf2f7); font:500 13.5px var(--font, inherit); outline:none;
-        }
-        .as-form input:focus, .as-form select:focus { border-color:var(--accent, #3fd2b0); }
-        @media (max-width: 760px) { .as-form { grid-template-columns:1fr 1fr; } }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyHub · Assignments</title>
+    <meta name="description" content="Track and manage your academic assignments.">
+    <meta property="og:title" content="Assignments — StudyHub">
+    <meta property="og:description" content="Track and manage your academic assignments.">
+    <meta property="og:type" content="website">
+       <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="eduhub-ai.css">
+<link rel="stylesheet" href="eduhub-shortcuts.css">
+<link rel="stylesheet" href="eduhub-theme.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+      <link rel="icon" type="image/x-icon" href="logoedu.png">
+    <style>.skip-link{position:absolute;top:-100%;left:0;background:var(--accent,#3fd2b0);color:#000;padding:.5rem 1rem;z-index:10000;font-weight:600;text-decoration:none;border-radius:0 0 var(--r-sm,6px) 0}.skip-link:focus{top:0}</style>
 </head>
 <body>
-
-<!-- ============================================================
-     NAVBAR — swap for your own navbar if you prefer;
-     the only required element for the features below is #trashBtn.
-     ============================================================ -->
-<nav class="navbar">
-    <div class="nav-container">
-        <a href="index.html" class="nav-logo"><i class="ph ph-graduation-cap" aria-hidden="true"></i> StudyHub</a>
-        <ul class="nav-links">
-            <li><a href="index.html">Home</a></li>
-            <li><a href="notes.html">Notes</a></li>
-            <li><a href="notice.html">Notices</a></li>
-            <li><a href="assignments.html" class="active">Assignments</a></li>
-            <li><a href="planner.html">Planner</a></li>
-            <li><a href="flashcards.html">Flashcards</a></li>
-            <li><a href="reading.html">Reading</a></li>
-            <li><a href="ai-tools.html">AI Tools</a></li>
-        </ul>
-        <div class="nav-right">
-            <button id="trashBtn" class="focus-toggle" type="button">
-                <i class="ph ph-trash" aria-hidden="true"></i> Trash (0)
-            </button>
+        <a href="#main-content" class="skip-link">Skip to content</a>
+        <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand"><i class="ph ph-graduation-cap" aria-hidden="true"></i> <span class="brand-highlight">Study</span>Hub</a>
+            <button class="burger-menu" id="burgerBtn" aria-label="Toggle menu"><i class="ph ph-list" aria-hidden="true"></i></button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active"><i class="ph ph-squares-four" aria-hidden="true"></i> <span data-i18n="dash_title">Dashboard</span></a></li>
+                <li><a href="ai-tools.html"><i class="ph ph-robot" aria-hidden="true"></i> <span data-i18n="ai_tools">AI Tools</span></a></li>
+                <li><a href="calculator.html"><i class="ph ph-calculator" aria-hidden="true"></i> Calculator</a></li>
+                <li><a href="files.html"><i class="ph ph-folder-open" aria-hidden="true"></i> <span data-i18n="files">Files</span></a></li>
+                <li><a href="habits.html"><i class="ph ph-fire" aria-hidden="true"></i> <span data-i18n="habits">Habits</span></a></li>
+                <li><a href="notice.html"><i class="ph ph-megaphone" aria-hidden="true"></i> <span data-i18n="notice">Notice</span></a></li>
+                <li><a href="notes.html"><i class="ph ph-note-pencil" aria-hidden="true"></i> <span data-i18n="notes">Notes</span></a></li>
+                <li><a href="assignments.html"><i class="ph ph-clipboard-text" aria-hidden="true"></i> <span data-i18n="assignments">Assignments</span></a></li>
+                <li><a href="planner.html"><i class="ph ph-calendar-blank" aria-hidden="true"></i> <span data-i18n="planner">Planner</span></a></li>
+                <li><a href="flashcards.html"><i class="ph ph-cards" aria-hidden="true"></i> <span data-i18n="flashcards">Flashcards</span></a></li>
+                <li><a href="reading.html"><i class="ph ph-book-open" aria-hidden="true"></i> <span data-i18n="reading">Reading</span></a></li>
+            </ul>
+            <div class="nav-right">
+               
+            
+                <button id="trashBtn" class="focus-toggle"><i class="ph ph-trash" aria-hidden="true"></i> Trash (0)</button>
+       
+                <button id="focusToggle" class="focus-toggle"><i class="ph ph-lock-open" aria-hidden="true"></i> <span data-i18n="focus_off">Focus Off</span></button>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
-<main class="container" style="padding-top:1.4rem; padding-bottom:3rem;">
+    <main class="container" id="main-content">
+        <section class="clock-section mini-clock">
+            <div class="clock-controls"><button id="clockToggleBtn" class="clock-toggle"><i class="ph ph-alarm" aria-hidden="true"></i> <span data-i18n="switch_analog">Switch to Analog</span></button></div>
+            <div class="clock-container">
+                <div id="digitalClock" class="digital-clock active">00:00:00</div>
+                <div id="analogClock" class="analog-clock"><canvas id="analogCanvas" width="120" height="120"></canvas></div>
+            </div>
+            <div class="clock-date" id="clockDate"></div>
 
-    <section class="glass-card" style="padding:1.3rem;">
-        <h2 style="margin-top:0;"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Assignments</h2>
+            <div class="calendar-widget">
+                <div class="calendar-compact">
+                    <div class="cal-day" id="calCompactDay">-</div>
+                    <div class="cal-date" id="calCompactDate">-</div>
+                    <div class="cal-month" id="calCompactMonth">-</div>
+                </div>
+                <button id="calendarExpandBtn" class="calendar-expand-btn" title="Open calendar"><i class="ph ph-calendar-blank" aria-hidden="true"></i></button>
+            </div>
 
-        <form id="assignmentForm" autocomplete="off">
-            <div class="as-form">
-                <input id="assignTitle" type="text" placeholder="Assignment title *" required>
-                <select id="assignSubject"></select>
-                <input id="assignDue" type="date" required>
-                <select id="assignPriority">
-                    <option value="low">Low priority</option>
-                    <option value="medium" selected>Medium priority</option>
-                    <option value="high">High priority</option>
+           
+        </section>
+
+        <div class="calendar-modal" id="calendarModal" style="display:none;">
+            <div class="calendar-modal-content">
+                <div class="calendar-modal-header">
+                    <button id="calPrevYear" title="Previous year">«</button>
+                    <button id="calPrevMonth" title="Previous month">‹</button>
+                    <span id="calModalTitle">-</span>
+                    <button id="calNextMonth" title="Next month">›</button>
+                    <button id="calNextYear" title="Next year">»</button>
+                    <button id="calendarCloseBtn" class="cal-close-btn" title="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+        </div>
+
+        <header class="page-header">
+            <h1><span class="hl-red"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span> <span class="neon-text" data-i18n="assignments">Assignments</span></h1>
+            <p data-i18n="assignments_subtitle">Manage deadlines, priorities, and tags.</p>
+        </header>
+
+        <section class="glass-card">
+            <form id="assignmentForm" class="flex-wrap">
+                <input id="assignTitle" class="input-dark flex-2" data-i18n-placeholder="assign_title" placeholder="Title" required aria-label="Assignment title" name="title" />
+                <input id="assignSubject" class="input-dark flex-1" data-i18n-placeholder="assign_subject" placeholder="Subject" aria-label="Subject" name="subject" />
+                <input id="assignDue" type="date" class="input-dark flex-1" aria-label="Due date" name="due" />
+                <select id="assignPriority" class="input-dark flex-1" aria-label="Priority" name="priority">
+                    <option value="high" data-i18n="priority_high">High</option>
+                    <option value="medium" selected data-i18n="priority_medium">Medium</option>
+                    <option value="low" data-i18n="priority_low">Low</option>
                 </select>
-                <div class="as-tags-row">
-                    <input id="assignTags" type="text" placeholder="Tags, comma separated (e.g. chapter 4, lab)">
-                    <button type="submit" class="btn-primary" style="white-space:nowrap;">
-                        <i class="ph ph-plus" aria-hidden="true"></i> Add
-                    </button>
+                <input id="assignTags" class="input-dark flex-1" data-i18n-placeholder="assign_tags" placeholder="Tags (comma)" aria-label="Tags" name="tags" />
+                <button type="submit" class="btn-primary"><i class="ph ph-plus" aria-hidden="true"></i> <span data-i18n="add">Add</span></button>
+            </form>
+        </section>
+
+        <section class="glass-card">
+            <h2><span data-i18n="all_assignments">All Assignments</span></h2>
+            <div id="assignmentList" aria-live="polite">
+                <div class="empty-state" id="assignmentEmpty">
+                  <p>No assignments yet. Add your first assignment above.</p>
                 </div>
             </div>
-        </form>
+        </section>
+    </main>
 
-        <!-- list + filters + progress (rendered by script.js) -->
-        <div id="assignmentList" aria-live="polite"></div>
-    </section>
-
-</main>
-
-<!-- ============================================================
-     SCRIPTS — script.js contains ALL AI features now (planner AI,
-     summarizer, quiz, flashcard auto-gen + unified Trash).
-     eduhub-ai.js is legacy — do NOT load it.
-     ============================================================ -->
+    <footer class="footer"><p>© 2026 <span class="brand-highlight">Study</span>Hub · built for <span class="hl-cyan">focus</span> &amp; <span class="hl-magenta">growth</span></p></footer>
 <script src="script.js"></script>
 <script src="eduhub-shortcuts.js"></script>
+<script src="eduhub-ai.js"></script>
 <script src="eduhub-dock.js"></script>
-<script src="eduhub-cinema.js"></script>
-<script src="eduhub-translate.js"></script>
+    <script src="eduhub-cinema.js"></script>
+    <script src="eduhub-translate.js"></script>
 </body>
 </html>
